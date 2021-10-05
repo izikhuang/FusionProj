@@ -863,7 +863,7 @@ void FMaterialCachedParameters::GetAllParameterInfoOfType(EMaterialParameterType
 		OutParameterInfo.Add(*It);
 #if WITH_EDITORONLY_DATA
 		// cooked materials can strip out expression guids
-		if (It.GetId().AsInteger() < Entry.ExpressionGuids.Num())
+		if (Entry.ExpressionGuids.Num() != 0)
 		{
 			OutParameterIds.Add(Entry.ExpressionGuids[It.GetId().AsInteger()]);
 		}
@@ -890,7 +890,7 @@ void FMaterialCachedParameters::GetAllGlobalParameterInfoOfType(EMaterialParamet
 			OutParameterInfo.Add(ParameterInfo);
 #if WITH_EDITORONLY_DATA
 			// cooked materials can strip out expression guids
-			if (It.GetId().AsInteger() < Entry.ExpressionGuids.Num())
+			if (Entry.ExpressionGuids.Num() != 0)
 			{
 				OutParameterIds.Add(Entry.ExpressionGuids[It.GetId().AsInteger()]);
 			}
