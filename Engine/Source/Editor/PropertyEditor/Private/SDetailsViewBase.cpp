@@ -42,7 +42,7 @@ SDetailsViewBase::SDetailsViewBase() :
 	UDetailsConfig* DetailsConfig = GetMutableDefault<UDetailsConfig>();
 	DetailsConfig->LoadEditorConfig();
 
-	const FDetailsViewConfig* ViewConfig = DetailsConfig->Views.Find(DetailsViewArgs.ViewIdentifier);
+	const FDetailsViewConfig* ViewConfig = GetConstViewConfig();
 	if (ViewConfig != nullptr)
 	{
 		CurrentFilter.bShowAllAdvanced = ViewConfig->bShowAllAdvanced;
@@ -609,13 +609,24 @@ TSharedPtr<IPropertyUtilities> SDetailsViewBase::GetPropertyUtilities()
 
 const FDetailsViewConfig* SDetailsViewBase::GetConstViewConfig() const 
 {
-	return GetDefault<UDetailsConfig>()->Views.Find(DetailsViewArgs.ViewIdentifier);
+	if (DetailsViewArgs.ViewIdentifier.IsNone())
+	{
+		return nullptr;
+	}
+
+	const UDetailsConfig* DetailsConfig = GetDefault<UDetailsConfig>();
+	return DetailsConfig->Views.Find(DetailsViewArgs.ViewIdentifier);
 }
 
-FDetailsViewConfig& SDetailsViewBase::GetMutableViewConfig()
-{
+FDetailsViewConfig* SDetailsViewBase::GetMutableViewConfig()
+{ 
+	if (DetailsViewArgs.ViewIdentifier.IsNone())
+	{
+		return nullptr;
+	}
+
 	UDetailsConfig* DetailsConfig = GetMutableDefault<UDetailsConfig>();
-	return DetailsConfig->Views.FindOrAdd(DetailsViewArgs.ViewIdentifier);
+	return &DetailsConfig->Views.FindOrAdd(DetailsViewArgs.ViewIdentifier);
 }
 
 void SDetailsViewBase::SaveViewConfig()
@@ -627,8 +638,12 @@ void SDetailsViewBase::OnShowOnlyModifiedClicked()
 {
 	CurrentFilter.bShowOnlyModified = !CurrentFilter.bShowOnlyModified;
 
-	GetMutableViewConfig().bShowOnlyModified = CurrentFilter.bShowOnlyModified;
-	SaveViewConfig();
+	FDetailsViewConfig* ViewConfig = GetMutableViewConfig();
+	if (ViewConfig != nullptr)
+	{
+		ViewConfig->bShowOnlyModified = CurrentFilter.bShowOnlyModified;
+		SaveViewConfig();
+	}
 
 	UpdateFilteredDetails();
 }
@@ -646,8 +661,12 @@ void SDetailsViewBase::OnShowAllAdvancedClicked()
 {
 	CurrentFilter.bShowAllAdvanced = !CurrentFilter.bShowAllAdvanced;
 
-	GetMutableViewConfig().bShowAllAdvanced = CurrentFilter.bShowAllAdvanced;
-	SaveViewConfig();
+	FDetailsViewConfig* ViewConfig = GetMutableViewConfig();
+	if (ViewConfig != nullptr)
+	{
+		ViewConfig->bShowAllAdvanced = CurrentFilter.bShowAllAdvanced;
+		SaveViewConfig();
+	}
 
 	UpdateFilteredDetails();
 }
@@ -663,8 +682,12 @@ void SDetailsViewBase::OnShowAllChildrenIfCategoryMatchesClicked()
 {
 	CurrentFilter.bShowAllChildrenIfCategoryMatches = !CurrentFilter.bShowAllChildrenIfCategoryMatches;
 
-	GetMutableViewConfig().bShowAllChildrenIfCategoryMatches = CurrentFilter.bShowAllChildrenIfCategoryMatches;
-	SaveViewConfig();
+	FDetailsViewConfig* ViewConfig = GetMutableViewConfig();
+	if (ViewConfig != nullptr)
+	{
+		ViewConfig->bShowAllChildrenIfCategoryMatches = CurrentFilter.bShowAllChildrenIfCategoryMatches;
+		SaveViewConfig();
+	}
 
 	UpdateFilteredDetails();
 }
@@ -673,9 +696,12 @@ void SDetailsViewBase::OnShowKeyableClicked()
 {
 	CurrentFilter.bShowOnlyKeyable = !CurrentFilter.bShowOnlyKeyable;
 
-	GetMutableViewConfig().bShowOnlyKeyable = CurrentFilter.bShowOnlyKeyable;
-	SaveViewConfig();
-
+	FDetailsViewConfig* ViewConfig = GetMutableViewConfig();
+	if (ViewConfig != nullptr)
+	{
+		ViewConfig->bShowOnlyKeyable = CurrentFilter.bShowOnlyKeyable;
+		SaveViewConfig();
+	}
 	UpdateFilteredDetails();
 }
 
@@ -683,8 +709,12 @@ void SDetailsViewBase::OnShowAnimatedClicked()
 {
 	CurrentFilter.bShowOnlyAnimated = !CurrentFilter.bShowOnlyAnimated;
 
-	GetMutableViewConfig().bShowOnlyAnimated = CurrentFilter.bShowOnlyAnimated;
-	SaveViewConfig();
+	FDetailsViewConfig* ViewConfig = GetMutableViewConfig();
+	if (ViewConfig != nullptr)
+	{
+		ViewConfig->bShowOnlyAnimated = CurrentFilter.bShowOnlyAnimated;
+		SaveViewConfig();
+	}
 
 	UpdateFilteredDetails();
 }
@@ -1269,14 +1299,6 @@ void SDetailsViewBase::UpdateFilteredDetails()
 	FDetailNodeList InitialRootNodeList;
 	
 	NumVisibleTopLevelObjectNodes = 0;
-
-	CurrentFilter.bShowAllAdvanced = false;
-
-	const FDetailsViewConfig* DetailsViewConfig = GetMutableDefault<UDetailsConfig>()->Views.Find(DetailsViewArgs.ViewIdentifier);
-	if (DetailsViewConfig != nullptr)
-	{
-		CurrentFilter.bShowAllAdvanced = DetailsViewConfig->bShowAllAdvanced;
-	}
 	
 	FRootPropertyNodeList& RootPropertyNodes = GetRootNodes();
 	for(int32 RootNodeIndex = 0; RootNodeIndex < RootPropertyNodes.Num(); ++RootNodeIndex)
