@@ -27,19 +27,6 @@ UE_TRACE_EVENT_BEGIN($Trace, ThreadTiming, NoSync)
 	UE_TRACE_EVENT_FIELD(uint64, BaseTimestamp)
 UE_TRACE_EVENT_END()
 
-#define TRACE_PRIVATE_PERF 0
-#if TRACE_PRIVATE_PERF
-UE_TRACE_EVENT_BEGIN($Trace, WorkerThread)
-	UE_TRACE_EVENT_FIELD(uint32, Cycles)
-	UE_TRACE_EVENT_FIELD(uint32, BytesReaped)
-	UE_TRACE_EVENT_FIELD(uint32, BytesSent)
-UE_TRACE_EVENT_END()
-
-UE_TRACE_EVENT_BEGIN($Trace, Memory)
-	UE_TRACE_EVENT_FIELD(uint32, AllocSize)
-UE_TRACE_EVENT_END()
-#endif // TRACE_PRIVATE_PERF
-
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,10 +126,6 @@ static bool Writer_DrainBuffer(uint32 ThreadId, FWriteBuffer* Buffer)
 	// Send as much as we can.
 	if (uint32 SizeToReap = uint32(Committed - Buffer->Reaped))
 	{
-#if TRACE_PRIVATE_PERF
-		BytesReaped += SizeToReap;
-		BytesSent += /*...*/
-#endif
 		bool bPartial = (Buffer->Partial == 1);
 		bPartial &= UPTRINT(Buffer->Reaped + Buffer->Size) == UPTRINT(Buffer);
 		Writer_TailAppend(ThreadId, Buffer->Reaped, SizeToReap, bPartial);
@@ -170,12 +153,6 @@ void Writer_DrainBuffers()
 		}
 	};
 
-#if TRACE_PRIVATE_PERF
-	uint64 StartTsc = TimeGetTimestamp();
-	uint32 BytesReaped = 0;
-	uint32 BytesSent = 0;
-#endif
-
 	// Claim ownership of any new thread buffer lists
 	FWriteBuffer* __restrict NewThreadList = AtomicExchangeAcquire(&GNewThreadList, (FWriteBuffer*)nullptr);
 
@@ -202,42 +179,55 @@ void Writer_DrainBuffers()
 	// a list of that thread's buffers (where it is writing trace events to).
 	for (FWriteBuffer* __restrict Buffer : { ActiveThreadList, NewThreadList })
 	{
-		// For each thread...
-		for (FWriteBuffer* __restrict NextThread; Buffer != nullptr; Buffer = NextThread)
-		{
-			NextThread = Buffer->NextThread;
-			uint32 ThreadId = Buffer->ThreadId;
+		// We'll peel off one buffer from each thread at a time. This way packets
+		// are somewhat closer together by age in the stream.
 
-			// For each of the thread's buffers...
-			for (FWriteBuffer* __restrict NextBuffer; Buffer != nullptr; Buffer = NextBuffer)
+		for (FWriteBuffer* __restrict RetryThreadList = nullptr;;)
+		{
+			for (FWriteBuffer* __restrict NextThread; Buffer != nullptr; Buffer = NextThread)
 			{
+				NextThread = Buffer->NextThread;
+
+				uint32 ThreadId = Buffer->ThreadId;
 				if (Writer_DrainBuffer(ThreadId, Buffer))
 				{
-					break;
+					// Buffer's still in use. So it goes on the main active list and
+					// we move onto the next thread.
+					if (Buffer != nullptr)
+					{
+						Buffer->NextThread = GActiveThreadList;
+						GActiveThreadList = Buffer;
+					}
+
+					continue;
 				}
 
-				// Retire the buffer
-				NextBuffer = Buffer->NextBuffer;
+				// The buffer's full so we will retire it. As this means there
+				// will be another buffer in the list 
+
+				FWriteBuffer* __restrict NextBuffer = Buffer->NextBuffer;
+
 				RetireList.Insert(Buffer);
+
+				if (NextBuffer != nullptr)
+				{
+					NextBuffer->NextThread = RetryThreadList;
+					RetryThreadList = NextBuffer;
+				}
 			}
 
-			if (Buffer != nullptr)
+			// Eventually the only buffers remaining aren't full and therefore
+			// never added to the retry list. At that point there is no more
+			// data that can be sent out.
+			if (RetryThreadList == nullptr)
 			{
-				Buffer->NextThread = GActiveThreadList;
-				GActiveThreadList = Buffer;
+				break;
 			}
+
+			Buffer = RetryThreadList;
+			RetryThreadList = nullptr;
 		}
 	}
-
-#if TRACE_PRIVATE_PERF
-	UE_TRACE_LOG($Trace, WorkerThread, TraceLogChannel)
-		<< WorkerThread.Cycles(uint32(TimeGetTimestamp() - StartTsc))
-		<< WorkerThread.BytesReaped(BytesReaped)
-		<< WorkerThread.BytesSent(BytesSent);
-
-	UE_TRACE_LOG($Trace, Memory, TraceLogChannel)
-		<< Memory.AllocSize(GPoolUsage);
-#endif // TRACE_PRIVATE_PERF
 
 	// Put the retirees we found back into the system again.
 	if (RetireList.Head != nullptr)

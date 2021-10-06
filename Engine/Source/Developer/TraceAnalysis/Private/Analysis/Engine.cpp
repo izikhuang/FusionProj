@@ -1472,8 +1472,6 @@ public:
 
 private:
 	void				DispatchLeaveScope();
-
-private:
 	FAnalysisState		State;
 	FTraceAnalyzer		TraceAnalyzer = { State, *this };
 	FAnalyzerHub		AnalyzerHub;
@@ -1589,24 +1587,33 @@ void FAnalysisBridge::LeaveScope(uint64 Timestamp)
 ////////////////////////////////////////////////////////////////////////////////
 void FAnalysisBridge::DispatchLeaveScope()
 {
-	if (ThreadInfo->ScopeRoutes.Num() > 0)
+	if (ThreadInfo->ScopeRoutes.Num() <= 0)
 	{
-		PTRINT TypeInfoPtr = ThreadInfo->ScopeRoutes.Pop(false);
-		const auto* TypeInfo = (FTypeRegistry::FTypeInfo*)TypeInfoPtr;
-
-		FEventDataInfo EmptyEventInfo = {
-			nullptr,
-			*TypeInfo
-		};
-
-		IAnalyzer::FOnEventContext Context = {
-			*(const IAnalyzer::FThreadInfo*)ThreadInfo,
-			(const IAnalyzer::FEventTime&)(State.Timing),
-			(const IAnalyzer::FEventData&)EmptyEventInfo,
-		};
-
-		AnalyzerHub.OnEvent(*TypeInfo, IAnalyzer::EStyle::LeaveScope, Context);
+		// Leave scope without a corresponding enter
+		return;
 	}
+
+	int64 ScopeValue = int64(ThreadInfo->ScopeRoutes.Pop(false));
+	if (ScopeValue < 0)
+	{
+		// enter/leave pair without an event inbetween.
+		return;
+	}
+
+	const auto* TypeInfo = (FTypeRegistry::FTypeInfo*)PTRINT(ScopeValue);
+
+	FEventDataInfo EmptyEventInfo = {
+		nullptr,
+		*TypeInfo
+	};
+
+	IAnalyzer::FOnEventContext Context = {
+		*(const IAnalyzer::FThreadInfo*)ThreadInfo,
+		(const IAnalyzer::FEventTime&)(State.Timing),
+		(const IAnalyzer::FEventData&)EmptyEventInfo,
+	};
+
+	AnalyzerHub.OnEvent(*TypeInfo, IAnalyzer::EStyle::LeaveScope, Context);
 }
 
 
@@ -2476,15 +2483,36 @@ private:
 			struct
 			{
 				int32		Serial;
-				uint16		Uid			: 15;
+				uint16		Uid			: 14;
+				uint16		bTwoByteUid	: 1;
 				uint16		bHasAux		: 1;
 				uint16		AuxKey;
 			};
 			uint64			Meta = 0;
 		};
-		const uint8*		Data = nullptr;
+		union
+		{
+			uint32			GapLength;
+			const uint8*	Data;
+		};
 	};
 	static_assert(sizeof(FEventDesc) == 16, "");
+
+	struct alignas(16) FEventDescStream
+	{
+		uint32					ThreadId;
+		uint32					TransportIndex;
+		union
+		{
+			uint32				ContainerIndex;
+			const FEventDesc*	EventDescs;
+		};
+
+		enum { GapThreadId = ~0u };
+
+		bool operator < (const FEventDescStream& Rhs) const;
+	};
+	static_assert(sizeof(FEventDescStream) == 16, "");
 
 	enum ESerial : int32 
 	{
@@ -2507,15 +2535,31 @@ private:
 	int32					ParseEvents(FStreamReader& Reader, EventDescArray& OutEventDescs);
 	int32					ParseEventsWithAux(FStreamReader& Reader, EventDescArray& OutEventDescs);
 	int32					ParseEvent(FStreamReader& Reader, FEventDesc& OutEventDesc);
-	int						DispatchEvents(FAnalysisBridge& Bridge, const FEventDesc* EventDesc, uint32 Count);
+	int32					DispatchEvents(FAnalysisBridge& Bridge, const FEventDesc* EventDesc, uint32 Count);
+	int32					DispatchEvents(FAnalysisBridge& Bridge, TArray<FEventDescStream>& EventDescHeap);
+	void					DetectSerialGaps(TArray<FEventDescStream>& EventDescHeap);
+	template <typename CALLBACK>
+	void					ForEachSerialGap(const TArray<FEventDescStream>& EventDescHeap, CALLBACK&& Callback);
 	FTypeRegistry			TypeRegistry;
 	FTidPacketTransport&	Transport;
 	EventDescArray			EventDescs;
+	EventDescArray			SerialGaps;
+	uint32					NextSerial = ~0u;
+	uint32					SyncCount;
 };
+
+////////////////////////////////////////////////////////////////////////////////
+bool FProtocol5Stage::FEventDescStream::operator < (const FEventDescStream& Rhs) const
+{
+	int32 Delta = Rhs.EventDescs->Serial - EventDescs->Serial;
+	int32 Wrapped = uint32(Delta + ESerial::HalfRange - 1) >= uint32(ESerial::Range - 2);
+	return (Wrapped ^ (Delta > 0)) != 0;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 FProtocol5Stage::FProtocol5Stage(FTransport* InTransport)
 : Transport(*(FTidPacketTransport*)InTransport)
+, SyncCount(Transport.GetSyncCount())
 {
 	EventDescs.Reserve(8 << 10);
 }
@@ -2528,13 +2572,23 @@ FProtocol5Stage::EStatus FProtocol5Stage::OnData(
 	Transport.SetReader(Reader);
 	Transport.Update();
 
+	bool bNotEnoughData;
+
 	EStatus Ret = OnDataImportant(Context);
-	if (Ret != EStatus::Eof)
+	if (Ret == EStatus::Error)
 	{
 		return Ret;
 	}
+	bNotEnoughData = (Ret != EStatus::Eof);
 
-	return OnDataNormal(Context);
+	Ret = OnDataNormal(Context);
+	if (Ret == EStatus::Error)
+	{
+		return Ret;
+	}
+	bNotEnoughData |= (Ret == EStatus::NotEnoughData);
+
+	return bNotEnoughData ? EStatus::NotEnoughData : EStatus::Eof;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2666,6 +2720,7 @@ int32 FProtocol5Stage::ParseImportantEvents(FStreamReader& Reader, EventDescArra
 				FEventDesc& AuxDesc = OutEventDescs.Emplace_GetRef();
 				AuxDesc.Uid = uint8(EKnownUids::AuxData);
 				AuxDesc.Data = AuxHeader->Data;
+				AuxDesc.Serial = ESerial::Ignored;
 
 				Cursor = AuxHeader->Data + (AuxHeader->Pack >> FAuxHeader::SizeShift);
 			}
@@ -2691,12 +2746,6 @@ FProtocol5Stage::EStatus FProtocol5Stage::OnDataNormal(const FMachineContext& Co
 	EventDescs.Reset();
 	bool bNotEnoughData = false;
 
-	struct FEventDescStream
-	{
-		uint32				ThreadId;
-		uint32				Index;
-		const FEventDesc*	EventDescs;
-	};
 	TArray<FEventDescStream> EventDescHeap;
 	EventDescHeap.Reserve(Transport.GetThreadCount());
 
@@ -2721,22 +2770,56 @@ FProtocol5Stage::EStatus FProtocol5Stage::OnDataNormal(const FMachineContext& Co
 			FEventDesc& EventDesc = EventDescs.Emplace_GetRef();
 			EventDesc.Serial = ESerial::Terminal;
 
-			EventDescHeap.Add({Transport.GetThreadId(i), NumEventDescs});
+			FEventDescStream Out;
+			Out.ThreadId = Transport.GetThreadId(i);
+			Out.TransportIndex = i;
+			Out.ContainerIndex = NumEventDescs;
+			EventDescHeap.Add(Out);
 		}
 
 		TRACE_ANALYSIS_DEBUG("Thread: %03d bNotEnoughData:%d", i, bNotEnoughData);
 	}
 
+	// Now EventDescs is stable we can convert the indices into pointers
+	for (FEventDescStream& Stream : EventDescHeap)
+	{
+		Stream.EventDescs = EventDescs.GetData() + Stream.ContainerIndex;
+	}
+
+	// Process leading unsynchronised events so that each stream starts with a
+	// sychronised event.
+	for (FEventDescStream& Stream : EventDescHeap)
+	{
+		// Extract a run of consecutive unsynchronised events
+		const FEventDesc* EndDesc = Stream.EventDescs;
+		for (; EndDesc->Serial == ESerial::Ignored; ++EndDesc);
+
+		// Dispatch.
+		const FEventDesc* StartDesc = Stream.EventDescs;
+		int32 DescNum = int32(UPTRINT(EndDesc - StartDesc));
+		if (DescNum > 0)
+		{
+			Context.Bridge.SetActiveThread(Stream.ThreadId);
+
+			if (DispatchEvents(Context.Bridge, StartDesc, DescNum) < 0)
+			{
+				return EStatus::Error;
+			}
+
+			Stream.EventDescs = EndDesc;
+		}
+	}
+
+	// Trim off empty streams
+	EventDescHeap.RemoveAllSwap([] (const FEventDescStream& Stream)
+	{
+		return (Stream.EventDescs->Serial == ESerial::Terminal);
+	});
+
 	// Early out if there isn't any events available.
 	if (UNLIKELY(EventDescHeap.IsEmpty()))
 	{
 		return bNotEnoughData ? EStatus::NotEnoughData : EStatus::Eof;
-	}
-
-	// Now EventDescs is stable we can convert the indices into pointers
-	for (FEventDescStream& Stream : EventDescHeap)
-	{
-		Stream.EventDescs = EventDescs.GetData() + Stream.Index;
 	}
 
 	// Provided that less than approximately "SerialRange * BytesPerSerial"
@@ -2745,13 +2828,40 @@ FProtocol5Stage::EStatus FProtocol5Stage::OnDataNormal(const FMachineContext& Co
 	// than half the serial space, they have wrapped.
 
 	// A min-heap is used to peel off groups of events by lowest serial
-	auto Comparison = [] (const FEventDescStream& Lhs, const FEventDescStream& Rhs)
+	EventDescHeap.Heapify();
+
+	// Events must be consumed contiguously.
+	if (NextSerial == ~0u && Transport.GetSyncCount())
 	{
-		int32 Delta = Rhs.EventDescs->Serial - Lhs.EventDescs->Serial;
-		int32 Wrapped = uint32(Delta + ESerial::HalfRange - 1) >= uint32(ESerial::Range - 2);
-		return (Wrapped ^ (Delta > 0)) != 0;
+		NextSerial = EventDescHeap.HeapTop().EventDescs[0].Serial;
+	}
+
+	DetectSerialGaps(EventDescHeap);
+
+	if (DispatchEvents(Context.Bridge, EventDescHeap) < 0)
+	{
+		return EStatus::Error;
+	}
+
+	return bNotEnoughData ? EStatus::NotEnoughData : EStatus::Eof;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int32 FProtocol5Stage::DispatchEvents(
+	FAnalysisBridge& Bridge,
+	TArray<FEventDescStream>& EventDescHeap)
+{
+	auto UpdateHeap = [&] (const FEventDescStream& Stream, const FEventDesc* EventDesc)
+	{
+		if (EventDesc->Serial != ESerial::Terminal)
+		{
+			FEventDescStream Next = Stream;
+			Next.EventDescs = EventDesc;
+			EventDescHeap.Add(Next);
+		}
+
+		EventDescHeap.HeapPopDiscard();
 	};
-	EventDescHeap.Heapify(Comparison);
 
 	do
 	{
@@ -2759,44 +2869,65 @@ FProtocol5Stage::EStatus FProtocol5Stage::OnDataNormal(const FMachineContext& Co
 		const FEventDesc* StartDesc = Stream.EventDescs;
 		const FEventDesc* EndDesc = StartDesc;
 
-		Context.Bridge.SetActiveThread(Stream.ThreadId);
+		// DetectSerialGaps() will add a special stream that communicates gaps
+		// in in serial numbers, gaps that will never be resolved. Thread IDs
+		// are uint16 everywhere else so they will never collide with GapThreadId.
+		if (Stream.ThreadId == FEventDescStream::GapThreadId)
+		{
+			NextSerial = EndDesc->Serial + EndDesc->GapLength;
+			NextSerial &= ESerial::Mask;
+			UpdateHeap(Stream, EndDesc + 1);
+			continue;
+		}
 
 		// Extract a run of consecutive events (plus runs of unsynchronised ones)
-		for (; EndDesc->Serial == ESerial::Ignored; ++EndDesc);
-		if (EndDesc->Serial != ESerial::Terminal)
+		if (EndDesc->Serial == NextSerial)
 		{
-			uint32 NextSerial = EndDesc->Serial;
 			do
 			{
+				NextSerial = (NextSerial + 1) & ESerial::Mask;
+
 				do
 				{
 					++EndDesc;
 				}
 				while (EndDesc->Serial == ESerial::Ignored);
-
-				++NextSerial;
 			}
 			while (EndDesc->Serial == NextSerial);
 		}
-
-		// Update the heap
-		if (EndDesc->Serial != ESerial::Terminal)
+		else
 		{
-			EventDescHeap.Add({Stream.ThreadId, 0, EndDesc});
+			// The lowest known serial number is not low enough so we are unable
+			// to proceed any further.
+			break;
 		}
-		EventDescHeap.HeapPopDiscard(Comparison);
 
 		// Dispatch.
+		Bridge.SetActiveThread(Stream.ThreadId);
 		int32 DescNum = int32(UPTRINT(EndDesc - StartDesc));
 		check(DescNum > 0);
-		if (DispatchEvents(Context.Bridge, StartDesc, DescNum) < 0)
+		if (DispatchEvents(Bridge, StartDesc, DescNum) < 0)
 		{
-			return EStatus::Error;
+			return -1;
 		}
+
+		UpdateHeap(Stream, EndDesc);
 	}
 	while (!EventDescHeap.IsEmpty());
 
-	return bNotEnoughData ? EStatus::NotEnoughData : EStatus::Eof;
+	// If there are any streams left in the heap then we are unable to proceed
+	// until more data is received. We'll rewind the streams until more data is
+	// available. It is an efficient way to do things, but it is simple way.
+	for (FEventDescStream& Stream : EventDescHeap)
+	{
+		const FEventDesc& EventDesc = Stream.EventDescs[0];
+		uint32 HeaderSize = 1 + EventDesc.bTwoByteUid + (ESerial::Bits / 8);
+
+		FStreamReader* Reader = Transport.GetThreadStream(Stream.TransportIndex);
+		Reader->Backtrack(EventDesc.Data - HeaderSize);
+	}
+
+	return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2862,6 +2993,7 @@ int32 FProtocol5Stage::ParseEventsWithAux(FStreamReader& Reader, EventDescArray&
 	while (!Reader.IsEmpty())
 	{
 		FEventDesc EventDesc;
+		EventDesc.Serial = ESerial::Ignored;
 
 		int32 Size = ParseEvent(Reader, EventDesc);
 		if (Size <= 0)
@@ -2944,6 +3076,7 @@ int32 FProtocol5Stage::ParseEvent(FStreamReader& Reader, FEventDesc& EventDesc)
 	uint32 Uid = *Cursor;
 	if (Uid & EKnownUids::Flag_TwoByteUid)
 	{
+		EventDesc.bTwoByteUid = 1;
 		Uid = *(uint16*)Cursor;
 		++Cursor;
 	}
@@ -3015,7 +3148,151 @@ int32 FProtocol5Stage::ParseEvent(FStreamReader& Reader, FEventDesc& EventDesc)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-int FProtocol5Stage::DispatchEvents(
+template <typename CALLBACK>
+void FProtocol5Stage::ForEachSerialGap(
+	const TArray<FEventDescStream>& EventDescHeap,
+	CALLBACK&& Callback)
+{
+	TArray<FEventDescStream> HeapCopy(EventDescHeap);
+	int Serial = HeapCopy.HeapTop().EventDescs[0].Serial;
+
+	// There might be a gap at the beginning of the heap if some events have
+	// already been consumed.
+	if (NextSerial != Serial)
+	{
+		if (!Callback(NextSerial, Serial))
+		{
+			return;
+		}
+	}
+
+	// A min-heap is used to peel off each stream (thread) with the lowest serial
+	// numbered event.
+	do
+	{
+		const FEventDescStream& Stream = HeapCopy.HeapTop();
+		const FEventDesc* EventDesc = Stream.EventDescs;
+
+		// If the next lowest serial number doesn't match where we got up to in
+		// the previous stream we have found a gap. Celebration ensues.
+		if (Serial != EventDesc->Serial)
+		{
+			if (!Callback(Serial, EventDesc->Serial))
+			{
+				return;
+			}
+		}
+
+		// Consume consecutive events (including unsynchronised ones).
+		Serial = EventDesc->Serial;
+		do
+		{
+			do
+			{
+				++EventDesc;
+			}
+			while (EventDesc->Serial == ESerial::Ignored);
+
+			Serial = (Serial + 1) & ESerial::Mask;
+		}
+		while (EventDesc->Serial == Serial);
+
+		// Update the heap
+		if (EventDesc->Serial != ESerial::Terminal)
+		{
+			auto& Out = HeapCopy.Add_GetRef({Stream.ThreadId, Stream.TransportIndex});
+			Out.EventDescs = EventDesc;
+		}
+		HeapCopy.HeapPopDiscard();
+	}
+	while (!HeapCopy.IsEmpty());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void FProtocol5Stage::DetectSerialGaps(TArray<FEventDescStream>& EventDescHeap)
+{
+	// Events that should be synchronised across threads are assigned serial
+	// numbers so they can be analysed in the correct order. Gaps in the
+	// serials can occur under two scenarios; 1) when packets are dropped from
+	// the trace tail to make space for new trace events, and 2) when Trace's
+	// worker thread ticks, samples all the trace buffers and sends their data.
+	// In late-connect scenarios these gaps need to be skipped over in order to
+	// successfully reserialise events in the data stream. To further complicate
+	// matters, most of the gaps from (2) will get filled by the following update,
+	// leading to initial false positive gaps. By embedding sync points in the
+	// stream we can reliably differentiate genuine gaps from temporary ones.
+	//
+	// Note that this could be done without sync points but it is an altogether
+	// more complex solution. So unsightly embedded syncs it is...
+
+	if (SyncCount == Transport.GetSyncCount())
+	{
+		return;
+	}
+
+	SyncCount = Transport.GetSyncCount();
+
+	if (SyncCount == 1)
+	{
+		// On the first update we will just collect gaps.
+		auto GatherGap = [this] (int32 Lhs, int32 Rhs)
+		{
+			FEventDesc& Gap = SerialGaps.Emplace_GetRef();
+			Gap.Serial = Lhs;
+			Gap.GapLength = (Rhs - Lhs) & ESerial::Mask;
+			return true;
+		};
+		ForEachSerialGap(EventDescHeap, GatherGap);
+	}
+	else
+	{
+		// On the second update we detect where gaps from the previous update
+		// start getting filled in. Any gaps preceding that point are genuine.
+		uint32 GapCount = 0;
+		auto RecordGap = [this, &GapCount] (int32 Lhs, int32 Rhs)
+		{
+			for (uint32 n = SerialGaps.Num(); GapCount < n; ++GapCount)
+			{
+				FEventDesc& SerialGap = SerialGaps[GapCount];
+
+				if (SerialGap.Serial >= Lhs)
+				{
+					GapCount += (SerialGap.Serial == Lhs);
+					break;
+				}
+
+				return false;
+			}
+			return true;
+		};
+
+		ForEachSerialGap(EventDescHeap, RecordGap);
+
+		if (GapCount == 0)
+		{
+			SerialGaps.Empty();
+			return;
+		}
+
+		// Turn the genuine gaps into a stream that DispatchEvents() can handle
+		// and use to skip over them.
+
+		if (GapCount == uint32(SerialGaps.Num()))
+		{
+			SerialGaps.Emplace();
+		}
+		FEventDesc& Terminator = SerialGaps[GapCount];
+		Terminator.Serial = ESerial::Terminal;
+
+		FEventDescStream Out = EventDescHeap[0];
+		Out.ThreadId = FEventDescStream::GapThreadId;
+		Out.EventDescs = SerialGaps.GetData();
+		EventDescHeap.HeapPush(Out);
+	}
+}
+
+////////////////////////////////////////////////////////////////////////////////
+int32 FProtocol5Stage::DispatchEvents(
 	FAnalysisBridge& Bridge,
 	const FEventDesc* EventDesc, uint32 Count)
 {
@@ -3130,10 +3407,11 @@ FEstablishTransportStage::EStatus FEstablishTransportStage::OnData(
 	FTransport* Transport = nullptr;
 	switch (Header->TransportVersion)
 	{
-	case ETransport::Raw:		Transport = new FTransport(); break;
-	case ETransport::Packet:	Transport = new FPacketTransport(); break;
-	case ETransport::TidPacket:	Transport = new FTidPacketTransport(); break;
-	default:					return EStatus::Error;
+	case ETransport::Raw:			Transport = new FTransport(); break;
+	case ETransport::Packet:		Transport = new FPacketTransport(); break;
+	case ETransport::TidPacket:		Transport = new FTidPacketTransport(); break;
+	case ETransport::TidPacketSync:	Transport = new FTidPacketTransportSync(); break;
+	default:						return EStatus::Error;
 	}
 
 	uint32 ProtocolVersion = Header->ProtocolVersion;
