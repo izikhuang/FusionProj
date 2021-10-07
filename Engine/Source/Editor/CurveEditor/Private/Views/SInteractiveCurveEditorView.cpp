@@ -781,6 +781,34 @@ FText SInteractiveCurveEditorView::GetToolTipValueText() const
 	return CachedToolTipData.IsSet() ? CachedToolTipData->EvaluatedValue : FText();
 }
 
+double SInteractiveCurveEditorView::GetTangentValue(const double InTime, const double InValue, FCurveModel* CurveToAddTo, double DeltaTime) const
+{
+	// Data
+	double TargetTime = InTime + DeltaTime;				// The time to get tangent value. Could be left or right depending on is DeltaTime is negative or positive
+	double TargetValue = 0.0;							// The helper value to get Tangent value
+	CurveToAddTo->Evaluate(TargetTime, TargetValue);	// Initialize TargetValue by TargetTime
+	double TangentValue = (TargetValue - InValue) / FMath::Abs(DeltaTime);	// The tangent value to return
+	double PrevTangent = DBL_MAX;						// Used for determine whether the tangent is close to the limit
+	int32 Count = 10;									// Preventing we stuck in this function for too long
+
+	// Logic
+	// While the tangents not close enough and we haven't reach the max iteration time
+	while (!FMath::IsNearlyEqual(FMath::Abs(TangentValue), FMath::Abs(PrevTangent)) && Count > 0)
+	{
+		// Update previous tangent value and make delta time smaller
+		PrevTangent = TangentValue;
+		DeltaTime /= 2.0;
+		TargetTime = InTime + DeltaTime;
+
+		// Calculate a more precise tangent value
+		CurveToAddTo->Evaluate(TargetTime, TargetValue);
+		TangentValue = (TargetValue - InValue) / FMath::Abs(DeltaTime);
+
+		--Count;
+	}
+	return TangentValue;
+}
+
 void SInteractiveCurveEditorView::HandleDirectKeySelectionByMouse(TSharedPtr<FCurveEditor> CurveEditor, const FPointerEvent& MouseEvent, TOptional<FCurvePointHandle> MouseDownPoint)
 {
 	if(!MouseDownPoint.IsSet())
@@ -943,10 +971,29 @@ FReply SInteractiveCurveEditorView::OnMouseButtonDown(const FGeometry& MyGeometr
 					FScopedTransaction Transaction(LOCTEXT("InsertKey", "Insert Key"));
 
 					FCurveEditorScreenSpace CurveSpace = GetCurveSpace(HoveredCurve.GetValue());
-					FKeyAttributes DefaultAttributes = CurveEditor->GetDefaultKeyAttributes().Get();
-
+					FKeyAttributes KeyAttributes = CurveEditor->GetDefaultKeyAttributes().Get();
 					double MouseTime = CurveSpace.ScreenToSeconds(MousePixel.X);
 					double MouseValue = CurveSpace.ScreenToValue(MousePixel.Y);
+
+					// If shift is pressed. Keep the curve unchanged
+					if (MouseEvent.IsShiftDown())
+					{
+						KeyAttributes.SetTangentMode(RCTM_User);
+
+						// Estimated delta time to compute right and left tangents
+						double DeltaTime = 0.1;
+
+						// Make mouse value more accurate 
+						CurveToAddTo->Evaluate(MouseTime, MouseValue);
+
+						// Compute right tangent
+						double RightTangent = GetTangentValue(MouseTime, MouseValue, CurveToAddTo, DeltaTime);
+						KeyAttributes.SetLeaveTangent(RightTangent);
+
+						// Left
+						double LeftTangent = GetTangentValue(MouseTime, MouseValue, CurveToAddTo, -DeltaTime);
+						KeyAttributes.SetArriveTangent(LeftTangent);
+					}
 
 					FCurveSnapMetrics SnapMetrics = CurveEditor->GetCurveSnapMetrics(HoveredCurve.GetValue());
 					MouseTime = SnapMetrics.SnapInputSeconds(MouseTime);
@@ -964,7 +1011,7 @@ FReply SInteractiveCurveEditorView::OnMouseButtonDown(const FGeometry& MyGeometr
 					CurveToAddTo->Modify();
 
 					// Add a key on this curve
-					TOptional<FKeyHandle> NewKey = CurveToAddTo->AddKey(FKeyPosition(MouseTime, MouseValue), DefaultAttributes);
+					TOptional<FKeyHandle> NewKey = CurveToAddTo->AddKey(FKeyPosition(MouseTime, MouseValue), KeyAttributes);
 					if (NewKey.IsSet())
 					{
 						NewPoint = FCurvePointHandle(HoveredCurve.GetValue(), ECurvePointType::Key, NewKey.GetValue());

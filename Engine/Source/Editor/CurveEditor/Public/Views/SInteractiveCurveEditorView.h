@@ -16,6 +16,7 @@ struct FCurveEditorScreenSpace;
 struct FOptionalSize;
 struct FCurveEditorDelayedDrag;
 class IMenu;
+class FCurveModel;
 
 namespace CurveViewConstants
 {
@@ -125,6 +126,17 @@ private:
 	FText GetToolTipCurveName() const;
 	FText GetToolTipTimeText() const;
 	FText GetToolTipValueText() const;
+
+	/**
+	 * Returns the proper tangent value so we can keep the curve remain the original shape
+	 *
+	 * @param InTime		The time we are trying to add a key to
+	 * @param InValue		The value we are trying to add a key to
+	 * @param CurveToAddTo  The curve we are trying to add a key to
+	 * @param DeltaTime		Negative to get the left tangent, positive for right. Remember to use FMath::Abs() when needed
+	 * @return				The tangent value relatives to the DeltaTime upon mouse click's position
+	 */
+	double GetTangentValue(const double InTime, const double InValue, FCurveModel* CurveToAddTo, double DeltaTime) const;
 
 	/*~ Command binding callbacks */
 	void AddKeyAtScrubTime(TSet<FCurveModelID> ForCurves);
