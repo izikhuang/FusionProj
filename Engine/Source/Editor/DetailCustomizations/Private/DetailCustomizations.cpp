@@ -1,160 +1,162 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "DetailCustomizations.h"
-#include "Templates/SharedPointer.h"
-#include "Modules/ModuleManager.h"
-#include "PropertyEditorModule.h"
-#include "StaticMeshComponentDetails.h"
-#include "InstancedStaticMeshComponentDetails.h"
-#include "LightComponentDetails.h"
-#include "LocalLightComponentDetails.h"
-#include "DirectionalLightComponentDetails.h"
-#include "SceneComponentDetails.h"
-#include "BodyInstanceCustomization.h"
-#include "PrimitiveComponentDetails.h"
-#include "StaticMeshActorDetails.h"
-#include "SkinnedMeshComponentDetails.h"
-#include "SkeletalMeshComponentDetails.h"
-#include "SplineComponentDetails.h"
-#include "MeshComponentDetails.h"
-#include "LevelSequenceActorDetails.h"
-#include "ReflectionCaptureDetails.h"
-#include "SkyLightComponentDetails.h"
-#include "BrushDetails.h"
-#include "ObjectDetails.h"
+
+#include "AIDataProviderValueDetails.h"
+#include "ActorComponentDetails.h"
 #include "ActorDetails.h"
-#include "SkeletalControlNodeDetails.h"
+#include "AmbientSoundDetails.h"
 #include "AnimMontageSegmentDetails.h"
 #include "AnimSequenceDetails.h"
-#include "AnimTransitionNodeDetails.h"
-#include "AnimStateNodeDetails.h"
 #include "AnimStateAliasNodeDetails.h"
-#include "PoseAssetDetails.h"
+#include "AnimStateNodeDetails.h"
+#include "AnimTrailNodeDetails.h"
+#include "AnimTransitionNodeDetails.h"
 #include "AnimationAssetDetails.h"
-#include "AmbientSoundDetails.h"
-#include "Customizations/MathStructCustomizations.h"
-#include "MathStructProxyCustomizations.h"
-#include "RangeStructCustomization.h"
-#include "IntervalStructCustomization.h"
-#include "SoftObjectPathCustomization.h"
-#include "SoftClassPathCustomization.h"
+#include "AssetImportDataCustomization.h"
+#include "AssetViewerSettingsCustomization.h"
 #include "AttenuationSettingsCustomizations.h"
-#include "WorldSettingsDetails.h"
-#include "DialogueStructsCustomizations.h"
-#include "DataTableCustomization.h"
-#include "DataTableCategoryCustomization.h"
-#include "Customizations/CurveTableCustomization.h"
-#include "DialogueWaveDetails.h"
-#include "BodySetupDetails.h"
-#include "Customizations/SlateBrushCustomization.h"
-#include "SlateSoundCustomization.h"
-#include "Customizations/SlateFontInfoCustomization.h"
-#include "MarginCustomization.h"
-#include "PhysicsConstraintComponentDetails.h"
-#include "GuidStructCustomization.h"
-#include "ParticleModuleDetails.h"
-#include "CameraDetails.h"
+#include "AudioSettingsDetails.h"
+#include "AutoReimportDirectoryCustomization.h"
 #include "BlackboardEntryDetails.h"
-#include "AIDataProviderValueDetails.h"
-#include "EnvQueryParamInstanceCustomization.h"
-#include "Customizations/ColorStructCustomization.h"
-#include "SlateColorCustomization.h"
+#include "BodyInstanceCustomization.h"
+#include "BodySetupDetails.h"
+#include "BoundsCopyComponentDetails.h"
+#include "BrushDetails.h"
+#include "CameraDetails.h"
+#include "CameraFilmbackSettingsCustomization.h"
+#include "CameraFocusSettingsCustomization.h"
+#include "CameraLensSettingsCustomization.h"
+#include "CaptureResolutionCustomization.h"
+#include "CollectionReferenceStructCustomization.h"
+#include "CollisionProfileDetails.h"
+#include "CollisionProfileNameCustomization.h"
+#include "ComponentReferenceCustomization.h"
+#include "CompositeRerouteCustomization.h"
+#include "ConfigEditorPropertyDetails.h"
+#include "CurveColorCustomization.h"
 #include "CurveStructCustomization.h"
 #include "CurveVectorCustomization.h"
-#include "NavLinkStructCustomization.h"
-#include "NavAgentSelectorCustomization.h"
-#include "DirectoryPathStructCustomization.h"
-#include "FilePathStructCustomization.h"
-#include "StructVariantCustomization.h"
-#include "DeviceProfileDetails.h"
-#include "KeyStructCustomization.h"
-#include "InternationalizationSettingsModelDetails.h"
-#include "InputSettingsDetails.h"
-#include "InputStructCustomization.h"
-#include "CollisionProfileDetails.h"
-#include "PhysicsSettingsDetails.h"
-#include "GeneralProjectSettingsDetails.h"
-#include "HardwareTargetingSettingsDetails.h"
-#include "LinuxTargetSettingsDetails.h"
-#include "WindowsTargetSettingsDetails.h"
-#include "MacTargetSettingsDetails.h"
-#include "MoviePlayerSettingsDetails.h"
-#include "SourceCodeAccessSettingsDetails.h"
-#include "ParticleSystemComponentDetails.h"
-#include "ParticleSysParamStructCustomization.h"
-#include "RawDistributionVectorStructCustomization.h"
-#include "CollisionProfileNameCustomization.h"
-#include "DocumentationActorDetails.h"
-#include "SoundBaseDetails.h"
-#include "SubmixDetailsCustomization.h"
-#include "SoundSourceBusDetails.h"
-#include "SoundWaveDetails.h"
-#include "AudioSettingsDetails.h"
+#include "Customizations/ColorStructCustomization.h"
+#include "Customizations/CurveTableCustomization.h"
+#include "Customizations/MathStructCustomizations.h"
+#include "Customizations/SlateBrushCustomization.h"
+#include "Customizations/SlateFontInfoCustomization.h"
+#include "DataTableCategoryCustomization.h"
+#include "DataTableCustomization.h"
 #include "DateTimeStructCustomization.h"
-#include "TimespanStructCustomization.h"
+#include "DebugCameraControllerSettingsCustomization.h"
+#include "DeviceProfileDetails.h"
+#include "DialogueStructsCustomizations.h"
+#include "DialogueWaveDetails.h"
+#include "DirectionalLightComponentDetails.h"
+#include "DirectoryPathStructCustomization.h"
+#include "DistanceDatumStructCustomization.h"
+#include "DocumentationActorDetails.h"
+#include "EnvQueryParamInstanceCustomization.h"
 #include "FbxImportUIDetails.h"
 #include "FbxSceneImportDataDetails.h"
-#include "RigDetails.h"
-#include "SceneCaptureDetails.h"
-#include "CurveColorCustomization.h"
-#include "ActorComponentDetails.h"
-#include "ComponentReferenceCustomization.h"
-#include "AutoReimportDirectoryCustomization.h"
-#include "DistanceDatumStructCustomization.h"
+#include "FilePathStructCustomization.h"
+#include "FrameRateCustomization.h"
+#include "GeneralProjectSettingsDetails.h"
+#include "GuidStructCustomization.h"
+#include "HardwareTargetingSettingsDetails.h"
 #include "HierarchicalSimplificationCustomizations.h"
+#include "ImportantToggleSettingCustomization.h"
+#include "InputSettingsDetails.h"
+#include "InputStructCustomization.h"
+#include "InstancedStaticMeshComponentDetails.h"
+#include "InternationalizationSettingsModelDetails.h"
+#include "IntervalStructCustomization.h"
+#include "KeyStructCustomization.h"
+#include "LandscapeProxyUIDetails.h"
+#include "LandscapeUIDetails.h"
+#include "LevelSequenceActorDetails.h"
+#include "LevelSequenceBurnInOptionsCustomization.h"
+#include "LightComponentDetails.h"
+#include "LinuxTargetSettingsDetails.h"
+#include "LocalLightComponentDetails.h"
+#include "MacTargetSettingsDetails.h"
+#include "MarginCustomization.h"
+#include "MaterialAttributePropertyDetails.h"
+#include "MaterialExpressionLandscapeGrassCustomization.h"
+#include "MaterialExpressionTextureBaseDetails.h"
+#include "MaterialInstanceDynamicDetails.h"
+#include "MaterialProxySettingsCustomizations.h"
+#include "MaterialShadingModelCustomization.h"
+#include "MathStructProxyCustomizations.h"
+#include "MeshComponentDetails.h"
+#include "MeshMergingSettingsCustomization.h"
 #include "MeshProxySettingsCustomizations.h"
-#include "PostProcessSettingsCustomization.h"
-#include "ConfigEditorPropertyDetails.h"
-#include "AssetImportDataCustomization.h"
-#include "CaptureResolutionCustomization.h"
-#include "RenderPassesCustomization.h"
+#include "Modules/ModuleManager.h"
+#include "MotionControllerDetails.h"
+#include "MotionControllerPinFactory.h"
+#include "MoviePlayerSettingsDetails.h"
+#include "MovieSceneBindingOverrideDataCustomization.h"
 #include "MovieSceneCaptureCustomization.h"
 #include "MovieSceneEvalOptionsCustomization.h"
 #include "MovieSceneEventParametersCustomization.h"
-#include "FrameRateCustomization.h"
 #include "MovieSceneSequenceLoopCountCustomization.h"
-#include "LevelSequenceBurnInOptionsCustomization.h"
-#include "MovieSceneBindingOverrideDataCustomization.h"
-#include "TextCustomization.h"
-#include "AnimTrailNodeDetails.h"
-#include "MaterialProxySettingsCustomizations.h"
-#include "ImportantToggleSettingCustomization.h"
-#include "CameraFilmbackSettingsCustomization.h"
-#include "CameraLensSettingsCustomization.h"
-#include "CameraFocusSettingsCustomization.h"
-#include "RotatorStructCustomization.h"
-#include "VectorStructCustomization.h"
-#include "Vector4StructCustomization.h"
-#include "AssetViewerSettingsCustomization.h"
-#include "MeshMergingSettingsCustomization.h"
-#include "MaterialAttributePropertyDetails.h"
-#include "CollectionReferenceStructCustomization.h"
-#include "MotionControllerDetails.h"
-#include "MotionControllerPinFactory.h"
-#include "LandscapeUIDetails.h"
-#include "LandscapeProxyUIDetails.h"
+#include "NavAgentSelectorCustomization.h"
+#include "NavLinkStructCustomization.h"
+#include "ObjectDetails.h"
+#include "ParticleModuleDetails.h"
+#include "ParticleSysParamStructCustomization.h"
+#include "ParticleSystemComponentDetails.h"
 #include "PerPlatformPropertyCustomization.h"
-#include "SkeletalMeshReductionSettingsDetails.h"
+#include "PhysicsConstraintComponentDetails.h"
+#include "PhysicsSettingsDetails.h"
+#include "PoseAssetDetails.h"
+#include "PostProcessSettingsCustomization.h"
+#include "PrimitiveComponentDetails.h"
+#include "PropertyEditorModule.h"
+#include "RangeStructCustomization.h"
+#include "RawDistributionVectorStructCustomization.h"
+#include "ReflectionCaptureDetails.h"
+#include "RenderPassesCustomization.h"
+#include "RigDetails.h"
+#include "RotatorStructCustomization.h"
+#include "SceneCaptureDetails.h"
+#include "SceneComponentDetails.h"
+#include "SkeletalControlNodeDetails.h"
+#include "SkeletalMeshComponentDetails.h"
 #include "SkeletalMeshLODSettingsDetails.h"
-#include "MaterialExpressionLandscapeGrassCustomization.h"
-#include "MaterialExpressionTextureBaseDetails.h"
-#include "CompositeRerouteCustomization.h"
-#include "TimecodeDetailsCustomization.h"
+#include "SkeletalMeshReductionSettingsDetails.h"
 #include "SkeletonDetails.h"
-#include "MaterialShadingModelCustomization.h"
-#include "DebugCameraControllerSettingsCustomization.h"
-#include "BoundsCopyComponentDetails.h"
+#include "SkinnedMeshComponentDetails.h"
+#include "SkyLightComponentDetails.h"
+#include "SlateColorCustomization.h"
+#include "SlateSoundCustomization.h"
+#include "SoftClassPathCustomization.h"
+#include "SoftObjectPathCustomization.h"
+#include "SoundBaseDetails.h"
+#include "SoundSourceBusDetails.h"
+#include "SoundWaveDetails.h"
+#include "SourceCodeAccessSettingsDetails.h"
+#include "SplineComponentDetails.h"
+#include "StaticMeshActorDetails.h"
+#include "StaticMeshComponentDetails.h"
+#include "StructVariantCustomization.h"
+#include "SubmixDetailsCustomization.h"
 #include "SupportedRangeTypes.h"	// StructsSupportingRangeVisibility
-#include "MaterialInstanceDynamicDetails.h"
+#include "Templates/SharedPointer.h"
+#include "TextCustomization.h"
+#include "TimecodeDetailsCustomization.h"
+#include "TimespanStructCustomization.h"
+#include "Vector4StructCustomization.h"
+#include "VectorStructCustomization.h"
+#include "WindowsTargetSettingsDetails.h"
+#include "WorldSettingsDetails.h"
 
-IMPLEMENT_MODULE( FDetailCustomizationsModule, DetailCustomizations );
+IMPLEMENT_MODULE(FDetailCustomizationsModule, DetailCustomizations);
 
 void FDetailCustomizationsModule::StartupModule()
 {
 	FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
-	
+
 	RegisterPropertyTypeCustomizations();
 	RegisterObjectCustomizations();
+	RegisterSectionMappings();
 
 	TSharedPtr<FMotionControllerPinFactory> MotionControllerPinFactory = MakeShareable(new FMotionControllerPinFactory());
 	FEdGraphUtilities::RegisterVisualPinFactory(MotionControllerPinFactory);
@@ -181,12 +183,12 @@ void FDetailCustomizationsModule::ShutdownModule()
 		// Unregister all structures
 		for (auto It = RegisteredPropertyTypes.CreateConstIterator(); It; ++It)
 		{
-			if(It->IsValid())
+			if (It->IsValid())
 			{
 				PropertyModule.UnregisterCustomPropertyTypeLayout(*It);
 			}
 		}
-	
+
 		PropertyModule.NotifyCustomizationModuleChanged();
 	}
 }
@@ -408,8 +410,306 @@ void FDetailCustomizationsModule::RegisterObjectCustomizations()
 	RegisterCustomClassLayout("BoundsCopyComponent", FOnGetDetailCustomizationInstance::CreateStatic(&FBoundsCopyComponentDetailsCustomization::MakeInstance));
 }
 
+#define LOCTEXT_NAMESPACE "DetailsSections"
 
-void FDetailCustomizationsModule::RegisterCustomClassLayout(FName ClassName, FOnGetDetailCustomizationInstance DetailLayoutDelegate )
+void FDetailCustomizationsModule::RegisterSectionMappings()
+{
+	static const FName PropertyEditor("PropertyEditor");
+	FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>(PropertyEditor);
+
+	// Actor
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Actor", "Actor", LOCTEXT("Actor", "Actor"));
+			Section->AddCategory("Actor");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Actor", "Misc", LOCTEXT("Misc", "Misc"));
+			Section->AddCategory("Cooking");
+			Section->AddCategory("Input");
+			Section->AddCategory("Replication");
+			Section->AddCategory("World Partition");
+		}
+	}
+
+	// Pawn
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Pawn", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Pawn");
+			Section->AddCategory("Camera");
+		}
+	}
+
+	// ActorComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("ActorComponent", "Misc", LOCTEXT("Misc", "Misc"));
+			Section->AddCategory("Asset User Data");
+			Section->AddCategory("Cooking");
+			Section->AddCategory("Data Layers");
+			Section->AddCategory("Tags");
+			Section->AddCategory("World Partition");
+		}
+	}
+
+	// SceneComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SceneComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Transform");
+			Section->AddCategory("TransformCommon");
+			Section->AddCategory("Mobility");
+		}
+	}
+
+	// PrimitiveComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("PrimitiveComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Materials");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("PrimitiveComponent", "LOD", LOCTEXT("LOD", "LOD"));
+			Section->AddCategory("HLOD");
+			Section->AddCategory("LOD");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("PrimitiveComponent", "Misc", LOCTEXT("Misc", "Misc"));
+			Section->AddCategory("Navigation");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("PrimitiveComponent", "Physics", LOCTEXT("Physics", "Physics"));
+			Section->AddCategory("Collision");
+			Section->AddCategory("Physics");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("PrimitiveComponent", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Lighting");
+			Section->AddCategory("Lightmass");
+			Section->AddCategory("Materials");
+			Section->AddCategory("Mobile");
+			Section->AddCategory("Ray Tracing");
+			Section->AddCategory("Rendering");
+			Section->AddCategory("Texture Streaming");
+			Section->AddCategory("Virtual Texture");
+		}
+	}
+
+	// MeshComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("MeshComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Mesh");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("MeshComponent", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Material Parameters");
+		}
+	}
+
+	// StaticMeshComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("StaticMeshComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Static Mesh");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("StaticMeshComponent", "Misc", LOCTEXT("Misc", "Misc"));
+			Section->AddCategory("Navigation");
+		}
+	}
+
+	// LightComponentBase
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("LightComponentBase", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Light");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("LightComponentBase", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Light");
+			Section->AddCategory("Light Function");
+			Section->AddCategory("Light Profiles");
+		}
+	}
+
+	// LightComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("LightComponent", "Misc", LOCTEXT("Misc", "Misc"));
+			Section->AddCategory("Performance");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("LightComponent", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Distance Field Shadows");
+			Section->AddCategory("Light Shafts");
+		}
+	}
+
+	// DirectionalLightComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("DirectionalLightComponent", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Atmosphere and Cloud");
+			Section->AddCategory("Cascaded Shadow Maps");
+		}
+	}
+
+	// SkyLightComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkyLightComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Sky Light");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkyLightComponent", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Atmosphere and Cloud");
+			Section->AddCategory("Distance Field Ambient Occlusion");
+		}
+	}
+
+	// PlayerStart
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("PlayerStart", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Object");
+		}
+	}
+
+	// ShapeComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("ShapeComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Shape");
+		}
+	}
+
+	// BillboardComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("BillboardComponent", "Rendering", LOCTEXT("Rendering", "Rendering"));
+			Section->AddCategory("Sprite");
+		}
+	}
+
+	// SkinnedMeshComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkinnedMeshComponent", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Mesh");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkinnedMeshComponent", "Animation", LOCTEXT("Animation", "Animation"));
+			Section->AddCategory("Skeletal Mesh");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkinnedMeshComponent", "Misc", LOCTEXT("Misc", "Misc"));
+			Section->AddCategory("Optimization");
+		}
+	}
+
+	// SkeletalMeshComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkeletalMeshComponent", "Animation", LOCTEXT("Animation", "Animation"));
+			Section->AddCategory("Animation");
+			Section->AddCategory("Animation Rig");
+			Section->AddCategory("Master Pose Component");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkeletalMeshComponent", "Physics", LOCTEXT("Physics", "Physics"));
+			Section->AddCategory("Clothing");
+		}
+	}
+
+	// SkeletalMesh
+	{
+		TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("SkeletalMesh", "Animation", LOCTEXT("Animation", "Animation"));
+		Section->AddCategory("Skin Weights");
+	}
+
+	// AnimInstance
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("AnimInstance", "Movement", LOCTEXT("Movement", "Movement"));
+			Section->AddCategory("Root Motion");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("AnimInstance", "Physics", LOCTEXT("Physics", "Physics"));
+			Section->AddCategory("Root Motion");
+		}
+	}
+
+	// Character
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Character", "Movement", LOCTEXT("Movement", "Movement"));
+			Section->AddCategory("Camera");
+			Section->AddCategory("Character");
+			Section->AddCategory("Pawn");
+		}
+	}
+
+	// CharacterMovementComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("CharacterMovementComponent", "Movement", LOCTEXT("Movement", "Movement"));
+			Section->AddCategory("Character Movement");
+			Section->AddCategory("Character Movement (General Settings)");
+			Section->AddCategory("Character Movement (Networking)");
+			Section->AddCategory("Character Movement (Rotation Settings)");
+			Section->AddCategory("Character Movement: Avoidance");
+			Section->AddCategory("Character Movement: Custom Movement");
+			Section->AddCategory("Character Movement: Flying");
+			Section->AddCategory("Character Movement: Jumping / Falling");
+			Section->AddCategory("Character Movement: MovementMode");
+			Section->AddCategory("Character Movement: Physics Interaction");
+			Section->AddCategory("Character Movement: Swimming");
+			Section->AddCategory("Character Movement: Walking");
+			Section->AddCategory("Root Motion");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("CharacterMovementComponent", "Physics", LOCTEXT("Physics", "Physics"));
+			Section->AddCategory("Root Motion");
+		}
+	}
+
+	// CapsuleComponent
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("CapsuleComponent", "Actor", LOCTEXT("Actor", "Actor"));
+			Section->AddCategory("Shape");
+		}
+	}
+
+	// Brush
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Brush", "General", LOCTEXT("General", "General"));
+			Section->AddCategory("Brush Settings");
+		}
+	}
+}
+
+#undef LOCTEXT_NAMESPACE
+
+void FDetailCustomizationsModule::RegisterCustomClassLayout(FName ClassName, FOnGetDetailCustomizationInstance DetailLayoutDelegate)
 {
 	check(ClassName != NAME_None);
 
@@ -417,7 +717,7 @@ void FDetailCustomizationsModule::RegisterCustomClassLayout(FName ClassName, FOn
 
 	static FName PropertyEditor("PropertyEditor");
 	FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>(PropertyEditor);
-	PropertyModule.RegisterCustomClassLayout( ClassName, DetailLayoutDelegate );
+	PropertyModule.RegisterCustomClassLayout(ClassName, DetailLayoutDelegate);
 }
 
 

@@ -60,7 +60,7 @@ void SDetailsView::Construct(const FArguments& InArgs, const FDetailsViewArgs& I
 	}
 
 	ColumnSizeData.SetValueColumnWidth(DetailsViewArgs.ColumnWidth);
-	ColumnSizeData.RightColumnMinWidth = DetailsViewArgs.RightColumnMinWidth;
+	ColumnSizeData.SetRightColumnMinWidth(DetailsViewArgs.RightColumnMinWidth);
 
 	SetObjectFilter(InDetailsViewArgs.ObjectFilter);
 	SetClassViewerFilters(InDetailsViewArgs.ClassViewerFilters);
@@ -346,11 +346,12 @@ void SDetailsView::Construct(const FArguments& InArgs, const FDetailsViewArgs& I
 		];
 
 	FilterRowVBox->AddSlot()
-		.Padding(30, 2, 30, 7)
+		.Padding(8, 2, 8, 7)
 		.AutoHeight()
 		[
 			SAssignNew(SectionSelectorBox, SWrapBox)
 			.UseAllottedSize(true)
+			.InnerSlotPadding(FVector2D(4,4))
 		];
 
 	RebuildSectionSelector();
@@ -1246,7 +1247,6 @@ void SDetailsView::RebuildSectionSelector()
 		-> TSharedRef<SWidget>
 	{
 		return SNew(SBox)
-			.Padding(FMargin(0, 0, 2, 0))
 			[
 				SNew(SCheckBox)
 				.Style(FAppStyle::Get(), "DetailsView.SectionButton")
@@ -1260,11 +1260,30 @@ void SDetailsView::RebuildSectionSelector()
 			];
 	};
 
-	for (const TPair<FName, FText>& Section : AllSections)
+	TArray<FName> SortedKeys;
+	AllSections.GenerateKeyArray(SortedKeys);
+	SortedKeys.Sort([](FName A, FName B)
+		{
+			static const FName General("General");
+			static const FName All("All");
+
+			// General first, All last, rest alphabetical
+			if (A.IsEqual(General) || B.IsEqual(All))
+			{
+				return true;
+			}
+			if (A.IsEqual(All) || B.IsEqual(General))
+			{
+				return false;
+			}
+			return A.LexicalLess(B);
+		});
+
+	for (const FName& Key : SortedKeys)
 	{
 		SectionSelectorBox->AddSlot()
 		[
-			CreateSection(Section.Key, Section.Value)
+			CreateSection(Key, AllSections[Key])
 		];
 	}
 
@@ -1339,52 +1358,32 @@ TMap<FName, FText> SDetailsView::GetAllSections() const
 
 	// for every category, check every base struct and find the associated section
 	// if one exists, add it to the set of valid section names
+	TArray<FName> AllCategories;
+	AllCategories.Reserve(RootTreeNodes.Num());
 	for (const TSharedRef<FDetailTreeNode>& RootNode : RootTreeNodes)
 	{
 		if (RootNode->GetNodeType() == EDetailNodeType::Category)
 		{
 			const FName CategoryName = RootNode->GetNodeName();
+			AllCategories.Add(CategoryName);
+		}
+	}
 
-			for (const TSharedPtr<FComplexPropertyNode>& RootPropertyNode : RootPropertyNodes)
+	for (const TSharedPtr<FComplexPropertyNode>& RootPropertyNode : RootPropertyNodes)
+	{
+		const UStruct* RootBaseStruct = RootPropertyNode->GetBaseStructure();
+
+		for (const FName& CategoryName : AllCategories)
+		{
+			TArray<TSharedPtr<FPropertySection>> SectionsForCategory = PropertyModule.FindSectionsForCategory(RootBaseStruct, CategoryName);
+			for (const TSharedPtr<FPropertySection>& Section : SectionsForCategory)
 			{
-				const UStruct* RootBaseStruct = RootPropertyNode->GetBaseStructure();
-
-				const FName SectionName = PropertyModule.FindSectionForCategory(RootBaseStruct, CategoryName);
-				if (!SectionName.IsNone())
-				{
-					AllSections.Add(SectionName, GetSectionDisplayName(SectionName));
-				}
+				AllSections.Add(Section->GetName(), Section->GetDisplayName());
 			}
 		}
 	}
 
 	return MoveTemp(AllSections);
-}
-
-FText SDetailsView::GetSectionDisplayName(FName SectionName) const
-{
-	static const FTextKey SectionLocalizationNamespace = TEXT("UObjectSection");
-	static const FName SectionMetaDataKey = TEXT("Section");
-
-	FText SectionDisplayName;
-
-	const FString SectionString = SectionName.ToString();
-	if (FText::FindText(SectionLocalizationNamespace, SectionString, /*OUT*/SectionDisplayName, &SectionString))
-	{
-		// Category names in English are typically gathered in their non-pretty form (eg "UserInterface" rather than "User Interface"), so skip 
-		// applying the localized variant if the text matches the raw category name, as in this case the pretty printer will do a better job
-		if (SectionString.Equals(SectionDisplayName.ToString(), ESearchCase::CaseSensitive))
-		{
-			SectionDisplayName = FText();
-		}
-	}
-
-	if (SectionDisplayName.IsEmpty())
-	{
-		SectionDisplayName = FText::AsCultureInvariant(FName::NameToDisplayString(SectionString, false));
-	}
-
-	return SectionDisplayName;
 }
 
 #undef LOCTEXT_NAMESPACE
