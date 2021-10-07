@@ -755,8 +755,8 @@ void FMaterialCachedParameters::GetParameterValueByIndex(EMaterialParameterType 
 {
 	const FMaterialCachedParameterEntry& Entry = GetParameterTypeEntry(Type);
 	
-	const bool bIsEditorOnlyDataStripped = Entry.ExpressionGuids.Num() == 0;
 #if WITH_EDITORONLY_DATA
+	const bool bIsEditorOnlyDataStripped = Entry.ExpressionGuids.Num() == 0;
 	if (!bIsEditorOnlyDataStripped)
 	{
 		OutResult.ExpressionGuid = Entry.ExpressionGuids[ParameterIndex];
