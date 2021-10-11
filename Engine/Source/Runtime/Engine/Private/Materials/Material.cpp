@@ -457,7 +457,8 @@ public:
 
 	// Constructor.
 	FDefaultMaterialInstance(UMaterial* InMaterial)
-		: Material(InMaterial)
+		: FMaterialRenderProxy(GetPathNameSafe(InMaterial))
+		, Material(InMaterial)
 	{}
 
 private:
