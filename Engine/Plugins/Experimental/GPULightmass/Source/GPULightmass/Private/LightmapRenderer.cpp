@@ -328,8 +328,8 @@ void FCachedRayTracingSceneData::SetupViewUniformBufferFromSceneRenderState(FSce
 						InstanceSceneDataFlags
 					),
 					InstanceIndex, /* Primitive Id */
-					PrimitiveUniformShaderParameters.LocalToWorld,
-					PrimitiveUniformShaderParameters.PreviousLocalToWorld,
+					FRenderTransform(PrimitiveUniformShaderParameters.LocalToRelativeWorld),
+					FRenderTransform(PrimitiveUniformShaderParameters.PreviousLocalToRelativeWorld),
 					FRenderTransform::Identity, /* PrevLocalToPrimitive */
 					FVector4f(ForceInitToZero), /* Lightmap and Shadowmap UV bias */
 					0.0f, /* Per instance Random ID */
@@ -413,8 +413,8 @@ void FCachedRayTracingSceneData::SetupViewUniformBufferFromSceneRenderState(FSce
 					FInstanceSceneShaderData(
 						Instance,
 						PrimitiveId,
-						InstanceGroup.LocalToWorld,
-						InstanceGroup.LocalToWorld,
+						FRenderTransform(InstanceGroup.LocalToWorld),
+						FRenderTransform(InstanceGroup.LocalToWorld),
 						FRenderTransform::Identity, /* PrevLocalToPrimitive */
 						FVector4f(ForceInitToZero), /* Lightmap and Shadowmap UV bias */
 						0.0f, /* Per instance Random ID */
@@ -479,8 +479,8 @@ void FCachedRayTracingSceneData::SetupViewUniformBufferFromSceneRenderState(FSce
 					InstanceSceneDataFlags
 				),
 				PrimitiveId,
-				PrimitiveUniformShaderParameters.LocalToWorld,
-				PrimitiveUniformShaderParameters.PreviousLocalToWorld,
+				FRenderTransform(PrimitiveUniformShaderParameters.LocalToRelativeWorld),
+				FRenderTransform(PrimitiveUniformShaderParameters.PreviousLocalToRelativeWorld),
 				FRenderTransform::Identity, /* PrevLocalToPrimitive */
 				FVector4f(ForceInitToZero), /* Lightmap and Shadowmap UV bias */
 				0.0f, /* Per instance Random ID */

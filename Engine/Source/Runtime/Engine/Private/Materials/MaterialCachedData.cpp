@@ -180,6 +180,16 @@ bool FMaterialCachedExpressionData::UpdateForFunction(const FMaterialCachedExpre
 			}
 		}
 
+		for (const FDoubleVectorParameterValue& Param : FunctionInstance->DoubleVectorParameterValues)
+		{
+			const FMaterialParameterInfo ParameterInfo(Param.ParameterInfo.Name, Association, ParameterIndex);
+			const int32 Index = TryAddParameter(Parameters, EMaterialParameterType::DoubleVector, ParameterInfo, FGuid());
+			if (Index != INDEX_NONE)
+			{
+				Parameters.DoubleVectorValues.Insert(Param.ParameterValue, Index);
+			}
+		}
+
 		for (const FTextureParameterValue& Param : FunctionInstance->TextureParameterValues)
 		{
 			const FMaterialParameterInfo ParameterInfo(Param.ParameterInfo.Name, Association, ParameterIndex);
@@ -378,6 +388,19 @@ void FMaterialCachedParameters_UpdateForLayerParameters(FMaterialCachedParameter
 			}
 		}
 
+		for (const FDoubleVectorParameterValue& Param : ParentMaterialInstance->DoubleVectorParameterValues)
+		{
+			FMaterialParameterInfo ParameterInfo;
+			if (GetLocalLayerParameterInfo(*ParentMaterialLayers, Param.ParameterInfo, LayerParameters.Value, ParameterInfo))
+			{
+				const int32 Index = TryAddParameter(Parameters, EMaterialParameterType::DoubleVector, ParameterInfo, FGuid());
+				if (Index != INDEX_NONE)
+				{
+					Parameters.DoubleVectorValues.Insert(Param.ParameterValue, Index);
+				}
+			}
+		}
+
 		for (const FTextureParameterValue& Param : ParentMaterialInstance->TextureParameterValues)
 		{
 			FMaterialParameterInfo ParameterInfo;
@@ -494,6 +517,9 @@ bool FMaterialCachedExpressionData::UpdateForExpressions(const FMaterialCachedEx
 					Parameters.VectorValues.Insert(ParameterMeta.Value.AsLinearColor(), Index);
 					Parameters.VectorChannelNameValues.Insert(ParameterMeta.ChannelNames, Index);
 					Parameters.VectorUsedAsChannelMaskValues.Insert(ParameterMeta.bUsedAsChannelMask, Index);
+					break;
+				case EMaterialParameterType::DoubleVector:
+					Parameters.DoubleVectorValues.Insert(ParameterMeta.Value.AsVector4d(), Index);
 					break;
 				case EMaterialParameterType::Texture:
 					Parameters.TextureValues.Insert(ParameterMeta.Value.Texture, Index);
@@ -696,6 +722,7 @@ void FMaterialCachedParameters::Reset()
 
 	ScalarValues.Reset();
 	VectorValues.Reset();
+	DoubleVectorValues.Reset();
 	TextureValues.Reset();
 	FontValues.Reset();
 	FontPageValues.Reset();
@@ -767,6 +794,9 @@ void FMaterialCachedParameters::GetParameterValueByIndex(EMaterialParameterType 
 			OutResult.bUsedAsChannelMask = VectorUsedAsChannelMaskValues[ParameterIndex];
 		}
 #endif // WITH_EDITORONLY_DATA
+		break;
+	case EMaterialParameterType::DoubleVector:
+		OutResult.Value = DoubleVectorValues[ParameterIndex];
 		break;
 	case EMaterialParameterType::Texture:
 		OutResult.Value = TextureValues[ParameterIndex];
