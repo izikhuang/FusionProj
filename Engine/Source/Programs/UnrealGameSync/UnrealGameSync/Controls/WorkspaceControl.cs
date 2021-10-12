@@ -62,27 +62,6 @@ public enum LatestChangeType
 
 	partial class WorkspaceControl : UserControl, IMainWindowTabPanel
 	{
-		/// <summary>
-		/// Default sync categories.
-		/// NOTE: These category definitions are now overridden in UnrealGameSync.ini; this list exists solely for backwards compatibility, and will not normally be used.
-		/// </summary>
-		readonly WorkspaceSyncCategory[] DefaultSyncCategories =
-		{
-			new WorkspaceSyncCategory(new Guid("{6703E989-D912-451D-93AD-B48DE748D282}"), "Content", "*.uasset", "*.umap"),
-			new WorkspaceSyncCategory(new Guid("{6507C2FB-19DD-403A-AFA3-BBF898248D5A}"), "Documentation", "/Engine/Documentation/..."),
-			new WorkspaceSyncCategory(new Guid("{FD7C716E-4BAD-43AE-8FAE-8748EF9EE44D}"), "Platform Support: Android", "/Engine/Source/ThirdParty/.../Android/...", ".../Build/Android/PipelineCaches/..."),
-			new WorkspaceSyncCategory(new Guid("{176B2EB2-35F7-4E8E-B131-5F1C5F0959AF}"), "Platform Support: iOS", "/Engine/Source/ThirdParty/.../IOS/...", ".../Build/IOS/PipelineCaches/..."),
-			new WorkspaceSyncCategory(new Guid("{F44B2D25-CBC0-4A8F-B6B3-E4A8125533DD}"), "Platform Support: Linux", "/Engine/Source/ThirdParty/.../Linux/..."),
-			new WorkspaceSyncCategory(new Guid("{2AF45231-0D75-463B-BF9F-ABB3231091BB}"), "Platform Support: Mac", "/Engine/Source/ThirdParty/.../Mac/...", ".../Build/Mac/PipelineCaches/..."),
-			new WorkspaceSyncCategory(new Guid("{C8CB4934-ADE9-46C9-B6E3-61A659E1FAF5}"), "Platform Support: PS4", ".../PS4/..."),
-			new WorkspaceSyncCategory(new Guid("{F8AE5AC3-DA2D-4719-BABF-8A90D878379E}"), "Platform Support: Switch", ".../Switch/..."),
-			new WorkspaceSyncCategory(new Guid("{3788A0BC-188C-4A0D-950A-D68175F0D110}"), "Platform Support: tvOS", "/Engine/Source/ThirdParty/.../TVOS/..."),
-			new WorkspaceSyncCategory(new Guid("{1144E719-FCD7-491B-B0FC-8B4C3565BF79}"), "Platform Support: Win32", "/Engine/Source/ThirdParty/.../Win32/..."),
-			new WorkspaceSyncCategory(new Guid("{5206CCEE-9024-4E36-8B89-F5F5A7D288D2}"), "Platform Support: Win64", "/Engine/Source/ThirdParty/.../Win64/..."),
-			new WorkspaceSyncCategory(new Guid("{06887423-B094-4718-9B55-C7A21EE67EE4}"), "Platform Support: XboxOne", ".../XboxOne/..."),
-			new WorkspaceSyncCategory(new Guid("{CFEC942A-BB90-4F0C-ACCF-238ECAAD9430}"), "Source Code", "/Engine/Source/..."),
-		};
-
 		enum HorizontalAlignment
 		{
 			Left,
@@ -284,7 +263,8 @@ public enum LatestChangeType
 		List<int> SortedChangeNumbers = new List<int>();
 		Dictionary<string, Dictionary<int, string>> ArchiveToChangeNumberToArchiveKey = new Dictionary<string, Dictionary<int, string>>();
 		Dictionary<int, ChangeLayoutInfo> ChangeNumberToLayoutInfo = new Dictionary<int, ChangeLayoutInfo>();
-		List<ToolStripMenuItem> CustomToolMenuItems = new List<ToolStripMenuItem>();
+		List<ContextMenuStrip> CustomStatusPanelMenus = new List<ContextMenuStrip>();
+		List<(string, Action<Point, Rectangle>)> CustomStatusPanelLinks = new List<(string, Action<Point, Rectangle>)>();
 		int NumChanges;
 		int PendingSelectedChangeNumber = -1;
 		bool bHasBuildSteps = false;
@@ -1739,12 +1719,6 @@ public enum LatestChangeType
 		Dictionary<Guid, WorkspaceSyncCategory> GetSyncCategories()
 		{
 			Dictionary<Guid, WorkspaceSyncCategory> UniqueIdToCategory = new Dictionary<Guid, WorkspaceSyncCategory>();
-
-			// Add the default filters
-			foreach (WorkspaceSyncCategory DefaultSyncCategory in DefaultSyncCategories)
-			{
-				UniqueIdToCategory.Add(DefaultSyncCategory.UniqueId, DefaultSyncCategory);
-			}
 
 			// Add the custom filters
 			ConfigFile ProjectConfigFile = PerforceMonitor.LatestProjectConfigFile;
@@ -3544,6 +3518,12 @@ public enum LatestChangeType
 					}
 				}
 
+				foreach ((string Name, Action<Point, Rectangle> Action) in CustomStatusPanelLinks)
+				{
+					ProgramsLine.AddLink(Name, FontStyle.Regular, Action);
+					ProgramsLine.AddText("  |  ");
+				}
+
 				ProgramsLine.AddLink("Windows Explorer", FontStyle.Regular, () => { SafeProcessStart("explorer.exe", String.Format("\"{0}\"", Path.GetDirectoryName(SelectedFileName))); });
 
 				if (GetDefaultIssueFilter() != null)
@@ -3991,6 +3971,11 @@ public enum LatestChangeType
 				ToggleLogVisibility();
 			}
 			SyncLog.ScrollToEnd();
+		}
+
+		private void ShowToolContextMenu(Rectangle Bounds, ContextMenuStrip MenuStrip)
+		{
+			MenuStrip.Show(StatusPanel, new Point(Bounds.Left, Bounds.Bottom), ToolStripDropDownDirection.BelowRight);
 		}
 
 		private void ShowActionsMenu(Rectangle Bounds)
@@ -5154,12 +5139,20 @@ public enum LatestChangeType
 		{
 			bHasBuildSteps = false;
 
-			foreach (ToolStripMenuItem CustomToolMenuItem in CustomToolMenuItems)
+			int MoreToolsItemCount = MoreToolsContextMenu.Items.IndexOf(MoreActionsContextMenu_CustomToolSeparator);
+			while (MoreToolsItemCount > 0)
 			{
-				MoreToolsContextMenu.Items.Remove(CustomToolMenuItem);
+				MoreToolsContextMenu.Items.RemoveAt(--MoreToolsItemCount);
 			}
 
-			CustomToolMenuItems.Clear();
+			for (int Idx = 0; Idx < CustomStatusPanelMenus.Count; Idx++)
+			{
+				components.Remove(CustomStatusPanelMenus[Idx]);
+				CustomStatusPanelMenus[Idx].Dispose();
+			}
+
+			CustomStatusPanelLinks.Clear();
+			CustomStatusPanelMenus.Clear();
 
 			if (Workspace != null)
 			{
@@ -5167,28 +5160,55 @@ public enum LatestChangeType
 				if (ProjectConfigFile != null)
 				{
 					Dictionary<Guid, ConfigObject> ProjectBuildStepObjects = GetProjectBuildStepObjects(ProjectConfigFile);
-
-					int InsertIdx = 0;
-
 					List<BuildStep> UserSteps = GetUserBuildSteps(ProjectBuildStepObjects);
+
+					Dictionary<string, ContextMenuStrip> NameToMenu = new Dictionary<string, ContextMenuStrip>();
 					foreach (BuildStep Step in UserSteps)
 					{
-						if (Step.bShowAsTool && (Step.ToolId == Guid.Empty || Settings.EnabledTools.Contains(Step.ToolId)))
+						if (!String.IsNullOrEmpty(Step.StatusPanelLink))
 						{
-							ToolStripMenuItem NewMenuItem = new ToolStripMenuItem(Step.Description.Replace("&", "&&"));
-							NewMenuItem.Click += new EventHandler((sender, e) => { RunCustomTool(Step); });
-							CustomToolMenuItems.Add(NewMenuItem);
-							MoreToolsContextMenu.Items.Insert(InsertIdx++, NewMenuItem);
+							int BaseMenuIdx = Step.StatusPanelLink.IndexOf('|');
+							if (BaseMenuIdx == -1)
+							{
+								CustomStatusPanelLinks.Add((Step.StatusPanelLink, (P, R) => RunCustomTool(Step, UserSteps)));
+							}
+							else
+							{
+								string MenuName = Step.StatusPanelLink.Substring(0, BaseMenuIdx);
+								string ItemName = Step.StatusPanelLink.Substring(BaseMenuIdx + 1).Replace("&", "&&");
+
+								ToolStripMenuItem NewMenuItem = new ToolStripMenuItem(ItemName);
+								NewMenuItem.Click += new EventHandler((sender, e) => { RunCustomTool(Step, UserSteps); });
+
+								if (MenuName == "More...")
+								{
+									MoreToolsContextMenu.Items.Insert(MoreToolsItemCount++, NewMenuItem);
+								}
+								else
+								{
+									ContextMenuStrip Menu;
+									if (!NameToMenu.TryGetValue(MenuName, out Menu))
+									{
+										Menu = new ContextMenuStrip();
+										NameToMenu.Add(MenuName, Menu);
+										CustomStatusPanelLinks.Add(($"{MenuName} \u25BE", (P, R) => ShowToolContextMenu(R, Menu)));
+										CustomStatusPanelMenus.Add(Menu);
+										components.Add(Menu);
+									}
+									Menu.Items.Add(NewMenuItem);
+								}
+							}
 						}
+
 						bHasBuildSteps |= Step.bNormalSync;
 					}
 				}
 			}
 
-			MoreActionsContextMenu_CustomToolSeparator.Visible = (CustomToolMenuItems.Count > 0);
+			MoreActionsContextMenu_CustomToolSeparator.Visible = (MoreToolsItemCount > 0);
 		}
 
-		private void RunCustomTool(BuildStep Step)
+		private void RunCustomTool(BuildStep Step, List<BuildStep> AllSteps)
 		{
 			if (Workspace != null)
 			{
@@ -5198,6 +5218,29 @@ public enum LatestChangeType
 				}
 				else
 				{
+					HashSet<Guid> StepSet = new HashSet<Guid> { Step.UniqueId };
+
+					ConfigFile ProjectConfigFile = Workspace.ProjectConfigFile;
+					if (ProjectConfigFile != null && Step.Requires.Length > 0)
+					{
+						Stack<Guid> Stack = new Stack<Guid>(StepSet);
+						while (Stack.Count > 0)
+						{
+							Guid Id = Stack.Pop();
+							BuildStep NextStep = AllSteps.FirstOrDefault(x => x.UniqueId == Id);
+							if (NextStep != null)
+							{
+								foreach (Guid RequiresId in NextStep.Requires)
+								{
+									if (StepSet.Add(RequiresId))
+									{
+										Stack.Push(RequiresId);
+									}
+								}
+							}
+						}
+					}
+
 					Dictionary<string, string> Variables = GetWorkspaceVariables(Workspace.CurrentChangeNumber);
 					if (Step.ToolId != Guid.Empty)
 					{
@@ -5208,7 +5251,7 @@ public enum LatestChangeType
 						}
 					}
 
-					WorkspaceUpdateContext Context = new WorkspaceUpdateContext(Workspace.CurrentChangeNumber, WorkspaceUpdateOptions.Build, null, GetDefaultBuildStepObjects(), ProjectSettings.BuildSteps, new HashSet<Guid> { Step.UniqueId }, Variables);
+					WorkspaceUpdateContext Context = new WorkspaceUpdateContext(Workspace.CurrentChangeNumber, WorkspaceUpdateOptions.Build, null, GetDefaultBuildStepObjects(), ProjectSettings.BuildSteps, StepSet, Variables);
 					StartWorkspaceUpdate(Context, null);
 				}
 			}
@@ -5290,6 +5333,7 @@ public enum LatestChangeType
 
 				// Update the custom tools menu, because we might have changed it
 				UpdateBuildSteps();
+				UpdateStatusPanel();
 				UpdateSyncActionCheckboxes();
 			}
 		}
@@ -5387,7 +5431,7 @@ public enum LatestChangeType
 			}
 
 			// Create the expanded task objects
-			return UserBuildStepObjects.Values.Select(x => new BuildStep(x)).OrderBy(x => x.OrderIndex).ToList();
+			return UserBuildStepObjects.Values.Select(x => new BuildStep(x)).OrderBy(x => (x.OrderIndex == -1)? 10000 : x.OrderIndex).ToList();
 		}
 
 		private void OptionsContextMenu_SyncPrecompiledBinaries_Click(object sender, EventArgs e)
