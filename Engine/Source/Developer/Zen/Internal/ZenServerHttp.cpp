@@ -4,7 +4,6 @@
 
 #if UE_WITH_ZEN
 
-#include "DerivedDataBackendInterface.h"	// For logger definition
 #include "ZenBackendUtils.h"
 #include "ZenSerialization.h"
 
@@ -19,6 +18,7 @@
 #	include "Windows/HideWindowsPlatformTypes.h"
 #endif
 
+#include "Logging/LogMacros.h"
 #include "Compression/CompressedBuffer.h"
 #include "Compression/OodleDataCompression.h"
 #include "Containers/StringFwd.h"
@@ -29,6 +29,9 @@
 #include "Serialization/CompactBinaryWriter.h"
 #include "Serialization/LargeMemoryReader.h"
 #include "Serialization/LargeMemoryWriter.h"
+#include "HAL/PlatformProcess.h"
+
+DEFINE_LOG_CATEGORY_STATIC(LogZenHttp, Log, All);
 
 namespace UE::Zen {
 
@@ -525,7 +528,7 @@ namespace UE::Zen {
 			if (bSuccess)
 			{
 				UE_LOG(
-					LogDerivedDataCache,
+					LogZenHttp,
 					Verbose,
 					TEXT("Finished %s zen data (response %d) from %s. %s"),
 					VerbStr,
@@ -541,7 +544,7 @@ namespace UE::Zen {
 				Response.ReplaceCharInline('\n', ' ');
 				Response.ReplaceCharInline('\r', ' ');
 				UE_LOG(
-					LogDerivedDataCache,
+					LogZenHttp,
 					Error,
 					TEXT("Failed %s zen data (response %d) from %s. Response: %s"),
 					VerbStr,
@@ -554,7 +557,7 @@ namespace UE::Zen {
 		else if (bLogErrors)
 		{
 			UE_LOG(
-				LogDerivedDataCache,
+				LogZenHttp,
 				Error,
 				TEXT("Error while connecting to %s: %s"),
 				*Domain,
@@ -595,20 +598,20 @@ namespace UE::Zen {
 			FString DebugText(ConvertedString.Length(), ConvertedString.Get());
 			DebugText.ReplaceInline(TEXT("\n"), TEXT(""), ESearchCase::CaseSensitive);
 			DebugText.ReplaceInline(TEXT("\r"), TEXT(""), ESearchCase::CaseSensitive);
-			UE_LOG(LogDerivedDataCache, VeryVerbose, TEXT("%p: '%s'"), Request, *DebugText);
+			UE_LOG(LogZenHttp, VeryVerbose, TEXT("%p: '%s'"), Request, *DebugText);
 		}
 		break;
 
 		case CURLINFO_HEADER_IN:
-			UE_LOG(LogDerivedDataCache, VeryVerbose, TEXT("%p: Received header (%d bytes)"), Request, DebugInfoSize);
+			UE_LOG(LogZenHttp, VeryVerbose, TEXT("%p: Received header (%d bytes)"), Request, DebugInfoSize);
 			break;
 
 		case CURLINFO_DATA_IN:
-			UE_LOG(LogDerivedDataCache, VeryVerbose, TEXT("%p: Received data (%d bytes)"), Request, DebugInfoSize);
+			UE_LOG(LogZenHttp, VeryVerbose, TEXT("%p: Received data (%d bytes)"), Request, DebugInfoSize);
 			break;
 
 		case CURLINFO_DATA_OUT:
-			UE_LOG(LogDerivedDataCache, VeryVerbose, TEXT("%p: Sent data (%d bytes)"), Request, DebugInfoSize);
+			UE_LOG(LogZenHttp, VeryVerbose, TEXT("%p: Sent data (%d bytes)"), Request, DebugInfoSize);
 			break;
 		}
 
