@@ -1361,8 +1361,6 @@ bool GRHISupportsDrawIndirect = true;
 bool GRHISupportsMultithreading = false;
 bool GRHISupportsUpdateFromBufferTexture = false;
 bool GSupportsWideMRT = true;
-float GMinClipZ = 0.0f;
-float GProjectionSignY = 1.0f;
 bool GRHINeedsExtraDeletionLatency = false;
 bool GRHIForceNoDeletionLatencyForStreamingTextures = false;
 TRHIGlobal<int32> GMaxComputeDispatchDimension((1 << 16) - 1);
