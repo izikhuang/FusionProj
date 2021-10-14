@@ -955,7 +955,6 @@ void CompileShader_Metal(const FShaderCompilerInput& _Input,FShaderCompilerOutpu
         case 5:
             // Enable full SM5 feature support so tessellation & fragment UAVs compile
             TypeMode = EMetalTypeBufferModeTB;
-            HlslCompilerTarget = HCT_FeatureLevelSM5;
             StandardVersion = TEXT("2.1");
             if (bAppleTV)
             {
@@ -973,7 +972,6 @@ void CompileShader_Metal(const FShaderCompilerInput& _Input,FShaderCompilerOutpu
 		case 4:
 			// Enable full SM5 feature support so tessellation & fragment UAVs compile
 			TypeMode = EMetalTypeBufferModeTB;
-            HlslCompilerTarget = HCT_FeatureLevelSM5;
 			StandardVersion = TEXT("2.1");
 			if (bAppleTV)
 			{
@@ -993,7 +991,6 @@ void CompileShader_Metal(const FShaderCompilerInput& _Input,FShaderCompilerOutpu
 		case 3:
 			// Enable full SM5 feature support so tessellation & fragment UAVs compile
 			TypeMode = EMetalTypeBufferMode2D;
-            HlslCompilerTarget = HCT_FeatureLevelSM5;
 			StandardVersion = TEXT("2.0");
 			if (bAppleTV)
 			{
@@ -1013,7 +1010,6 @@ void CompileShader_Metal(const FShaderCompilerInput& _Input,FShaderCompilerOutpu
 		case 2:
 			// Enable full SM5 feature support so tessellation & fragment UAVs compile
 			TypeMode = EMetalTypeBufferMode2D;
-            HlslCompilerTarget = HCT_FeatureLevelSM5;
 			StandardVersion = TEXT("1.2");
 			if (bAppleTV)
 			{
@@ -1038,7 +1034,6 @@ void CompileShader_Metal(const FShaderCompilerInput& _Input,FShaderCompilerOutpu
 			break;
 		case 1:
 		{
-			HlslCompilerTarget = bIsMobile ? HlslCompilerTarget : HCT_FeatureLevelSM5;
 			StandardVersion = TEXT("1.1");
 			MinOSVersion = bIsMobile ? TEXT("") : TEXT("-mmacosx-version-min=10.11");
 			
