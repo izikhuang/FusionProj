@@ -45,7 +45,6 @@ private:
 	
 	void RegisterEditorToolbar();
 	void MapEditorToolbarActions();
-	void CreateEditorToolbarButton(FToolBarBuilder& Builder);
 	TSharedRef<SWidget> FillEditorToolbarComboButtonMenuOptions(TSharedPtr<class FUICommandList> Commands);
 
 	void OpenSnapshotsEditor();
