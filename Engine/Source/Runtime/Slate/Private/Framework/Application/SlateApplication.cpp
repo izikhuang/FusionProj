@@ -6753,6 +6753,11 @@ bool FSlateApplication::OnWindowAction( const TSharedRef< FGenericWindow >& Plat
 		}
 	}
 
+	if (InActionType == EWindowAction::ClickedNonClientArea)
+	{
+		DismissAllMenus();
+	}
+
 	return bResult;
 }
 
