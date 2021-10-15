@@ -45,7 +45,7 @@ public:
 public:
 	/** Stores original binding class */
 	UPROPERTY()
-	UClass* OriginalClass;
+	UClass* OriginalClass = nullptr;
 
 	/** Stores original material parameter info */
 	UPROPERTY()
