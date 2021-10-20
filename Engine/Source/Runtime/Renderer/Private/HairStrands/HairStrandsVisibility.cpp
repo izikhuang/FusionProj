@@ -1626,6 +1626,8 @@ class FHairVisibilityPrimitiveIdCompactionCS : public FGlobalShader
 
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, ViewTransmittanceTexture)
 
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, SceneDepthTexture)
+
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutCompactNodeCounter)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutCompactNodeIndex)
 		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D, OutCoverageTexture)
@@ -1638,7 +1640,6 @@ class FHairVisibilityPrimitiveIdCompactionCS : public FGlobalShader
 		SHADER_PARAMETER_RDG_BUFFER_SRV(Buffer<uint>, TileCountBuffer)						// Tile total count (actual number of tiles)
 
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, ViewUniformBuffer)
-		SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTexturesStruct)
 		RDG_BUFFER_ACCESS(IndirectBufferArgs, ERHIAccess::IndirectArgs)
 	END_SHADER_PARAMETER_STRUCT()
 
@@ -1670,6 +1671,7 @@ static void AddHairVisibilityPrimitiveIdCompactionPass(
 	const bool bUsePPLL,
 	FRDGBuilder& GraphBuilder,
 	const FViewInfo& View,
+	const FRDGTextureRef& SceneDepthTexture,
 	const FHairStrandsMacroGroupDatas& MacroGroupDatas,
 	const uint32 NodeGroupSize,
 	const FHairStrandsTiles& TileData,
@@ -1762,7 +1764,7 @@ static void AddHairVisibilityPrimitiveIdCompactionPass(
 	PassParameters->CoverageThreshold = GetHairStrandsFullCoverageThreshold();
 	PassParameters->DepthTheshold = FMath::Clamp(GHairStrandsMaterialCompactionDepthThreshold, 0.f, 100.f);
 	PassParameters->CosTangentThreshold = FMath::Cos(FMath::DegreesToRadians(FMath::Clamp(GHairStrandsMaterialCompactionTangentThreshold, 0.f, 90.f)));
-	PassParameters->SceneTexturesStruct = CreateSceneTextureUniformBuffer(GraphBuilder, View.FeatureLevel);
+	PassParameters->SceneDepthTexture = SceneDepthTexture;
 	PassParameters->ViewUniformBuffer = View.ViewUniformBuffer;
 	PassParameters->OutCompactNodeCounter = GraphBuilder.CreateUAV(OutCompactCounter);
 	PassParameters->OutCompactNodeIndex = GraphBuilder.CreateUAV(OutCompactNodeIndex);
@@ -3649,6 +3651,7 @@ void RenderHairStrandsVisibilityBuffer(
 						false, // bUsePPLL
 						GraphBuilder,
 						View,
+						SceneDepthTexture,
 						MacroGroupDatas,
 						VisibilityData.NodeGroupSize,
 						VisibilityData.TileData,
@@ -3706,7 +3709,7 @@ void RenderHairStrandsVisibilityBuffer(
 
 						CompactNodeData = PassOutput.NodeData;
 
-						VisibilityData.SampleLightingViewportResolution = PassOutput .SampleLightingTexture->Desc.Extent;
+						VisibilityData.SampleLightingViewportResolution = PassOutput.SampleLightingTexture->Desc.Extent;
 						VisibilityData.SampleLightingTexture			= PassOutput.SampleLightingTexture;
 					}
 
@@ -3804,6 +3807,7 @@ void RenderHairStrandsVisibilityBuffer(
 						true, // bUsePPLL
 						GraphBuilder,
 						View,
+						SceneDepthTexture,
 						MacroGroupDatas,
 						VisibilityData.NodeGroupSize,
 						VisibilityData.TileData,
