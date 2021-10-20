@@ -199,7 +199,8 @@ struct FMaterialCachedExpressionData
 	ENGINE_API static const FMaterialCachedExpressionData EmptyData;
 
 	FMaterialCachedExpressionData()
-		: bHasRuntimeVirtualTextureOutput(false)
+		: bHasMaterialLayers(false)
+		, bHasRuntimeVirtualTextureOutput(false)
 		, bHasSceneColor(false)
 		, bHasPerInstanceCustomData(false)
 		, bHasPerInstanceRandom(false)
@@ -243,10 +244,7 @@ struct FMaterialCachedExpressionData
 	TArray<FMaterialParameterCollectionInfo> ParameterCollectionInfos;
 
 	UPROPERTY()
-	TArray<TObjectPtr<UMaterialFunctionInterface>> DefaultLayers;
-
-	UPROPERTY()
-	TArray<TObjectPtr<UMaterialFunctionInterface>> DefaultLayerBlends;
+	FMaterialLayersFunctions MaterialLayers;
 
 	UPROPERTY()
 	TArray<TObjectPtr<ULandscapeGrassType>> GrassTypes;
@@ -256,6 +254,9 @@ struct FMaterialCachedExpressionData
 
 	UPROPERTY()
 	TArray<bool> QualityLevelsUsed;
+
+	UPROPERTY()
+	uint32 bHasMaterialLayers : 1;
 
 	UPROPERTY()
 	uint32 bHasRuntimeVirtualTextureOutput : 1;
