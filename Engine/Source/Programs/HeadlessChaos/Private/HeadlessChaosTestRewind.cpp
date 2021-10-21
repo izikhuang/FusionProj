@@ -3066,6 +3066,8 @@ namespace ChaosTest {
 		}
 	}
 
+	// Disabled in 4.27-Chaos pending intergation with upstream (lots has changed - this test is no longer valid)
+	// @todo(chaos): fix or remove this test
 	GTEST_TEST(AllTraits, DISABLED_RewindTest_ResimAsSlaveWithForces)
 	{
 #if REWIND_DESYNC
