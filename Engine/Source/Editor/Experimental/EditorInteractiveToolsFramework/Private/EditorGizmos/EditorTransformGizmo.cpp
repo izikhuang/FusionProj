@@ -18,6 +18,7 @@
 #include "EditorModeTools.h"
 #include "UnrealEdGlobals.h"
 #include "UnrealEngine.h"
+#include "SceneQueries/SceneSnappingManager.h"
 
 #define LOCTEXT_NAMESPACE "UEditorTransformGizmo"
 
@@ -764,6 +765,12 @@ bool UEditorTransformGizmo::PositionSnapFunction(const FVector& WorldPosition, F
 		return false;
 	}
 
+	USceneSnappingManager* SnapManager = USceneSnappingManager::Find(GetGizmoManager());
+	if (!SnapManager)
+	{
+		return false;
+	}
+
 	FSceneSnapQueryRequest Request;
 	Request.RequestType = ESceneSnapQueryType::Position;
 	Request.TargetTypes = ESceneSnapQueryTargetType::Grid;
@@ -773,7 +780,7 @@ bool UEditorTransformGizmo::PositionSnapFunction(const FVector& WorldPosition, F
 		Request.GridSize = ExplicitGridSize;
 	}
 	TArray<FSceneSnapQueryResult> Results;
-	if (GetGizmoManager()->GetContextQueriesAPI()->ExecuteSceneSnapQuery(Request, Results))
+	if (SnapManager->ExecuteSceneSnapQuery(Request, Results))
 	{
 		SnappedPositionOut = Results[0].Position;
 		return true;
@@ -790,19 +797,23 @@ FQuat UEditorTransformGizmo::RotationSnapFunction(const FQuat& DeltaRotation) co
 	// only snap if we want snapping 
 	if (bSnapToWorldRotGrid)
 	{
-		FSceneSnapQueryRequest Request;
-		Request.RequestType   = ESceneSnapQueryType::Rotation;
-		Request.TargetTypes   = ESceneSnapQueryTargetType::Grid;
-		Request.DeltaRotation = DeltaRotation;
-		if ( bRotationGridSizeIsExplicit )
+		USceneSnappingManager* SnapManager = USceneSnappingManager::Find(GetGizmoManager());
+		if ( SnapManager )
 		{
-			Request.RotGridSize = ExplicitRotationGridSize;
+			FSceneSnapQueryRequest Request;
+			Request.RequestType   = ESceneSnapQueryType::Rotation;
+			Request.TargetTypes   = ESceneSnapQueryTargetType::Grid;
+			Request.DeltaRotation = DeltaRotation;
+			if ( bRotationGridSizeIsExplicit )
+			{
+				Request.RotGridSize = ExplicitRotationGridSize;
+			}
+			TArray<FSceneSnapQueryResult> Results;
+			if (SnapManager->ExecuteSceneSnapQuery(Request, Results))
+			{
+				SnappedDeltaRotation = Results[0].DeltaRotation;
+			};
 		}
-		TArray<FSceneSnapQueryResult> Results;
-		if (GetGizmoManager()->GetContextQueriesAPI()->ExecuteSceneSnapQuery(Request, Results))
-		{
-			SnappedDeltaRotation = Results[0].DeltaRotation;
-		};
 	}
 	return SnappedDeltaRotation;
 }
