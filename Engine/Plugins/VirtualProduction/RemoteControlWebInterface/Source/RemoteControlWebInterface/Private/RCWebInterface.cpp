@@ -25,10 +25,7 @@ namespace RCWebInterface
 		bool bIsEditor = false;
 
 #if WITH_EDITOR
-		if (GEditor)
-		{
-			bIsEditor = true;
-		}
+		bIsEditor = GIsEditor;
 #endif
 
 		// By default, remote control web interface is disabled in -game and packaged game.
