@@ -43,6 +43,7 @@ namespace ChaosTest
 	{
 	protected:
 		FRigidSOAsTest()
+			: RigidSOAs(UniqueIndices)
 		{
 			PhysicsMaterial = MakeUnique<FChaosPhysicsMaterial>();
 			PhysicsMaterial->Friction = FReal(0);
@@ -67,6 +68,7 @@ namespace ChaosTest
 		TArrayCollectionArray<TSerializablePtr<FChaosPhysicsMaterial>> PhysicsMaterials;
 		TArrayCollectionArray<TUniquePtr<FChaosPhysicsMaterial>> PerParticlePhysicsMaterials;
 		TUniquePtr<FChaosPhysicsMaterial> PhysicsMaterial;
+		FParticleUniqueIndicesMultithreaded UniqueIndices;
 		FPBDRigidsSOAs RigidSOAs;
 	};
 
