@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "EngineUtils.h"
 #include "Editor.h"
+#include "FileHelpers.h"
 #include "StaticMeshCompiler.h"
 #include "Logging/LogMacros.h"
 
