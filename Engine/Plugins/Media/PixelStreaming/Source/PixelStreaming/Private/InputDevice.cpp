@@ -485,6 +485,7 @@ namespace
 		uint16 PosY;   // Y position of finger.
 		uint8 TouchIndex;   // Index of finger for tracking multi-touch events.
 		uint8 Force;   // Amount of pressure being applied by the finger.
+		uint8 Valid;	// 1 if the touch was within bounds.
 	};
 
 	using FKeyCodeType = uint8;
@@ -516,7 +517,8 @@ namespace
 			UnquantizeAndDenormalize(PosX, PosY);
 			GET(uint8, TouchIndex);
 			GET(uint8, Force);
-			Touches.Add({ PosX, PosY, TouchIndex, Force });
+			GET(uint8, Valid);
+			Touches.Add({ PosX, PosY, TouchIndex, Force, Valid });
 		}
 
 		return Touches;
@@ -683,9 +685,12 @@ void FInputDevice::OnMessage(const uint8* Data, uint32 Size)
 
 		for (const FTouch& Touch : Touches)
 		{
-			FEvent TouchStartEvent(EventType::TOUCH_START);
-			TouchStartEvent.SetTouch(Touch.TouchIndex, Touch.PosX, Touch.PosY, Touch.Force);
-			ProcessEvent(TouchStartEvent);
+			if (Touch.Valid)
+			{
+				FEvent TouchStartEvent(EventType::TOUCH_START);
+				TouchStartEvent.SetTouch(Touch.TouchIndex, Touch.PosX, Touch.PosY, Touch.Force);
+				ProcessEvent(TouchStartEvent);
+			}
 		}
 		break;
 	}
@@ -697,9 +702,14 @@ void FInputDevice::OnMessage(const uint8* Data, uint32 Size)
 
 		for (const FTouch& Touch : Touches)
 		{
-			FEvent TouchEndEvent(EventType::TOUCH_END);
-			TouchEndEvent.SetTouch(Touch.TouchIndex, Touch.PosX, Touch.PosY, Touch.Force);
-			ProcessEvent(TouchEndEvent);
+			// Always allowing the "up" events regardless of in or outside the valid region so
+			// states aren't stuck "down". Might want to uncomment this if it causes other issues.
+			//if (Touch.Valid)
+			{
+				FEvent TouchEndEvent(EventType::TOUCH_END);
+				TouchEndEvent.SetTouch(Touch.TouchIndex, Touch.PosX, Touch.PosY, Touch.Force);
+				ProcessEvent(TouchEndEvent);
+			}
 		}
 		break;
 	}
@@ -711,9 +721,12 @@ void FInputDevice::OnMessage(const uint8* Data, uint32 Size)
 
 		for (const FTouch& Touch : Touches)
 		{
-			FEvent TouchMoveEvent(EventType::TOUCH_MOVE);
-			TouchMoveEvent.SetTouch(Touch.TouchIndex, Touch.PosX, Touch.PosY, Touch.Force);
-			ProcessEvent(TouchMoveEvent);
+			if (Touch.Valid)
+			{
+				FEvent TouchMoveEvent(EventType::TOUCH_MOVE);
+				TouchMoveEvent.SetTouch(Touch.TouchIndex, Touch.PosX, Touch.PosY, Touch.Force);
+				ProcessEvent(TouchMoveEvent);
+			}
 		}
 		break;
 	}
