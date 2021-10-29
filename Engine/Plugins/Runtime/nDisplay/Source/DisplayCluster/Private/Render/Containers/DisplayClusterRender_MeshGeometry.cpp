@@ -330,25 +330,25 @@ int32 FDisplayCluster_MeshGeometryLoaderOBJ::ExtractFaceVertex(const FString& Li
 	{
 		const int32 InVertexIndex = FCString::Atoi(*Data[0]) - 1;
 		if (InVertexIndex < 0 || InVertexIndex >= InVertex.Num())
-	{
+		{
 			UE_LOG(LogDisplayClusterRender, Error, TEXT("MeshGeometryLoaderOBJ: broken vertex index. Line: '%s'"), *Line);
 			OutFaceIdx.VertexIdx = -1;
-	}
+		}
 		else
-	{
+		{
 			OutFaceIdx.VertexIdx = InVertexIndex;
-	}
+		}
 
 		const int32 InUVIndex = FCString::Atoi(*Data[1]) - 1;
 		if (InUVIndex < 0 || InUVIndex >= InUV.Num())
-	{
+		{
 			UE_LOG(LogDisplayClusterRender, Error, TEXT("MeshGeometryLoaderOBJ: broken uv index. Line: '%s'"), *Line);
 			OutFaceIdx.UVIdx = -1;
-}
+		}
 		else
 		{
 			OutFaceIdx.UVIdx = InUVIndex;
-	}
+		}
 
 		if (bImportVertexNormal && Data.Num() > 2)
 		{
@@ -367,7 +367,7 @@ int32 FDisplayCluster_MeshGeometryLoaderOBJ::ExtractFaceVertex(const FString& Li
 	else
 	{
 		return -1;
-}
+	}
 
 	int32 OutIndex = Faces.Find(OutFaceIdx);
 	if (OutIndex >= 0)
