@@ -169,6 +169,7 @@ namespace Chaos
 			}
 
 			Constraint->AccumulatedImpulse = AccumulatedImpulse;
+			Constraint->SetNumActivePositionIterations(Solver.NumPositionSolves());
 
 			Constraint->SetSolverBodies(nullptr, nullptr);
 			Constraint = nullptr;
