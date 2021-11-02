@@ -70,6 +70,7 @@ public class UnrealEd : ModuleRules
 				"VirtualTexturingEditor",
 				"TextureBuild",
 				"ToolWidgets",
+				"CSVtoSVG"
 			}
 		);
 
@@ -267,6 +268,7 @@ public class UnrealEd : ModuleRules
 				"VirtualTexturingEditor",
 				"WorldPartitionEditor",
 				"WorldPartitionHLODUtilities",
+				"CSVtoSVG",
 			}
 		);
 
