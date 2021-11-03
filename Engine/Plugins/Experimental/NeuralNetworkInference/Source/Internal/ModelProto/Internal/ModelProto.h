@@ -323,6 +323,8 @@ public:
 	 */
 	//UPROPERTY(VisibleAnywhere, Category = "Neural Network Inference")
 	// FTypeProto ValueType; // Not implemented yet because of Circular-dependency
+
+	FTypeProtoMap();
 };
 
 /**
