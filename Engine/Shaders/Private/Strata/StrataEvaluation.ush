@@ -313,11 +313,14 @@ FStrataEvaluateResult StrataEvaluateBSDFCommon(FStrataBSDFContext BSDFContext, F
 			//// Evaluate the diffuse component.
 			////
 
-		#if STRATA_DIFFUSE_CHAN
-			Sample.DiffusePathValue = Diffuse_Chan(DiffuseColor, a2, NoV, AreaLightContext.NoL, VoH, NoH, GetAreaLightDiffuseMicroReflWeight(AreaLightContext.AreaLight));
-		#else
-			Sample.DiffusePathValue = Diffuse_Lambert(DiffuseColor);
-		#endif
+			if (STRATA_DIFFUSE_CHAN && Strata.bRoughDiffuse)
+			{
+				Sample.DiffusePathValue = Diffuse_Chan(DiffuseColor, a2, NoV, AreaLightContext.NoL, VoH, NoH, GetAreaLightDiffuseMicroReflWeight(AreaLightContext.AreaLight));
+			}
+			else
+			{
+				Sample.DiffusePathValue = Diffuse_Lambert(DiffuseColor);
+			}
 			Sample.IntegratedDiffuseValue += ShadowTerms.SurfaceShadow * AreaLightContext.NoL * Sample.DiffusePathValue * AreaLightContext.Falloff * AreaLightContext.AreaLight.FalloffColor;
 			Sample.DiffusePDF		= BSDFContext.SatNoL / PI;
 			Sample.bSubsurface		= bHasSubsurface;
@@ -350,9 +353,12 @@ FStrataEvaluateResult StrataEvaluateBSDFCommon(FStrataBSDFContext BSDFContext, F
 				// To make this a safe operation:
 				//	- We clamp SpecularTChan to a threshold to avoid div by 0 when the material is a metal. 
 				//	- When the material tends to be metal, DirectionalAlbedo_SpecularTransmission will naturally tend to be 0
-				const float3 SpecularTransmitionChanF0ToMaterialF0 = DirectionalAlbedo_SpecularTransmission / max(1e-8f, StrataGGXLUTResult.DirectionalAlbedo.SpecularTChan);
-				Sample.DiffusePathValue *= SpecularTransmitionChanF0ToMaterialF0;
-				Sample.IntegratedDiffuseValue *= SpecularTransmitionChanF0ToMaterialF0;
+				if (Strata.bRoughDiffuse)
+				{
+					const float3 SpecularTransmitionChanF0ToMaterialF0 = DirectionalAlbedo_SpecularTransmission / max(1e-8f, StrataGGXLUTResult.DirectionalAlbedo.SpecularTChan);
+					Sample.DiffusePathValue *= SpecularTransmitionChanF0ToMaterialF0;
+					Sample.IntegratedDiffuseValue *= SpecularTransmitionChanF0ToMaterialF0;
+				}
 #endif
 			}
 
