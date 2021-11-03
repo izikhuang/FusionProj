@@ -279,6 +279,11 @@ namespace Chaos
 		, LocalID(INDEX_NONE)
 		{
 		}
+
+		bool IsSet() const
+		{
+			return (GlobalID != INDEX_NONE) || (LocalID != INDEX_NONE);
+		}
 	};
 
 
