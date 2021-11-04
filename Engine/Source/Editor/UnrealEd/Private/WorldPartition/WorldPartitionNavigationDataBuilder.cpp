@@ -27,7 +27,7 @@ UWorldPartitionNavigationDataBuilder::UWorldPartitionNavigationDataBuilder(const
 	IterativeCellOverlapSize = 2000;
 }
 
-bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FBox& LoadedBounds, FPackageSourceControlHelper& PackageHelper)
+bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FCellInfo& InCellInfo, FPackageSourceControlHelper& PackageHelper)
 {
 	UWorldPartitionSubsystem* WorldPartitionSubsystem = World->GetSubsystem<UWorldPartitionSubsystem>();
 	check(WorldPartitionSubsystem);
@@ -44,7 +44,7 @@ bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FBox
 	}
 
 	// Destroy any existing navigation data chunk actors within bounds we are generating, we will make new ones.
-	const FBox GeneratingBounds = LoadedBounds.ExpandBy(-IterativeCellOverlapSize);
+	const FBox GeneratingBounds = InCellInfo.Bounds.ExpandBy(-IterativeCellOverlapSize);
 	for (TActorIterator<ANavigationDataChunkActor> It(World); It; ++It)
 	{
 		ANavigationDataChunkActor* Actor = *It;
@@ -59,7 +59,7 @@ bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FBox
 	FStaticMeshCompilingManager::Get().FinishAllCompilation();
 	
 	// Rebuild ANavigationDataChunkActor in loaded bounds
-	WorldPartition->GenerateNavigationData(LoadedBounds);
+	WorldPartition->GenerateNavigationData(InCellInfo.Bounds);
 
 	// Gather all packages again to include newly created ANavigationDataChunkActor actors
 	for (TActorIterator<ANavigationDataChunkActor> ItActor(World); ItActor; ++ItActor)
