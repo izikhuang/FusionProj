@@ -272,6 +272,10 @@ $ bAllowOverVpn : When set to false, XGE will not be enabled when running connec
 
 $ VpnSubnets : List of subnets containing IP addresses assigned by VPN
 
+$ bAllowRemoteLinking : Whether to allow remote linking
+
+$ bUseVCCompilerMode : Whether to enable the VCCompiler=true setting. This requires an additional license for VC tools.
+
 ### BuildMode
 
 $ bIgnoreJunk : Whether to skip checking for files identified by the junk manifest.
