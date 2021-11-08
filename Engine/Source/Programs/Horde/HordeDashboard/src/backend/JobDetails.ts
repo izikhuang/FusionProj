@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 import { action, observable } from 'mobx';
-import { getTheme, mergeStyles, mergeStyleSets } from 'office-ui-fabric-react/lib/Styling';
+import { getTheme, mergeStyles, mergeStyleSets } from '@fluentui/react/lib/Styling';
 import backend from '.';
 import { getBatchInitElapsed, getNiceTime, getStepElapsed, getStepETA, getStepFinishTime, getStepTimingDelta } from '../base/utilities/timeUtils';
 import { getBatchText } from '../components/JobDetailCommon';
@@ -69,7 +69,7 @@ export class JobDetails {
 
                 if (stepId) {
                     historyIdx = requests.length;
-                    requests.push(backend.getJobStepHistory(this.jobdata!.streamId, this.getStepName(stepId), 1024, this.jobdata!.templateId!));
+                    requests.push(backend.getJobStepHistory(this.jobdata!.streamId, this.getStepName(stepId, false), 1024, this.jobdata!.templateId!));
                 }
             }
 
@@ -330,7 +330,7 @@ export class JobDetails {
 
     }
 
-    getStepName(stepId: string | undefined): string {
+    getStepName(stepId: string | undefined, includeRetry:boolean = true): string {
 
         if (!stepId) {
             return "";
@@ -342,7 +342,7 @@ export class JobDetails {
         }
 
         const idx = this.getStepRetryNumber(stepId);
-        if (!idx) {
+        if (!idx || !includeRetry) {
             return node.name;
         }
 

@@ -1,0 +1,91 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+using System;
+using System.Collections.Generic;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using HordeServer;
+using HordeServer.Collections;
+using HordeServer.Collections.Impl;
+using HordeServer.Jobs;
+using HordeServer.Services;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+namespace HordeServerTests
+{
+	public class TestWebApplicationFactory<TStartup> : WebApplicationFactory<TStartup> where TStartup : class
+    {
+		protected override void ConfigureWebHost(IWebHostBuilder builder)
+        {
+            var Dict = new Dictionary<string, string?>
+            {
+                {"Horde:DatabaseConnectionString", DatabaseIntegrationTest.GetMongoDbRunner().GetConnectionString()},
+                {"Horde:DatabaseName", DatabaseIntegrationTest.MongoDbDatabaseName},
+                {"Horde:LogServiceWriteCacheType", "inmemory"},
+                {"Horde:DisableAuth", "true"},
+                {"Horde:OidcAuthority", null},
+                {"Horde:OidcClientId", null},
+            };
+            builder.ConfigureAppConfiguration((hostingContext, config) => { config.AddInMemoryCollection(Dict); });
+			builder.ConfigureTestServices(Collection => Collection.AddSingleton<IPerforceService, Stubs.Services.PerforceServiceStub>());
+        }
+    }
+
+    public class ControllerIntegrationTest
+    {
+        private HttpClient? _client;
+        private TestWebApplicationFactory<Startup>? _factory;
+        protected readonly HttpClient client;
+        private Fixture? _fixture;
+
+        public ControllerIntegrationTest()
+        {
+            client = GetClientForTestServer();
+        }
+
+        public async Task<Fixture> GetFixture()
+        {
+            if (_fixture != null) return _fixture;
+
+            IServiceProvider Services = GetFactory().Services;
+            DatabaseService DatabaseService = Services.GetRequiredService<DatabaseService>();
+            ITemplateCollection TemplateService = Services.GetRequiredService<ITemplateCollection>();
+            JobService JobService = Services.GetRequiredService<JobService>();
+            IArtifactCollection ArtifactCollection = Services.GetRequiredService<IArtifactCollection>();
+            StreamService StreamService = Services.GetRequiredService<StreamService>();
+            AgentService AgentService = Services.GetRequiredService<AgentService>();
+            IPerforceService PerforceService = Services.GetRequiredService<IPerforceService>();
+            GraphCollection GraphCollection = new GraphCollection(DatabaseService);
+
+            _fixture = new Fixture();
+            _fixture = await Fixture.Create(false, GraphCollection, TemplateService, JobService, ArtifactCollection, StreamService, AgentService, PerforceService);
+            return _fixture;
+        }
+
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        public HttpClient GetClientForTestServer()
+        {
+            if (_client != null) return _client;
+
+            _factory = GetFactory();
+            _client = _factory.CreateClient();
+            return _client;
+        }
+
+        [MethodImpl(MethodImplOptions.Synchronized)]
+        TestWebApplicationFactory<Startup> GetFactory()
+        {
+            if (_factory != null) return _factory;
+            _factory = new TestWebApplicationFactory<Startup>();
+            return _factory;
+        }
+    }
+}
