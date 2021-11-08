@@ -391,6 +391,7 @@ class RHI_API FGenericDataDrivenShaderPlatformInfo
 	uint32 bOverrideFMaterial_NeedsGBufferEnabled : 1;
 	uint32 bSupportsMobileDistanceField : 1;
 	uint32 bSupportsFFTBloom : 1;
+	uint32 bSupportsVertexShaderLayer : 1;
 
 		
 #if WITH_EDITOR
@@ -791,6 +792,11 @@ public:
 	static FORCEINLINE_DEBUGGABLE const bool GetSupportsFFTBloom(const FStaticShaderPlatform Platform)
 	{
 		return Infos[Platform].bSupportsFFTBloom;
+	}
+
+	static FORCEINLINE_DEBUGGABLE const bool GetSupportsVertexShaderLayer(const FStaticShaderPlatform Platform)
+	{
+		return Infos[Platform].bSupportsVertexShaderLayer;
 	}
 
 #if WITH_EDITOR
