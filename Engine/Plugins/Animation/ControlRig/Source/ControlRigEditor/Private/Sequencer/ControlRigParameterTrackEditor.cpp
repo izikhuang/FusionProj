@@ -81,6 +81,8 @@
 
 #define LOCTEXT_NAMESPACE "FControlRigParameterTrackEditor"
 
+TAutoConsoleVariable<bool> CVarSelectedKeysSelectControls(TEXT("ControlRig.Sequencer.SelectedKeysSelectControls"), false, TEXT("When true when we select a key in Sequencer it will select the Control, by default false."));
+
 static USkeletalMeshComponent* AcquireSkeletalMeshFromObject(UObject* BoundObject, TSharedPtr<ISequencer> SequencerPtr)
 {
 	if (AActor* Actor = Cast<AActor>(BoundObject))
@@ -1702,7 +1704,8 @@ void FControlRigParameterTrackEditor::OnSelectionChanged(TArray<UMovieSceneTrack
 	UControlRig* ControlRig = nullptr;
 
 	TArray<const IKeyArea*> KeyAreas;
-	GetSequencer()->GetSelectedKeyAreas(KeyAreas);
+	const bool UseSelectedKeys = CVarSelectedKeysSelectControls.GetValueOnGameThread();
+	GetSequencer()->GetSelectedKeyAreas(KeyAreas, UseSelectedKeys);
 	FScopedTransaction ScopedTransaction(LOCTEXT("SelectControlTransaction", "Select Control"), !GIsTransacting);
 
 	if (KeyAreas.Num() <= 0)
@@ -2121,7 +2124,8 @@ void FControlRigParameterTrackEditor::HandleControlSelected(UControlRig* Subject
 			GetSequencer()->ResumeSelectionBroadcast();
 
 			TArray<const IKeyArea*> KeyAreas;
-			GetSequencer()->GetSelectedKeyAreas(KeyAreas);
+			const bool UseSelectedKeys = CVarSelectedKeysSelectControls.GetValueOnGameThread();
+			GetSequencer()->GetSelectedKeyAreas(KeyAreas, UseSelectedKeys);
 			SelectRigsAndControls(Subject, KeyAreas);
 
 			//Force refresh now, not later
