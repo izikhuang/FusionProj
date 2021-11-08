@@ -50,14 +50,29 @@ namespace EpicGames.Perforce.Managed
 		public StreamSnapshotFromMemory(StreamTreeBuilder Builder)
 		{
 			Dictionary<IoHash, CbObject> HashToTree = new Dictionary<IoHash, CbObject>();
-			this.Root = Builder.Encode(HashToTree);
+			this.Root = Builder.EncodeRef(Tree => EncodeObject(Tree, HashToTree));
 			this.HashToTree = HashToTree;
+		}
+
+		/// <summary>
+		/// Serialize to a compact binary object
+		/// </summary>
+		/// <param name="BasePath"></param>
+		/// <returns></returns>
+		static IoHash EncodeObject(StreamTree Tree, Dictionary<IoHash, CbObject> HashToTree)
+		{
+			CbObject Object = Tree.ToCbObject();
+
+			IoHash Hash = Object.GetHash();
+			HashToTree[Hash] = Object;
+
+			return Hash;
 		}
 
 		/// <inheritdoc/>
 		public override StreamTree Lookup(StreamTreeRef Ref)
 		{
-			return new StreamTree(HashToTree[Ref.Hash], Ref.Path);
+			return new StreamTree(Ref.Path, HashToTree[Ref.Hash]);
 		}
 
 		/// <summary>
@@ -77,7 +92,8 @@ namespace EpicGames.Perforce.Managed
 			CbObject RootObj = new CbObject(Data.AsMemory(CurrentSignature.Length));
 
 			CbObject RootObj2 = RootObj["root"].AsObject();
-			StreamTreeRef Root = new StreamTreeRef(RootObj2, BasePath);
+			Utf8String RootPath = RootObj2["path"].AsString(BasePath);
+			StreamTreeRef Root = new StreamTreeRef(RootPath, RootObj2);
 
 			CbArray Array = RootObj["items"].AsArray();
 
@@ -103,7 +119,11 @@ namespace EpicGames.Perforce.Managed
 			Writer.BeginObject();
 						
 			Writer.BeginObject("root");
-			Root.Write(Writer, BasePath);
+			if (Root.Path != BasePath)
+			{
+				Writer.WriteString("path", Root.Path);
+			}
+			Root.Write(Writer);
 			Writer.EndObject();
 			
 			Writer.BeginArray("items");

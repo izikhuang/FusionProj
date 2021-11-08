@@ -2,11 +2,13 @@
 
 using EpicGames.Core;
 using System;
+using System.Buffers.Binary;
 using System.Buffers.Text;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -161,6 +163,64 @@ namespace EpicGames.Perforce
 		/// <param name="StatRecordType">The type of stat record to parse</param>
 		/// <param name="CancellationToken">Cancellation token for the read</param>
 		/// <returns>Async task</returns>
+		public static async IAsyncEnumerable<PerforceResponse> ReadStreamingResponsesAsync(this IPerforceOutput Perforce, Type? StatRecordType, [EnumeratorCancellation] CancellationToken CancellationToken)
+		{
+			CachedRecordInfo? StatRecordInfo = (StatRecordType == null) ? null : PerforceReflection.GetCachedRecordInfo(StatRecordType);
+
+			List<PerforceResponse> Responses = new List<PerforceResponse>();
+
+			// Read all the records into a list
+			long ParsedLen = 0;
+			long MaxParsedLen = 0;
+			while (await Perforce.ReadAsync(CancellationToken))
+			{
+				// Check for the whole message not being a marshalled python object, and produce a better response in that scenario
+				ReadOnlyMemory<byte> Data = Perforce.Data;
+				if (Data.Length > 0 && Responses.Count == 0 && Data.Span[0] != '{')
+				{
+					throw new PerforceException("Unexpected response from server (expected '{'):{0}", FormatDataAsString(Data.Span));
+				}
+
+				// Parse the responses from the current buffer
+				int BufferPos = 0;
+				for (; ; )
+				{
+					int NewBufferPos = BufferPos;
+					if (!TryReadResponse(Data, ref NewBufferPos, StatRecordInfo, out PerforceResponse? Response))
+					{
+						MaxParsedLen = ParsedLen + NewBufferPos;
+						break;
+					}
+					if (Response.Error == null || Response.Error.Generic != PerforceGenericCode.Empty)
+					{
+						yield return Response;
+					}
+					BufferPos = NewBufferPos;
+				}
+
+				// Discard all the data that we've processed
+				Perforce.Discard(BufferPos);
+				ParsedLen += BufferPos;
+			}
+
+			// If the stream is complete but we couldn't parse a response from the server, treat it as an error
+			if (Perforce.Data.Length > 0)
+			{
+				long DumpOffset = Math.Max(MaxParsedLen - 32, ParsedLen);
+				int SliceOffset = (int)(DumpOffset - ParsedLen);
+				string StrDump = FormatDataAsString(Perforce.Data.Span.Slice(SliceOffset));
+				string HexDump = FormatDataAsHexDump(Perforce.Data.Span.Slice(SliceOffset, Math.Min(1024, Perforce.Data.Length - SliceOffset)));
+				throw new PerforceException("Unparsable data at offset {0}+{1}/{2}.\nString data from offset {3}:{4}\nHex data from offset {3}:{5}", ParsedLen, MaxParsedLen - ParsedLen, ParsedLen + Perforce.Data.Length, DumpOffset, StrDump, HexDump);
+			}
+		}
+
+		/// <summary>
+		/// Read a list of responses from the child process
+		/// </summary>
+		/// <param name="Perforce">The response to read from</param>
+		/// <param name="StatRecordType">The type of stat record to parse</param>
+		/// <param name="CancellationToken">Cancellation token for the read</param>
+		/// <returns>Async task</returns>
 		public static async Task<List<PerforceResponse>> ReadResponsesAsync(this IPerforceOutput Perforce, Type? StatRecordType, CancellationToken CancellationToken)
 		{
 			CachedRecordInfo? StatRecordInfo = (StatRecordType == null) ? null : PerforceReflection.GetCachedRecordInfo(StatRecordType);
@@ -184,7 +244,7 @@ namespace EpicGames.Perforce
 				for (; ; )
 				{
 					int NewBufferPos = BufferPos;
-					if (!TryReadResponse(Data.Span, ref NewBufferPos, StatRecordInfo, out PerforceResponse? Response))
+					if (!TryReadResponse(Data, ref NewBufferPos, StatRecordInfo, out PerforceResponse? Response))
 					{
 						MaxParsedLen = ParsedLen + NewBufferPos;
 						break;
@@ -237,7 +297,7 @@ namespace EpicGames.Perforce
 				for (; ; )
 				{
 					int InitialBufferPos = BufferPos;
-					if (!ReadRecord(Data.Span, ref BufferPos, Record.Rows))
+					if (!ReadRecord(Data, ref BufferPos, Record.Rows))
 					{
 						BufferPos = InitialBufferPos;
 						break;
@@ -261,16 +321,17 @@ namespace EpicGames.Perforce
 		/// <param name="BufferPos">Current read position within the buffer</param>
 		/// <param name="Rows">List of rows to read into</param>
 		/// <returns>True if a record could be read; false if more data is required</returns>
-		static bool ReadRecord(ReadOnlySpan<byte> Buffer, ref int BufferPos, List<KeyValuePair<Utf8String, PerforceValue>> Rows)
+		static bool ReadRecord(ReadOnlyMemory<byte> Buffer, ref int BufferPos, List<KeyValuePair<Utf8String, PerforceValue>> Rows)
 		{
 			Rows.Clear();
+			ReadOnlySpan<byte> BufferSpan = Buffer.Span;
 
 			// Check we can read the initial record marker
 			if (BufferPos >= Buffer.Length)
 			{
 				return false;
 			}
-			if (Buffer[BufferPos] != '{')
+			if (BufferSpan[BufferPos] != '{')
 			{
 				throw new PerforceException("Invalid record start");
 			}
@@ -287,14 +348,14 @@ namespace EpicGames.Perforce
 				}
 
 				// If this is the end of the record, break out
-				byte KeyType = Buffer[BufferPos++];
+				byte KeyType = Buffer.Span[BufferPos++];
 				if (KeyType == '0')
 				{
 					break;
 				}
 				else if (KeyType != 's')
 				{
-					throw new PerforceException("Unexpected key field type while parsing marshalled output ({0}) - expected 's', got: {1}", (int)KeyType, FormatDataAsHexDump(Buffer.Slice(BufferPos - 1)));
+					throw new PerforceException("Unexpected key field type while parsing marshalled output ({0}) - expected 's', got: {1}", (int)KeyType, FormatDataAsHexDump(Buffer.Slice(BufferPos - 1).Span));
 				}
 
 				// Read the tag
@@ -309,7 +370,7 @@ namespace EpicGames.Perforce
 
 				// Read the value type
 				byte ValueType;
-				if (!TryReadByte(Buffer, ref BufferPos, out ValueType))
+				if (!TryReadByte(BufferSpan, ref BufferPos, out ValueType))
 				{
 					return false;
 				}
@@ -328,7 +389,7 @@ namespace EpicGames.Perforce
 				else if (ValueType == 'i')
 				{
 					int Integer;
-					if (!TryReadInt(Buffer, ref BufferPos, out Integer))
+					if (!TryReadInt(BufferSpan, ref BufferPos, out Integer))
 					{
 						return false;
 					}
@@ -340,7 +401,7 @@ namespace EpicGames.Perforce
 				}
 
 				// Construct the response object with the record
-				Rows.Add(KeyValuePair.Create(Key, Value));
+				Rows.Add(KeyValuePair.Create(Key.Clone(), Value));
 			}
 			return true;
 		}
@@ -353,7 +414,7 @@ namespace EpicGames.Perforce
 		/// <param name="StatRecordInfo">The type of record expected to parse from the response</param>
 		/// <param name="Response">Receives the response object on success</param>
 		/// <returns>True if a response was read, false if the buffer needs more data</returns>
-		static bool TryReadResponse(ReadOnlySpan<byte> Buffer, ref int BufferPos, CachedRecordInfo? StatRecordInfo, [NotNullWhen(true)] out PerforceResponse? Response)
+		static bool TryReadResponse(ReadOnlyMemory<byte> Buffer, ref int BufferPos, CachedRecordInfo? StatRecordInfo, [NotNullWhen(true)] out PerforceResponse? Response)
 		{
 			if (BufferPos + RecordPrefix.Length + 4 > Buffer.Length)
 			{
@@ -361,8 +422,8 @@ namespace EpicGames.Perforce
 				return false;
 			}
 
-			ReadOnlySpan<byte> Prefix = Buffer.Slice(BufferPos, RecordPrefix.Length);
-			if (!Prefix.SequenceEqual(RecordPrefix))
+			ReadOnlyMemory<byte> Prefix = Buffer.Slice(BufferPos, RecordPrefix.Length);
+			if (!Prefix.Span.SequenceEqual(RecordPrefix))
 			{
 				throw new PerforceException("Expected 'code' field at the start of record");
 			}
@@ -407,7 +468,7 @@ namespace EpicGames.Perforce
 			}
 
 			// Skip over the record terminator
-			if (BufferPos >= Buffer.Length || Buffer[BufferPos] != '0')
+			if (BufferPos >= Buffer.Length || Buffer.Span[BufferPos] != '0')
 			{
 				throw new PerforceException("Unexpected record terminator");
 			}
@@ -427,7 +488,7 @@ namespace EpicGames.Perforce
 		/// <param name="RecordInfo">Reflection information for the type being serialized into.</param>
 		/// <param name="Record">Receives the record on success</param>
 		/// <returns>The parsed object.</returns>
-		static bool TryReadTypedRecord(ReadOnlySpan<byte> Buffer, ref int BufferPos, Utf8String RequiredSuffix, CachedRecordInfo RecordInfo, [NotNullWhen(true)] out object? Record)
+		static bool TryReadTypedRecord(ReadOnlyMemory<byte> Buffer, ref int BufferPos, Utf8String RequiredSuffix, CachedRecordInfo RecordInfo, [NotNullWhen(true)] out object? Record)
 		{
 			// Create a bitmask for all the required tags
 			ulong RequiredTagsBitMask = 0;
@@ -440,6 +501,7 @@ namespace EpicGames.Perforce
 			}
 
 			// Get the record info, and parse it into the object
+			ReadOnlySpan<byte> BufferSpan = Buffer.Span;
 			for (; ; )
 			{
 				// Check that we've got a string field
@@ -450,14 +512,14 @@ namespace EpicGames.Perforce
 				}
 
 				// If this is the end of the record, break out
-				byte KeyType = Buffer[BufferPos];
+				byte KeyType = BufferSpan[BufferPos];
 				if (KeyType == '0')
 				{
 					break;
 				}
 				else if (KeyType != 's')
 				{
-					throw new PerforceException("Unexpected key field type while parsing marshalled output ({0}) - expected 's', got: {1}", (int)KeyType, FormatDataAsHexDump(Buffer.Slice(BufferPos)));
+					throw new PerforceException("Unexpected key field type while parsing marshalled output ({0}) - expected 's', got: {1}", (int)KeyType, FormatDataAsHexDump(Buffer.Slice(BufferPos).Span));
 				}
 
 				// Capture the initial buffer position, in case we have to roll back
@@ -589,11 +651,13 @@ namespace EpicGames.Perforce
 		/// <param name="NewRecord">The new record</param>
 		/// <param name="TagInfo">The current tag</param>
 		/// <returns></returns>
-		static bool TryReadValue(ReadOnlySpan<byte> Buffer, ref int BufferPos, object NewRecord, CachedTagInfo? TagInfo)
+		static bool TryReadValue(ReadOnlyMemory<byte> Buffer, ref int BufferPos, object NewRecord, CachedTagInfo? TagInfo)
 		{
+			ReadOnlySpan<byte> BufferSpan = Buffer.Span;
+
 			// Read the value type
 			byte ValueType;
-			if (!TryReadByte(Buffer, ref BufferPos, out ValueType))
+			if (!TryReadByte(BufferSpan, ref BufferPos, out ValueType))
 			{
 				return false;
 			}
@@ -614,7 +678,7 @@ namespace EpicGames.Perforce
 			else if (ValueType == 'i')
 			{
 				int Integer;
-				if (!TryReadInt(Buffer, ref BufferPos, out Integer))
+				if (!TryReadInt(BufferSpan, ref BufferPos, out Integer))
 				{
 					return false;
 				}
@@ -672,50 +736,28 @@ namespace EpicGames.Perforce
 		}
 
 		/// <summary>
-		/// Attempts to read a string with type indicator from the buffer
-		/// </summary>
-		/// <param name="Buffer">The buffer to read from</param>
-		/// <param name="BufferPos">Current read position within the buffer</param>
-		/// <param name="String">Receives the value that was read</param>
-		/// <returns>True if a string was read from the buffer, false if there was not enough data</returns>
-		static bool TryReadStringWithType(ReadOnlySpan<byte> Buffer, ref int BufferPos, out Utf8String String)
-		{
-			byte ValueType;
-			if (!TryReadByte(Buffer, ref BufferPos, out ValueType))
-			{
-				String = new Utf8String();
-				return false;
-			}
-			if (ValueType != 's')
-			{
-				throw new PerforceException("Expected string value, got '{0}'", ValueType);
-			}
-			return TryReadString(Buffer, ref BufferPos, out String);
-		}
-
-		/// <summary>
 		/// Attempts to read a string from the buffer
 		/// </summary>
 		/// <param name="Buffer">The buffer to read from</param>
 		/// <param name="BufferPos">Current read position within the buffer</param>
 		/// <param name="String">Receives the value that was read</param>
 		/// <returns>True if a string was read from the buffer, false if there was not enough data</returns>
-		static bool TryReadString(ReadOnlySpan<byte> Buffer, ref int BufferPos, out Utf8String String)
+		static bool TryReadString(ReadOnlyMemory<byte> Buffer, ref int BufferPos, out Utf8String String)
 		{
 			int Length;
-			if (!TryReadInt(Buffer, ref BufferPos, out Length))
+			if (!TryReadInt(Buffer.Span, ref BufferPos, out Length))
 			{
-				String = new Utf8String();
+				String = Utf8String.Empty;
 				return false;
 			}
 
 			if (BufferPos + Length > Buffer.Length)
 			{
-				String = new Utf8String();
+				String = Utf8String.Empty;
 				return false;
 			}
 
-			String = new Utf8String(Buffer.Slice(BufferPos, Length).ToArray());
+			String = new Utf8String(Buffer.Slice(BufferPos, Length));
 			BufferPos += Length;
 			return true;
 		}

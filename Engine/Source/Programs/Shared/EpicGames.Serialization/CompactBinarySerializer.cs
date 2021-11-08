@@ -71,7 +71,11 @@ namespace EpicGames.Serialization
 		/// <summary>
 		/// Cache of type to converter
 		/// </summary>
-		public static Dictionary<Type, CbConverter> TypeToConverter = new Dictionary<Type, CbConverter>();
+		public static Dictionary<Type, CbConverter> TypeToConverter = new Dictionary<Type, CbConverter>()
+		{
+			[typeof(CbField)] = new CbFieldConverter(),
+			[typeof(CbObject)] = new CbObjectConverter()
+		};
 
 		/// <summary>
 		/// List of converter factories. Must be 
@@ -236,7 +240,7 @@ namespace EpicGames.Serialization
 		}
 
 		/// <summary>
-		/// Deserialize an object from a <see cref="CbObject"/>
+		/// Deserialize an object from a <see cref="CbField"/>
 		/// </summary>
 		/// <typeparam name="T"></typeparam>
 		/// <param name="Field"></param>
@@ -245,5 +249,21 @@ namespace EpicGames.Serialization
 		{
 			return GetConverter<T>().Read(Field);
 		}
+
+		/// <summary>
+		/// Deserialize an object from a <see cref="CbObject"/>
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="Object"></param>
+		/// <returns></returns>
+		public static T Deserialize<T>(CbObject Object) => Deserialize<T>(Object.AsField());
+
+		/// <summary>
+		/// Deserialize an object from a block of memory
+		/// </summary>
+		/// <typeparam name="T"></typeparam>
+		/// <param name="Data"></param>
+		/// <returns></returns>
+		public static T Deserialize<T>(ReadOnlyMemory<byte> Data) => Deserialize<T>(new CbField(Data));
 	}
 }

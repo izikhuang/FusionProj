@@ -51,14 +51,23 @@ namespace EpicGames.Serialization
 			public int Offset; // Offset to insert the length/count
 			public int Length; // Excludes the size of this field's headers, and child fields' headers.
 			public int Count;
-			public List<Scope>? Children;
+			public List<Scope> Children = new List<Scope>();
 			public int SizeOfChildHeaders; // Sum of additional headers for child items, recursively.
 
 			public Scope(CbFieldType FieldType, CbFieldType UniformFieldType, int Offset)
 			{
+				Reset(FieldType, UniformFieldType, Offset);
+			}
+
+			public void Reset(CbFieldType FieldType, CbFieldType UniformFieldType, int Offset)
+			{
 				this.FieldType = FieldType;
 				this.UniformFieldType = UniformFieldType;
 				this.Offset = Offset;
+				this.Length = 0;
+				this.Count = 0;
+				this.Children.Clear();
+				this.SizeOfChildHeaders = 0;
 			}
 		}
 
@@ -74,8 +83,15 @@ namespace EpicGames.Serialization
 
 			public Chunk(int Offset, int MaxLength)
 			{
-				this.Offset = Offset;
 				this.Data = new byte[MaxLength];
+				Reset(Offset);
+			}
+
+			public void Reset(int Offset)
+			{
+				this.Offset = Offset;
+				this.Length = 0;
+				this.Scopes.Clear();
 			}
 		}
 
@@ -86,6 +102,8 @@ namespace EpicGames.Serialization
 		Chunk CurrentChunk => Chunks[Chunks.Count - 1];
 		Scope CurrentScope => OpenScopes.Peek();
 		int CurrentOffset;
+		List<Chunk> FreeChunks = new List<Chunk>();
+		List<Scope> FreeScopes = new List<Scope>();
 
 		/// <summary>
 		/// Constructor
@@ -106,6 +124,86 @@ namespace EpicGames.Serialization
 		}
 
 		/// <summary>
+		/// 
+		/// </summary>
+		public void Clear()
+		{
+			foreach (Chunk Chunk in Chunks)
+			{
+				FreeChunk(Chunk);
+			}
+
+			CurrentOffset = 0;
+
+			Chunks.Clear();
+			Chunks.Add(AllocChunk(0, DefaultChunkSize));
+
+			OpenScopes.Clear();
+			OpenScopes.Push(AllocScope(CbFieldType.Array, CbFieldType.None, 0));
+		}
+
+		/// <summary>
+		/// Allocate a new chunk object
+		/// </summary>
+		/// <param name="Offset">Offset of the chunk</param>
+		/// <param name="MaxLength">Maximum length of the chunk</param>
+		/// <returns>New chunk object</returns>
+		Chunk AllocChunk(int Offset, int MaxLength)
+		{
+			for(int Idx = FreeChunks.Count - 1; Idx >= 0; Idx--)
+			{
+				Chunk Chunk = FreeChunks[Idx];
+				if (Chunk.Data.Length >= MaxLength)
+				{
+					FreeChunks.RemoveAt(Idx);
+					Chunk.Reset(Offset);
+					return Chunk;
+				}
+			}
+			return new Chunk(Offset, MaxLength);
+		}
+
+		/// <summary>
+		/// Adds a chunk to the free list
+		/// </summary>
+		/// <param name="Chunk"></param>
+		void FreeChunk(Chunk Chunk)
+		{
+			// Add the scopes to the free list
+			FreeScopes.AddRange(Chunk.Scopes);
+			Chunk.Scopes.Clear();
+
+			// Insert it into the free list, sorted by descending size
+			for (int Idx = 0; ; Idx++)
+			{
+				if (Idx == FreeChunks.Count || Chunk.Data.Length >= FreeChunks[Idx].Data.Length)
+				{
+					FreeChunks.Insert(Idx, Chunk);
+					break;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Allocate a scope object
+		/// </summary>
+		/// <param name="FieldType"></param>
+		/// <param name="UniformFieldType"></param>
+		/// <param name="Offset"></param>
+		/// <returns></returns>
+		Scope AllocScope(CbFieldType FieldType, CbFieldType UniformFieldType, int Offset)
+		{
+			if (FreeScopes.Count > 0)
+			{
+				Scope Scope = FreeScopes[FreeScopes.Count - 1];
+				Scope.Reset(FieldType, UniformFieldType, Offset);
+				FreeScopes.RemoveAt(FreeScopes.Count - 1);
+				return Scope;
+			}
+			return new Scope(FieldType, UniformFieldType, Offset);
+		}
+
+		/// <summary>
 		/// Ensure that a block of contiguous memory of the given length is available in the output buffer
 		/// </summary>
 		/// <param name="Length"></param>
@@ -116,7 +214,7 @@ namespace EpicGames.Serialization
 			if (LastChunk.Length + Length > LastChunk.Data.Length)
 			{
 				int ChunkSize = Math.Max(Length, DefaultChunkSize);
-				LastChunk = new Chunk(CurrentOffset, ChunkSize);
+				LastChunk = AllocChunk(CurrentOffset, ChunkSize);
 				Chunks.Add(LastChunk);
 			}
 
@@ -133,8 +231,7 @@ namespace EpicGames.Serialization
 		/// <param name="UniformFieldType"></param>
 		void PushScope(CbFieldType FieldType, CbFieldType UniformFieldType)
 		{
-			Scope NewScope = new Scope(FieldType, UniformFieldType, CurrentOffset);
-			CurrentScope.Children ??= new List<Scope>();
+			Scope NewScope = AllocScope(FieldType, UniformFieldType, CurrentOffset);
 			CurrentScope.Children.Add(NewScope);
 			OpenScopes.Push(NewScope);
 
@@ -156,7 +253,7 @@ namespace EpicGames.Serialization
 		/// Writes the header for an unnamed field
 		/// </summary>
 		/// <param name="Type"></param>
-		void WriteField(CbFieldType Type)
+		void WriteFieldHeader(CbFieldType Type)
 		{
 			Scope Scope = CurrentScope;
 			if (!CbFieldUtils.IsArray(Scope.FieldType))
@@ -180,7 +277,7 @@ namespace EpicGames.Serialization
 		/// </summary>
 		/// <param name="Type"></param>
 		/// <param name="Name"></param>
-		void WriteField(CbFieldType Type, Utf8String Name)
+		void WriteFieldHeader(CbFieldType Type, Utf8String Name)
 		{
 			Scope Scope = CurrentScope;
 			if (!CbFieldUtils.IsObject(Scope.FieldType))
@@ -207,11 +304,39 @@ namespace EpicGames.Serialization
 		}
 
 		/// <summary>
+		/// Copies an entire field value to the output
+		/// </summary>
+		/// <param name="Field"></param>
+		public void WriteFieldValue(CbField Field)
+		{
+			WriteFieldHeader(Field.GetType());
+			int Size = (int)Field.GetPayloadSize();
+			Field.GetPayloadView().CopyTo(Allocate(Size));
+		}
+
+		/// <summary>
+		/// Copies an entire field value to the output, using the name from the field
+		/// </summary>
+		/// <param name="Field"></param>
+		public void WriteField(CbField Field) => WriteField(Field.GetName(), Field);
+
+		/// <summary>
+		/// Copies an entire field value to the output
+		/// </summary>
+		/// <param name="Field"></param>
+		public void WriteField(Utf8String Name, CbField Field)
+		{
+			WriteFieldHeader(Field.GetType(), Name);
+			int Size = (int)Field.GetPayloadSize();
+			Field.GetPayloadView().CopyTo(Allocate(Size));
+		}
+
+		/// <summary>
 		/// Begin writing an object field
 		/// </summary>
 		public void BeginObject()
 		{
-			WriteField(CbFieldType.Object);
+			WriteFieldHeader(CbFieldType.Object);
 			PushScope(CbFieldType.Object, CbFieldType.None);
 		}
 
@@ -221,7 +346,7 @@ namespace EpicGames.Serialization
 		/// <param name="Name">Name of the field</param>
 		public void BeginObject(Utf8String Name)
 		{
-			WriteField(CbFieldType.Object, Name);
+			WriteFieldHeader(CbFieldType.Object, Name);
 			PushScope(CbFieldType.Object, CbFieldType.None);
 		}
 
@@ -238,7 +363,7 @@ namespace EpicGames.Serialization
 		/// </summary>
 		public void BeginArray()
 		{
-			WriteField(CbFieldType.Array);
+			WriteFieldHeader(CbFieldType.Array);
 			PushScope(CbFieldType.Array, CbFieldType.None);
 		}
 
@@ -248,7 +373,7 @@ namespace EpicGames.Serialization
 		/// <param name="Name"></param>
 		public void BeginArray(Utf8String Name)
 		{
-			WriteField(CbFieldType.Array, Name);
+			WriteFieldHeader(CbFieldType.Array, Name);
 			PushScope(CbFieldType.Array, CbFieldType.None);
 		}
 
@@ -266,7 +391,7 @@ namespace EpicGames.Serialization
 		/// <param name="FieldType">The field type for elements in the array</param>
 		public void BeginUniformArray(CbFieldType FieldType)
 		{
-			WriteField(CbFieldType.UniformArray);
+			WriteFieldHeader(CbFieldType.UniformArray);
 			PushScope(CbFieldType.UniformArray, FieldType);
 			Allocate(1).Span[0] = (byte)FieldType;
 		}
@@ -278,7 +403,7 @@ namespace EpicGames.Serialization
 		/// <param name="FieldType">The field type for elements in the array</param>
 		public void BeginUniformArray(Utf8String Name, CbFieldType FieldType)
 		{
-			WriteField(CbFieldType.UniformArray, Name);
+			WriteFieldHeader(CbFieldType.UniformArray, Name);
 			PushScope(CbFieldType.UniformArray, FieldType);
 			Allocate(1).Span[0] = (byte)FieldType;
 		}
@@ -296,7 +421,7 @@ namespace EpicGames.Serialization
 		/// </summary>
 		public void WriteNullValue()
 		{
-			WriteField(CbFieldType.Null);
+			WriteFieldHeader(CbFieldType.Null);
 		}
 
 		/// <summary>
@@ -305,7 +430,7 @@ namespace EpicGames.Serialization
 		/// <param name="Name">Name of the field</param>
 		public void WriteNull(Utf8String Name)
 		{
-			WriteField(CbFieldType.Null, Name);
+			WriteFieldHeader(CbFieldType.Null, Name);
 		}
 
 		/// <summary>
@@ -314,7 +439,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value"></param>
 		public void WriteBoolValue(bool Value)
 		{
-			WriteField(Value? CbFieldType.BoolTrue : CbFieldType.BoolFalse);
+			WriteFieldHeader(Value? CbFieldType.BoolTrue : CbFieldType.BoolFalse);
 		}
 
 		/// <summary>
@@ -324,7 +449,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value"></param>
 		public void WriteBool(Utf8String Name, bool Value)
 		{
-			WriteField(Value ? CbFieldType.BoolTrue : CbFieldType.BoolFalse, Name);
+			WriteFieldHeader(Value ? CbFieldType.BoolTrue : CbFieldType.BoolFalse, Name);
 		}
 
 		/// <summary>
@@ -346,12 +471,12 @@ namespace EpicGames.Serialization
 		{
 			if (Value >= 0)
 			{
-				WriteField(CbFieldType.IntegerPositive);
+				WriteFieldHeader(CbFieldType.IntegerPositive);
 				WriteIntegerPayload((ulong)Value);
 			}
 			else
 			{
-				WriteField(CbFieldType.IntegerNegative);
+				WriteFieldHeader(CbFieldType.IntegerNegative);
 				WriteIntegerPayload((ulong)-Value);
 			}
 		}
@@ -365,12 +490,12 @@ namespace EpicGames.Serialization
 		{
 			if (Value >= 0)
 			{
-				WriteField(CbFieldType.IntegerPositive, Name);
+				WriteFieldHeader(CbFieldType.IntegerPositive, Name);
 				WriteIntegerPayload((ulong)Value);
 			}
 			else
 			{
-				WriteField(CbFieldType.IntegerNegative, Name);
+				WriteFieldHeader(CbFieldType.IntegerNegative, Name);
 				WriteIntegerPayload((ulong)-Value);
 			}
 		}
@@ -381,7 +506,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteIntegerValue(ulong Value)
 		{
-			WriteField(CbFieldType.IntegerPositive);
+			WriteFieldHeader(CbFieldType.IntegerPositive);
 			WriteIntegerPayload(Value);
 		}
 
@@ -392,7 +517,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteInteger(Utf8String Name, ulong Value)
 		{
-			WriteField(CbFieldType.IntegerPositive, Name);
+			WriteFieldHeader(CbFieldType.IntegerPositive, Name);
 			WriteIntegerPayload(Value);
 		}
 
@@ -412,7 +537,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteDateTimeValue(DateTime Value)
 		{
-			WriteField(CbFieldType.DateTime);
+			WriteFieldHeader(CbFieldType.DateTime);
 			WriteDateTimePayload(Value);
 		}
 
@@ -423,7 +548,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteDateTime(Utf8String Name, DateTime Value)
 		{
-			WriteField(CbFieldType.DateTime, Name);
+			WriteFieldHeader(CbFieldType.DateTime, Name);
 			WriteDateTimePayload(Value);
 		}
 
@@ -443,7 +568,7 @@ namespace EpicGames.Serialization
 		/// <param name="Hash"></param>
 		public void WriteHashValue(IoHash Hash)
 		{
-			WriteField(CbFieldType.Hash);
+			WriteFieldHeader(CbFieldType.Hash);
 			WriteHashPayload(Hash);
 		}
 
@@ -454,7 +579,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteHash(Utf8String Name, IoHash Value)
 		{
-			WriteField(CbFieldType.Hash, Name);
+			WriteFieldHeader(CbFieldType.Hash, Name);
 			WriteHashPayload(Value);
 		}
 
@@ -464,7 +589,7 @@ namespace EpicGames.Serialization
 		/// <param name="Hash">Hash of the attachment</param>
 		public void WriteBinaryAttachmentValue(IoHash Hash)
 		{
-			WriteField(CbFieldType.BinaryAttachment);
+			WriteFieldHeader(CbFieldType.BinaryAttachment);
 			WriteHashPayload(Hash);
 		}
 
@@ -475,7 +600,7 @@ namespace EpicGames.Serialization
 		/// <param name="Hash">Hash of the attachment</param>
 		public void WriteBinaryAttachment(Utf8String Name, IoHash Hash)
 		{
-			WriteField(CbFieldType.BinaryAttachment, Name);
+			WriteFieldHeader(CbFieldType.BinaryAttachment, Name);
 			WriteHashPayload(Hash);
 		}
 
@@ -496,7 +621,7 @@ namespace EpicGames.Serialization
 		/// <param name="Object">Object to write</param>
 		public void WriteObject(CbObject Object)
 		{
-			WriteField(CbFieldType.Object);
+			WriteFieldHeader(CbFieldType.Object);
 			WriteObjectPayload(Object);
 		}
 
@@ -507,7 +632,7 @@ namespace EpicGames.Serialization
 		/// <param name="Object">Object to write</param>
 		public void WriteObject(Utf8String Name, CbObject Object)
 		{
-			WriteField(CbFieldType.Object, Name);
+			WriteFieldHeader(CbFieldType.Object, Name);
 			WriteObjectPayload(Object);
 		}
 
@@ -517,7 +642,7 @@ namespace EpicGames.Serialization
 		/// <param name="Hash">Hash of the attachment</param>
 		public void WriteObjectAttachmentValue(IoHash Hash)
 		{
-			WriteField(CbFieldType.ObjectAttachment);
+			WriteFieldHeader(CbFieldType.ObjectAttachment);
 			WriteHashPayload(Hash);
 		}
 
@@ -528,7 +653,7 @@ namespace EpicGames.Serialization
 		/// <param name="Hash">Hash of the attachment</param>
 		public void WriteObjectAttachment(Utf8String Name, IoHash Hash)
 		{
-			WriteField(CbFieldType.ObjectAttachment, Name);
+			WriteFieldHeader(CbFieldType.ObjectAttachment, Name);
 			WriteHashPayload(Hash);
 		}
 
@@ -563,7 +688,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteStringValue(Utf8String Value)
 		{
-			WriteField(CbFieldType.String);
+			WriteFieldHeader(CbFieldType.String);
 			WriteBinaryPayload(Value.Span);
 		}
 
@@ -574,7 +699,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteString(Utf8String Name, Utf8String Value)
 		{
-			WriteField(CbFieldType.String, Name);
+			WriteFieldHeader(CbFieldType.String, Name);
 			WriteBinaryPayload(Value.Span);
 		}
 
@@ -584,7 +709,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteBinaryValue(ReadOnlySpan<byte> Value)
 		{
-			WriteField(CbFieldType.Binary);
+			WriteFieldHeader(CbFieldType.Binary);
 			WriteBinaryPayload(Value);
 		}
 
@@ -595,7 +720,7 @@ namespace EpicGames.Serialization
 		/// <param name="Value">Value to be written</param>
 		public void WriteBinary(Utf8String Name, ReadOnlySpan<byte> Value)
 		{
-			WriteField(CbFieldType.Binary, Name);
+			WriteFieldHeader(CbFieldType.Binary, Name);
 			WriteBinaryPayload(Value);
 		}
 
@@ -682,24 +807,21 @@ namespace EpicGames.Serialization
 		static int ComputeSizeOfChildHeaders(Scope Scope)
 		{
 			int SizeOfChildHeaders = 0;
-			if (Scope.Children != null)
+			foreach (Scope ChildScope in Scope.Children)
 			{
-				foreach (Scope ChildScope in Scope.Children)
+				switch (ChildScope.FieldType)
 				{
-					switch (ChildScope.FieldType)
-					{
-						case CbFieldType.Object:
-						case CbFieldType.UniformObject:
-							SizeOfChildHeaders += ChildScope.SizeOfChildHeaders + VarInt.Measure(ChildScope.Length + ChildScope.SizeOfChildHeaders);
-							break;
-						case CbFieldType.Array:
-						case CbFieldType.UniformArray:
-							int ArrayCountLength = VarInt.Measure(ChildScope.Count);
-							SizeOfChildHeaders += ChildScope.SizeOfChildHeaders + VarInt.Measure(ChildScope.Length + ChildScope.SizeOfChildHeaders + ArrayCountLength) + ArrayCountLength;
-							break;
-						default:
-							throw new InvalidOperationException();
-					}
+					case CbFieldType.Object:
+					case CbFieldType.UniformObject:
+						SizeOfChildHeaders += ChildScope.SizeOfChildHeaders + VarInt.Measure(ChildScope.Length + ChildScope.SizeOfChildHeaders);
+						break;
+					case CbFieldType.Array:
+					case CbFieldType.UniformArray:
+						int ArrayCountLength = VarInt.Measure(ChildScope.Count);
+						SizeOfChildHeaders += ChildScope.SizeOfChildHeaders + VarInt.Measure(ChildScope.Length + ChildScope.SizeOfChildHeaders + ArrayCountLength) + ArrayCountLength;
+						break;
+					default:
+						throw new InvalidOperationException();
 				}
 			}
 			return SizeOfChildHeaders;
