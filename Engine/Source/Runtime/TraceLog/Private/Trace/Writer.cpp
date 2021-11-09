@@ -531,10 +531,16 @@ static bool Writer_UpdateConnection()
 ////////////////////////////////////////////////////////////////////////////////
 static UPTRINT			GWorkerThread;		// = 0;
 static volatile bool	GWorkerThreadQuit;	// = false;
+static volatile unsigned int	GUpdateInProgress;	// = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 static void Writer_WorkerUpdate()
 {
+	if (!AtomicCompareExchangeAcquire(&GUpdateInProgress, 1u, 0u))
+	{
+		return;
+	}
+	
 	Writer_UpdateControl();
 	Writer_UpdateConnection();
 	Writer_DescribeAnnounce();
@@ -549,6 +555,8 @@ static void Writer_WorkerUpdate()
 		Writer_FlushSendBuffer();
 	}
 #endif
+
+	AtomicExchangeRelease(&GUpdateInProgress, 0u);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -566,7 +574,7 @@ static void Writer_WorkerThread()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-static void Writer_WorkerCreate()
+void Writer_WorkerCreate()
 {
 	if (GWorkerThread)
 	{
