@@ -70,7 +70,7 @@ class UMaterialExpressionScalarParameter : public UMaterialExpressionParameter
 #endif
 	//~ End UMaterialExpression Interface
 
-	/** Return whether this is the named parameter, and fill in its value */
+	UE_DEPRECATED(5.0, "Use GetParameterValue and/or GetParameterName")
 	bool IsNamedParameter(const FHashedMaterialParameterInfo& ParameterInfo, float& OutValue) const;
 
 #if WITH_EDITOR
@@ -83,6 +83,7 @@ class UMaterialExpressionScalarParameter : public UMaterialExpressionParameter
 
 	virtual bool IsUsedAsAtlasPosition() const { return false; }
 
+	UE_DEPRECATED(5.0, "Use GetAllParameterInfoOfType or GetAllParametersOfType")
 	virtual void GetAllParameterInfo(TArray<FMaterialParameterInfo> &OutParameterInfo, TArray<FGuid> &OutParameterIds, const FMaterialParameterInfo& InBaseParameterInfo) const override;
 };
 
