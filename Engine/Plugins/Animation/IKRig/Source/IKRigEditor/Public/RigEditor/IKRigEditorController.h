@@ -111,6 +111,9 @@ public:
 
 private:
 
+	/** Initializes editor's solvers instances */
+	void InitializeSolvers() const;
+	
 	/** UI and viewport selection state */
 	TArray<FName> SelectedGoals;	
 };
