@@ -5,6 +5,7 @@
 #include "IKRigSolver.h"
 #include "SIKRigRetargetChainList.h"
 #include "Templates/SubclassOf.h"
+#include "Animation/AnimationAsset.h"
 
 #include "IKRigEditorController.generated.h"
 
@@ -89,7 +90,7 @@ public:
 
 	/** viewport anim instance */
 	UPROPERTY(transient, NonTransactional)
-	TObjectPtr<class UIKRigAnimInstance> AnimInstance;
+	TWeakObjectPtr<class UIKRigAnimInstance> AnimInstance;
 
 	/** asset properties tab */
 	TSharedPtr<class IDetailsView> DetailsView;
