@@ -1002,7 +1002,7 @@ private:
 
 public:
 
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = Control, meta=(ShowOnlyInnerProperties))
+	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = Control)
 	FRigControlSettings Settings;
 
 	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = RigElement)
