@@ -48,7 +48,7 @@ public:
 protected:
 
 	/** Tick rate for each LOD */
-	TStaticArray<int32, EMassLOD::Max> TickRates;
+	TStaticArray<float, EMassLOD::Max> TickRates;
 };
 
 template <typename FVariableTickChunkFragment, typename FLODLogic>
