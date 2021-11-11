@@ -681,6 +681,16 @@ public:
 		return GeometryParticles->RemoveConstraintHandle(ParticleIdx, InConstraintHandle);
 	}
 
+	FParticleCollisions& ParticleCollisions()
+	{
+		return GeometryParticles->ParticleCollisions(ParticleIdx);
+	}
+
+	const FParticleCollisions& ParticleCollisions() const
+	{
+		return GeometryParticles->ParticleCollisions(ParticleIdx);
+	}
+
 protected:
 
 	friend TGeometryParticleHandles<T, d>;
@@ -786,6 +796,7 @@ public:
 	using TGeometryParticleHandleImp<T, d, bPersistent>::ParticleIdx;
 	using TGeometryParticleHandleImp<T, d, bPersistent>::PBDRigidParticles;
 	using TGeometryParticleHandleImp<T, d, bPersistent>::ParticleConstraints;
+	using TGeometryParticleHandleImp<T, d, bPersistent>::ParticleCollisions;
 	using TKinematicGeometryParticleHandleImp<T, d, bPersistent>::V;
 	using TKinematicGeometryParticleHandleImp<T, d, bPersistent>::W;
 	using TGeometryParticleHandleImp<T, d, bPersistent>::Type;
@@ -1711,6 +1722,11 @@ public:
 	friend bool operator==(const FGenericParticleHandle& L, const FGenericParticleHandle& R)
 	{
 		return L->ParticleID() == R->ParticleID();
+	}
+
+	friend bool operator!=(const FGenericParticleHandle& L, const FGenericParticleHandle& R)
+	{
+		return !(L->ParticleID() == R->ParticleID());
 	}
 
 	friend bool operator<(const FGenericParticleHandle& L, const FGenericParticleHandle& R)
