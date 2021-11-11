@@ -136,7 +136,7 @@ void FVisualLogger::AddObjectToAllowList(const UObject& InObject)
 
 void FVisualLogger::ClearObjectAllowList()
 {
-	for (const UObject* It : ObjectAllowList)
+	for (FObjectKey It : ObjectAllowList)
 	{
 		FVisualLogEntry* CurrentEntry = CurrentEntryPerObject.Find(It);
 		if (CurrentEntry)
@@ -187,7 +187,7 @@ FVisualLogEntry* FVisualLogger::GetEntryToWrite(const UObject* Object, float Tim
 					{
 						for (FVisualLogDevice* Device : OutputDevices)
 						{
-							Device->Serialize(CurrentPair.Key, ObjectToNameMap[CurrentPair.Key], ObjectToClassNameMap[CurrentPair.Key], *Entry);
+							Device->Serialize(CurrentPair.Key.ResolveObjectPtrEvenIfPendingKill(), ObjectToNameMap[CurrentPair.Key], ObjectToClassNameMap[CurrentPair.Key], *Entry);
 						}
 						Entry->Reset();
 					}
@@ -205,7 +205,6 @@ FVisualLogEntry* FVisualLogger::GetEntryToWrite(const UObject* Object, float Tim
 			: *FString::Printf(TEXT("%s"), *LogOwner->GetName()));
 		ObjectToNameMap.Add(LogOwner, LogName);
 		ObjectToClassNameMap.Add(LogOwner, *(LogOwner->GetClass()->GetName()));
-		ObjectToPointerMap.Add(LogOwner, LogOwner);
 		ObjectToWorldMap.Add(LogOwner, World);
 
 		// IsClassAllowed isn't super fast, but this gets calculated only once for every 
@@ -231,7 +230,7 @@ FVisualLogEntry* FVisualLogger::GetEntryToWrite(const UObject* Object, float Tim
 		FOwnerToChildrenRedirectionMap& RedirectionMap = GetRedirectionMap(LogOwner);
 		if (RedirectionMap.Contains(LogOwner))
 		{
-			if (ObjectToPointerMap.Contains(LogOwner) && ObjectToPointerMap[LogOwner].IsValid())
+			if (CurrentEntryPerObject.Contains(LogOwner) && LogOwner->IsValidLowLevel())
 			{
 				const IVisualLoggerDebugSnapshotInterface* DebugSnapshotInterface = Cast<const IVisualLoggerDebugSnapshotInterface>(LogOwner);
 				if (DebugSnapshotInterface)
@@ -273,7 +272,7 @@ void FVisualLogger::Flush()
 		{
 			for (FVisualLogDevice* Device : OutputDevices)
 			{
-				Device->Serialize(CurrentEntry.Key, ObjectToNameMap[CurrentEntry.Key], ObjectToClassNameMap[CurrentEntry.Key], CurrentEntry.Value);
+				Device->Serialize(CurrentEntry.Key.ResolveObjectPtrEvenIfPendingKill(), ObjectToNameMap[CurrentEntry.Key], ObjectToClassNameMap[CurrentEntry.Key], CurrentEntry.Value);
 			}
 			CurrentEntry.Value.Reset();
 		}
@@ -430,7 +429,6 @@ void FVisualLogger::Cleanup(UWorld* OldWorld, bool bReleaseMemory)
                 CurrentEntryPerObject.Reset();
                 ObjectToNameMap.Reset();
                 ObjectToClassNameMap.Reset();
-                ObjectToPointerMap.Reset();
             }
             else
             {
@@ -438,19 +436,18 @@ void FVisualLogger::Cleanup(UWorld* OldWorld, bool bReleaseMemory)
                 {
                     if (It.Value() == OldWorld)
                     {
-                        const UObject* Obj = It.Key();
+						FObjectKey Obj = It.Key();
                         ObjectToWorldMap.Remove(Obj);
                         CurrentEntryPerObject.Remove(Obj);
                         ObjectToNameMap.Remove(Obj);
                         ObjectToClassNameMap.Remove(Obj);
-                        ObjectToPointerMap.Remove(Obj);
                     }
                 }
 
                 for (FChildToOwnerRedirectionMap::TIterator It = ChildToOwnerMap.CreateIterator(); It; ++It)
                 {
-                    if (It->Key.IsValid() == false
-                        || It->Key->GetWorld() == OldWorld)
+					UObject* Object = It->Key.ResolveObjectPtrEvenIfPendingKill();
+					if (Object == nullptr || Object->GetWorld() == OldWorld)
                     {
                         It.RemoveCurrent();
                     }
@@ -466,7 +463,6 @@ void FVisualLogger::Cleanup(UWorld* OldWorld, bool bReleaseMemory)
 		CurrentEntryPerObject.Reset();
 		ObjectToNameMap.Reset();
 		ObjectToClassNameMap.Reset();
-		ObjectToPointerMap.Reset();
 	}
 
 	LastUniqueIds.Reset();
@@ -523,7 +519,7 @@ void FVisualLogger::Redirect(const UObject* FromObject, const UObject* ToObject)
 	}
 
 	FChildToOwnerRedirectionMap& ChildToOwnerMap = FVisualLogger::Get().GetChildToOwnerRedirectionMap();
-	ChildToOwnerMap.FindOrAdd(FromWeakPtr) = ToObject;
+	ChildToOwnerMap.FindOrAdd(FromWeakPtr.Get(true/*bEvenIfPendingKill*/)) = ToObject;
 
 	UE_CVLOG(FromObject != nullptr, FromObject, LogVisual, Log, TEXT("Redirected '%s' to '%s'"), *FromObject->GetName(), *NewRedirection->GetName());
 }
@@ -537,7 +533,7 @@ UObject* FVisualLogger::FindRedirection(const UObject* Object)
 
 	while (Parent)
 	{
-		Parent = Map.Find(TargetWeakPtr);
+		Parent = Map.Find(TargetWeakPtr.Get(/*bEvenIfPendingKill*/true));
 		if (Parent)
 		{
 			if (Parent->IsValid())
@@ -547,12 +543,12 @@ UObject* FVisualLogger::FindRedirection(const UObject* Object)
 			else
 			{
 				Parent = nullptr;
-				Map.Remove(TargetWeakPtr);
+				Map.Remove(TargetWeakPtr.Get(/*bEvenIfPendingKill*/true));
 			}
 		}
 	}
 
-	return const_cast<UObject*>(TargetWeakPtr.Get());
+	return const_cast<UObject*>(TargetWeakPtr.Get(/*bEvenIfPendingKill*/true));
 }
 
 void FVisualLogger::SetIsRecording(bool InIsRecording)

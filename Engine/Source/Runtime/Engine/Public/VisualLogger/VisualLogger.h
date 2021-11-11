@@ -11,6 +11,7 @@
 #include "Templates/IsValidVariadicFunctionArg.h"
 #include "Templates/AndOrNot.h"
 #include "Templates/IsArrayOrRefOfType.h"
+#include "UObject/ObjectKey.h"
 
 #if ENABLE_VISUAL_LOG
 
@@ -531,13 +532,13 @@ public:
 	/** Sets function to call to get a timestamp instead of the default implementation (i.e. world time) */
 	void SetGetTimeStampFunc(TFunction<float(const UObject*)> Function);
 
-	typedef TMap<UObject*, TArray<TWeakObjectPtr<const UObject> > > FOwnerToChildrenRedirectionMap;
+	typedef TMap<FObjectKey, TArray<TWeakObjectPtr<const UObject> > > FOwnerToChildrenRedirectionMap;
 	static FOwnerToChildrenRedirectionMap& GetRedirectionMap(const UObject* InObject);
 
-	typedef TMap<TWeakObjectPtr<const UObject>, TWeakObjectPtr<const UObject> > FChildToOwnerRedirectionMap;
+	typedef TMap<FObjectKey, TWeakObjectPtr<const UObject> > FChildToOwnerRedirectionMap;
 	FChildToOwnerRedirectionMap& GetChildToOwnerRedirectionMap() { return ChildToOwnerMap; }
 
-	typedef TMap<const UObject*, TWeakObjectPtr<const UWorld> > FObjectToWorldMapType;
+	typedef TMap<FObjectKey, TWeakObjectPtr<const UWorld> > FObjectToWorldMapType;
 	FObjectToWorldMapType& GetObjectToWorldMap() { return ObjectToWorldMap; }
 
 	void AddClassToAllowList(UClass& InClass);
@@ -576,7 +577,7 @@ protected:
 	// allowed objects - takes priority over class allow list and should be used to create exceptions in it
 	// if ObjectAllowList is empty (default) everything will log
 	// do NOT read from those pointers, they can be invalid!
-	TSet<const UObject*> ObjectAllowList;
+	TSet<FObjectKey> ObjectAllowList;
 
 	// list of categories that are still allowed to be logged when logging is blocking
 	TArray<FName> CategoryAllowList;
@@ -586,13 +587,11 @@ protected:
 	// last generated unique id for given times tamp
 	TMap<float, int32> LastUniqueIds;
 	// Current entry with all data
-	TMap<const UObject*, FVisualLogEntry>	CurrentEntryPerObject;
+	TMap<FObjectKey, FVisualLogEntry>	CurrentEntryPerObject;
 	// Map to contain names for Objects (they can be destroyed after while)
-	TMap<const UObject*, FName> ObjectToNameMap;
+	TMap<FObjectKey, FName> ObjectToNameMap;
 	// Map to contain class names for Objects (they can be destroyed after while)
-	TMap<const UObject*, FName> ObjectToClassNameMap;
-	// Map to contain information about pointers in game
-	TMap<const UObject*, TWeakObjectPtr<const UObject> > ObjectToPointerMap;
+	TMap<FObjectKey, FName> ObjectToClassNameMap;
 	// Cached map to world information because it's just raw pointer and not real object
 	FObjectToWorldMapType ObjectToWorldMap;
 	// for any object that has requested redirection this map holds where we should
