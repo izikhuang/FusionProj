@@ -47,7 +47,7 @@ void FWidgetBlueprintCompiler::PreCompile(UBlueprint* Blueprint, const FKismetCo
 {
 	if (ReRegister == nullptr
 		&& CanCompile(Blueprint)
-		&& (CompileOptions.CompileType == EKismetCompileType::Full || CompileOptions.CompileType == EKismetCompileType::Cpp))
+		&& CompileOptions.CompileType == EKismetCompileType::Full)
 	{
 		ReRegister = new TComponentReregisterContext<UWidgetComponent>();
 	}
