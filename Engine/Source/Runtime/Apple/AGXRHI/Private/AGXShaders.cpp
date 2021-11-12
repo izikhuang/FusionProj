@@ -45,65 +45,39 @@ NSString* AGXDecodeMetalSourceCode(uint32 CodeSize, TArray<uint8> const& Compres
 	return GlslCodeNSString;
 }
 
-mtlpp::LanguageVersion AGXValidateVersion(uint8 Version)
+mtlpp::LanguageVersion AGXValidateVersion(uint32 Version)
 {
 	static uint32 MetalMacOSVersions[][3] = {
-		{10,11,6},
-		{10,11,6},
-		{10,12,6},
-		{10,13,0},
-		{10,14,0},
 		{10,15,0},
-		{11, 0,0},
+		{11,0,0},
+        {12,0,0},
 	};
 	static uint32 MetaliOSVersions[][3] = {
-		{ 8,0,0},
-		{ 9,0,0},
-		{10,0,0},
-		{11,0,0},
-		{12,0,0},
 		{13,0,0},
 		{14,0,0},
+		{15,0,0},
 	};
 	static TCHAR const* StandardNames[] =
 	{
-		TEXT("Metal 1.0"),
-		TEXT("Metal 1.1"),
-		TEXT("Metal 1.2"),
-		TEXT("Metal 2.0"),
-		TEXT("Metal 2.1"),
 		TEXT("Metal 2.2"),
 		TEXT("Metal 2.3"),
+		TEXT("Metal 2.4"),
 	};
 	
-	mtlpp::LanguageVersion Result = mtlpp::LanguageVersion::Version1_1;
+	mtlpp::LanguageVersion Result = mtlpp::LanguageVersion::Version2_2;
 	switch(Version)
 	{
+		case 7:
+			Result = mtlpp::LanguageVersion::Version2_4;
+			break;
 		case 6:
 			Result = mtlpp::LanguageVersion::Version2_3;
 			break;
 		case 5:
 			Result = mtlpp::LanguageVersion::Version2_2;
 			break;
-		case 4:
-			Result = mtlpp::LanguageVersion::Version2_1;
-			break;
-		case 3:
-			Result = mtlpp::LanguageVersion::Version2_0;
-			break;
-		case 2:
-			Result = mtlpp::LanguageVersion::Version1_2;
-			break;
-		case 1:
-			Result = mtlpp::LanguageVersion::Version1_1;
-			break;
-		case 0:
 		default:
-#if PLATFORM_MAC
-			Result = mtlpp::LanguageVersion::Version1_1;
-#else
-			Result = mtlpp::LanguageVersion::Version1_0;
-#endif
+			Result = mtlpp::LanguageVersion::Version2_2;
 			break;
 	}
 	

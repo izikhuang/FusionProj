@@ -235,7 +235,7 @@ extern uint32 AGXSafeGetRuntimeDebuggingLevel();
 
 extern int32 GAGXBufferZeroFill;
 
-mtlpp::LanguageVersion AGXValidateVersion(uint8 Version);
+mtlpp::LanguageVersion AGXValidateVersion(uint32 Version);
 
 // Needs to be the same as EShaderFrequency when all stages are supported, but unlike EShaderFrequency you can compile out stages.
 enum EAGXShaderStages

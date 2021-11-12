@@ -24,7 +24,7 @@ extern void BuildMetalShaderOutput(
 	uint32 SourceLen,
 	uint32 SourceCRCLen,
 	uint32 SourceCRC,
-	uint8 Version,
+	uint32 Version,
 	TCHAR const* Standard,
 	TCHAR const* MinOSVersion,
 	EMetalTypeBufferMode TypeMode,
@@ -163,7 +163,7 @@ bool FMetalShaderBytecodeCooker::Build(TArray<uint8>& OutData)
 	return bSuccess;
 }
 
-FMetalShaderOutputCooker::FMetalShaderOutputCooker(const FShaderCompilerInput& _Input, FShaderCompilerOutput& _Output, const FString& _WorkingDirectory, FString _PreprocessedShader, FSHAHash _GUIDHash, uint8 _VersionEnum, uint32 _CCFlags, EMetalGPUSemantics _Semantics, EMetalTypeBufferMode _TypeMode, uint32 _MaxUnrollLoops, EShaderFrequency _Frequency, bool _bDumpDebugInfo, FString _Standard, FString _MinOSVersion)
+FMetalShaderOutputCooker::FMetalShaderOutputCooker(const FShaderCompilerInput& _Input, FShaderCompilerOutput& _Output, const FString& _WorkingDirectory, FString _PreprocessedShader, FSHAHash _GUIDHash, uint32 _VersionEnum, uint32 _CCFlags, EMetalGPUSemantics _Semantics, EMetalTypeBufferMode _TypeMode, uint32 _MaxUnrollLoops, EShaderFrequency _Frequency, bool _bDumpDebugInfo, FString _Standard, FString _MinOSVersion)
 	: Input(_Input)
 	, Output(_Output)
 	, WorkingDirectory(_WorkingDirectory)
@@ -181,7 +181,7 @@ FMetalShaderOutputCooker::FMetalShaderOutputCooker(const FShaderCompilerInput& _
 	, MinOSVersion(_MinOSVersion)
 {
 	FString const* IABVersion = Input.Environment.GetDefinitions().Find(TEXT("METAL_INDIRECT_ARGUMENT_BUFFERS"));
-	if (IABVersion && VersionEnum >= 4)
+	if (IABVersion)
 	{
 		if(IABVersion->IsNumeric())
 		{
@@ -381,7 +381,7 @@ bool FMetalShaderOutputCooker::Build(TArray<uint8>& OutData)
 		}
 		else
 		{
-			Options.bEnableFMAPass = (VersionEnum == 2 || VersionEnum == 3 || bForceInvariance);
+			Options.bEnableFMAPass = bForceInvariance;
 		}
 
 		// Load shader source into compiler context
@@ -1094,15 +1094,12 @@ bool FMetalShaderOutputCooker::Build(TArray<uint8>& OutData)
 				}
 			}
 			
-			if (VersionEnum >= 4)
+			if (IABTier >= 1)
 			{
-				if (IABTier >= 1)
-				{
-					TargetDesc.CompileFlags.SetDefine(TEXT("argument_buffers"), 1);
-					TargetDesc.CompileFlags.SetDefine(TEXT("argument_buffer_offset"), IABOffsetIndex);
-				}
-				TargetDesc.CompileFlags.SetDefine(TEXT("texture_buffer_native"), 1);
+				TargetDesc.CompileFlags.SetDefine(TEXT("argument_buffers"), 1);
+				TargetDesc.CompileFlags.SetDefine(TEXT("argument_buffer_offset"), IABOffsetIndex);
 			}
+			TargetDesc.CompileFlags.SetDefine(TEXT("texture_buffer_native"), 1);
 			
 			switch (VersionEnum)
 			{
@@ -1121,30 +1118,10 @@ bool FMetalShaderOutputCooker::Build(TArray<uint8>& OutData)
 					TargetDesc.Version = 20200;
 					break;
 				}
-				case 4:
-				{
-					TargetDesc.Version = 20100;
-					break;
-				}
-				case 3:
-				{
-					TargetDesc.Version = 20000;
-					break;
-				}
-				case 2:
-				{
-					TargetDesc.Version = 10200;
-					break;
-				}
-				case 1:
-				{
-					TargetDesc.Version = 10100;
-					break;
-				}
-				case 0:
 				default:
 				{
-					TargetDesc.Version = 10000;
+					UE_LOG(LogShaders, Warning, TEXT("Metal Shader Version Unsupported, switching to default 2.2"));
+					TargetDesc.Version = 20200;
 					break;
 				}
 			}

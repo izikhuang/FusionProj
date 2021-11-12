@@ -135,7 +135,7 @@ struct FMetalShaderPreprocessed
 class FMetalShaderOutputCooker : public FDerivedDataPluginInterface
 {
 public:
-	FMetalShaderOutputCooker(const FShaderCompilerInput& _Input,FShaderCompilerOutput& Output,const FString& WorkingDirectory, FString PreprocessedShader, FSHAHash GUIDHash, uint8 VersionEnum, uint32 CCFlags, EMetalGPUSemantics Semantics, EMetalTypeBufferMode TypeMode, uint32 MaxUnrollLoops, EShaderFrequency Frequency, bool bDumpDebugInfo, FString Standard, FString MinOSVersion);
+	FMetalShaderOutputCooker(const FShaderCompilerInput& _Input,FShaderCompilerOutput& Output,const FString& WorkingDirectory, FString PreprocessedShader, FSHAHash GUIDHash, uint32 VersionEnum, uint32 CCFlags, EMetalGPUSemantics Semantics, EMetalTypeBufferMode TypeMode, uint32 MaxUnrollLoops, EShaderFrequency Frequency, bool bDumpDebugInfo, FString Standard, FString MinOSVersion);
 	virtual ~FMetalShaderOutputCooker();
 
 #if PLATFORM_MAC || PLATFORM_IOS
