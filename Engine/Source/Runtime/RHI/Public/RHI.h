@@ -2469,6 +2469,7 @@ struct FTextureMemoryStats
 		return FMath::Max(TexturePoolSize - AllocatedMemorySize, (int64)0);
 	}
 };
+typedef int32(*PtrDrawCallCounters)[MAX_NUM_GPUS];
 
 struct RHI_API FDrawCallCategoryName
 {
@@ -2494,6 +2495,11 @@ struct RHI_API FDrawCallCategoryName
 			Array[NumCategory] = this;
 			NumCategory++;
 		}
+	}
+
+	PtrDrawCallCounters GetCounters()
+	{
+		return Name.IsNone() ? nullptr : &Counters;
 	}
 
 	FName Name;
