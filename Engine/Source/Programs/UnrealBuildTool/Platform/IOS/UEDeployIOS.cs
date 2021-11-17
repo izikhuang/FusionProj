@@ -12,8 +12,6 @@ using System.Xml.Linq;
 using EpicGames.Core;
 using UnrealBuildBase;
 
-#nullable disable
-
 namespace UnrealBuildTool
 {
 	class UEDeployIOS : UEBuildDeploy
@@ -22,7 +20,7 @@ namespace UnrealBuildTool
 		{
 		}
 
-		protected UnrealPluginLanguage UPL = null;
+		protected UnrealPluginLanguage? UPL = null;
 		protected delegate bool FilenameFilter(string InFilename);
 
 		public bool ForDistribution
@@ -34,12 +32,12 @@ namespace UnrealBuildTool
 
 		protected class VersionUtilities
 		{
-			public static string BuildDirectory
+			public static string? BuildDirectory
 			{
 				get;
-			set;
+				set;
 			}
-			public static string GameName
+			public static string? GameName
 			{
 				get;
 				set;
@@ -49,7 +47,7 @@ namespace UnrealBuildTool
 
 			static string RunningVersionFilename
 			{
-				get { return Path.Combine(BuildDirectory, GameName + ".PackageVersionCounter"); }
+				get { return Path.Combine(BuildDirectory!, GameName + ".PackageVersionCounter"); }
 			}
 
 			/// <summary>
@@ -220,7 +218,7 @@ namespace UnrealBuildTool
 			return MinVersionToReturn;
 		}
 
-		public static bool GenerateIOSPList(FileReference ProjectFile, UnrealTargetConfiguration Config, string ProjectDirectory, bool bIsUnrealGame, string GameName, bool bIsClient, string ProjectName, string InEngineDir, string AppDirectory, VersionNumber SdkVersion, UnrealPluginLanguage UPL, string BundleID, bool bBuildAsFramework, out bool bSupportsPortrait, out bool bSupportsLandscape)
+		public static bool GenerateIOSPList(FileReference? ProjectFile, UnrealTargetConfiguration Config, string ProjectDirectory, bool bIsUnrealGame, string GameName, bool bIsClient, string ProjectName, string InEngineDir, string AppDirectory, UnrealPluginLanguage? UPL, string? BundleID, bool bBuildAsFramework, out bool bSupportsPortrait, out bool bSupportsLandscape)
 		{
 			// generate the Info.plist for future use
 			string BuildDirectory = ProjectDirectory + "/Build/IOS";
@@ -235,7 +233,7 @@ namespace UnrealBuildTool
 
 			// get the settings from the ini file
 			// plist replacements
-			DirectoryReference DirRef = bIsUnrealGame ? (!string.IsNullOrEmpty(UnrealBuildTool.GetRemoteIniPath()) ? new DirectoryReference(UnrealBuildTool.GetRemoteIniPath()) : null) : new DirectoryReference(ProjectDirectory);
+			DirectoryReference? DirRef = bIsUnrealGame ? (!string.IsNullOrEmpty(UnrealBuildTool.GetRemoteIniPath()) ? new DirectoryReference(UnrealBuildTool.GetRemoteIniPath()!) : null) : new DirectoryReference(ProjectDirectory);
 			ConfigHierarchy Ini = ConfigCache.ReadHierarchy(ConfigHierarchyType.Engine, DirRef, UnrealTargetPlatform.IOS);
 
 			// orientations
@@ -662,12 +660,12 @@ namespace UnrealBuildTool
 			return true;
 		}
 
-        public static VersionNumber GetSdkVersion(TargetReceipt Receipt)
+        public static VersionNumber? GetSdkVersion(TargetReceipt Receipt)
         {
-			VersionNumber SdkVersion = null;
+			VersionNumber? SdkVersion = null;
             if (Receipt != null)
             {
-                ReceiptProperty SdkVersionProperty = Receipt.AdditionalProperties.FirstOrDefault(x => x.Name == "SDK");
+                ReceiptProperty? SdkVersionProperty = Receipt.AdditionalProperties.FirstOrDefault(x => x.Name == "SDK");
 				if(SdkVersionProperty != null)
 				{
 					VersionNumber.TryParse(SdkVersionProperty.Value, out SdkVersion);
@@ -676,7 +674,7 @@ namespace UnrealBuildTool
 			return SdkVersion;
         }
 
-		public static bool GetCompileAsDll(TargetReceipt Receipt)
+		public static bool GetCompileAsDll(TargetReceipt? Receipt)
 		{
 			if (Receipt != null)
 			{
@@ -692,12 +690,12 @@ namespace UnrealBuildTool
  		public bool GeneratePList(FileReference ProjectFile, UnrealTargetConfiguration Config, string ProjectDirectory, bool bIsUnrealGame, string GameName, bool bIsClient, string ProjectName, string InEngineDir, string AppDirectory, TargetReceipt Receipt, out bool bSupportsPortrait, out bool bSupportsLandscape)
 		{
 			List<string> UPLScripts = CollectPluginDataPaths(Receipt.AdditionalProperties);
-			VersionNumber SdkVersion = GetSdkVersion(Receipt);
+			VersionNumber? SdkVersion = GetSdkVersion(Receipt);
 			bool bBuildAsFramework = GetCompileAsDll(Receipt);
-			return GeneratePList(ProjectFile, Config, ProjectDirectory, bIsUnrealGame, GameName, bIsClient, ProjectName, InEngineDir, AppDirectory, UPLScripts, SdkVersion, "", bBuildAsFramework, out bSupportsPortrait, out bSupportsLandscape);
+			return GeneratePList(ProjectFile, Config, ProjectDirectory, bIsUnrealGame, GameName, bIsClient, ProjectName, InEngineDir, AppDirectory, UPLScripts, "", bBuildAsFramework, out bSupportsPortrait, out bSupportsLandscape);
 		}
 
-		public virtual bool GeneratePList(FileReference ProjectFile, UnrealTargetConfiguration Config, string ProjectDirectory, bool bIsUnrealGame, string GameName, bool bIsClient, string ProjectName, string InEngineDir, string AppDirectory, List<string> UPLScripts, VersionNumber SdkVersion, string BundleID, bool bBuildAsFramework, out bool bSupportsPortrait, out bool bSupportsLandscape)
+		public virtual bool GeneratePList(FileReference? ProjectFile, UnrealTargetConfiguration Config, string ProjectDirectory, bool bIsUnrealGame, string GameName, bool bIsClient, string ProjectName, string InEngineDir, string AppDirectory, List<string> UPLScripts, string? BundleID, bool bBuildAsFramework, out bool bSupportsPortrait, out bool bSupportsLandscape)
 		{
 			// remember name with -IOS-Shipping, etc
 			// string ExeName = GameName;
@@ -729,7 +727,7 @@ namespace UnrealBuildTool
 			// Passing in true for distribution is not ideal here but given the way that ios packaging happens and this call chain it seems unavoidable for now, maybe there is a way to correctly pass it in that I can't find?
 			UPL.Init(ProjectArches, true, RelativeEnginePath, BundlePath, ProjectDirectory, Config.ToString(), false);
 
-			return GenerateIOSPList(ProjectFile, Config, ProjectDirectory, bIsUnrealGame, GameName, bIsClient, ProjectName, InEngineDir, AppDirectory, SdkVersion, UPL, BundleID, bBuildAsFramework, out bSupportsPortrait, out bSupportsLandscape);
+			return GenerateIOSPList(ProjectFile, Config, ProjectDirectory, bIsUnrealGame, GameName, bIsClient, ProjectName, InEngineDir, AppDirectory, UPL, BundleID, bBuildAsFramework, out bSupportsPortrait, out bSupportsLandscape);
 		}
 
 		protected virtual void CopyCloudResources(string InEngineDir, string AppDirectory)
@@ -800,9 +798,9 @@ namespace UnrealBuildTool
 		public bool PrepForUATPackageOrDeploy(UnrealTargetConfiguration Config, FileReference ProjectFile, string InProjectName, string InProjectDirectory, string InExecutablePath, string InEngineDir, bool bForDistribution, string CookFlavor, bool bIsDataDeploy, bool bCreateStubIPA, TargetReceipt Receipt)
 		{
 			List<string> UPLScripts = CollectPluginDataPaths(Receipt.AdditionalProperties);
-			VersionNumber SdkVersion = GetSdkVersion(Receipt);
+			VersionNumber? SdkVersion = GetSdkVersion(Receipt);
 			bool bBuildAsFramework = GetCompileAsDll(Receipt);
-			return PrepForUATPackageOrDeploy(Config, ProjectFile, InProjectName, InProjectDirectory, InExecutablePath, InEngineDir, bForDistribution, CookFlavor, bIsDataDeploy, bCreateStubIPA, UPLScripts, SdkVersion, "", bBuildAsFramework);
+			return PrepForUATPackageOrDeploy(Config, ProjectFile, InProjectName, InProjectDirectory, InExecutablePath, InEngineDir, bForDistribution, CookFlavor, bIsDataDeploy, bCreateStubIPA, UPLScripts, "", bBuildAsFramework);
 		}
 
 		void CopyAllProvisions(string ProvisionDir)
@@ -854,7 +852,7 @@ namespace UnrealBuildTool
 			}
 		}
 
-		public bool PrepForUATPackageOrDeploy(UnrealTargetConfiguration Config, FileReference ProjectFile, string InProjectName, string InProjectDirectory, string InExecutablePath, string InEngineDir, bool bForDistribution, string CookFlavor, bool bIsDataDeploy, bool bCreateStubIPA, List<string> UPLScripts, VersionNumber SdkVersion, string BundleID, bool bBuildAsFramework)
+		public bool PrepForUATPackageOrDeploy(UnrealTargetConfiguration Config, FileReference? ProjectFile, string InProjectName, string InProjectDirectory, string InExecutablePath, string InEngineDir, bool bForDistribution, string CookFlavor, bool bIsDataDeploy, bool bCreateStubIPA, List<string> UPLScripts, string? BundleID, bool bBuildAsFramework)
 		{
 			if (BuildHostPlatform.Current.Platform != UnrealTargetPlatform.Mac)
 			{
@@ -870,7 +868,7 @@ namespace UnrealBuildTool
 			string SubDir = GetTargetPlatformName();
 
 			bool bIsUnrealGame = InExecutablePath.Contains("UnrealGame");
-			string BinaryPath = Path.GetDirectoryName(InExecutablePath);
+			string BinaryPath = Path.GetDirectoryName(InExecutablePath)!;
 			string GameExeName = Path.GetFileName(InExecutablePath);
 			string GameName = bIsUnrealGame ? "UnrealGame" : GameExeName.Split("-".ToCharArray())[0];
 			string PayloadDirectory = BinaryPath + "/Payload";
@@ -944,7 +942,7 @@ namespace UnrealBuildTool
 				// copy all provisions from the game directory, the engine directory, notforlicensees directory, and, if defined, the ProvisionDirectory.
 				CopyAllProvisions(BuildDirectory);
 				CopyAllProvisions(InEngineDir + "/Build/IOS");
-				string ProvisionDirectory = Environment.GetEnvironmentVariable("ProvisionDirectory");
+				string? ProvisionDirectory = Environment.GetEnvironmentVariable("ProvisionDirectory");
 				if (!string.IsNullOrWhiteSpace(ProvisionDirectory))
 				{
 					CopyAllProvisions(ProvisionDirectory);
@@ -983,7 +981,7 @@ namespace UnrealBuildTool
 
 			bool bSupportsPortrait = true;
 			bool bSupportsLandscape = false;
-			GeneratePList(ProjectFile, Config, InProjectDirectory, bIsUnrealGame, GameExeName, false, InProjectName, InEngineDir, AppDirectory, UPLScripts, SdkVersion, BundleID, bBuildAsFramework, out bSupportsPortrait, out bSupportsLandscape);
+			GeneratePList(ProjectFile, Config, InProjectDirectory, bIsUnrealGame, GameExeName, false, InProjectName, InEngineDir, AppDirectory, UPLScripts, BundleID, bBuildAsFramework, out bSupportsPortrait, out bSupportsLandscape);
 
 			// ensure the destination is writable
 			if (File.Exists(AppDirectory + "/" + GameName))
@@ -1036,12 +1034,11 @@ namespace UnrealBuildTool
 		public override bool PrepTargetForDeployment(TargetReceipt Receipt)
 		{
 			List<string> UPLScripts = CollectPluginDataPaths(Receipt.AdditionalProperties);
-			VersionNumber SdkVersion = GetSdkVersion(Receipt);
 			bool bBuildAsFramework = GetCompileAsDll(Receipt);
-			return PrepTargetForDeployment(Receipt.ProjectFile, Receipt.TargetName, Receipt.Platform, Receipt.Configuration, UPLScripts, SdkVersion, false, "", bBuildAsFramework);
+			return PrepTargetForDeployment(Receipt.ProjectFile, Receipt.TargetName, Receipt.Platform, Receipt.Configuration, UPLScripts, false, "", bBuildAsFramework);
 		}
 
-		public bool PrepTargetForDeployment(FileReference ProjectFile, string TargetName, UnrealTargetPlatform Platform, UnrealTargetConfiguration Configuration, List<string> UPLScripts, VersionNumber SdkVersion, bool bCreateStubIPA, string BundleID, bool bBuildAsFramework)
+		public bool PrepTargetForDeployment(FileReference? ProjectFile, string TargetName, UnrealTargetPlatform Platform, UnrealTargetConfiguration Configuration, List<string> UPLScripts, bool bCreateStubIPA, string? BundleID, bool bBuildAsFramework)
 		{
 			string SubDir = GetTargetPlatformName();
 
@@ -1064,13 +1061,13 @@ namespace UnrealBuildTool
 
 			if (BuildHostPlatform.Current.Platform == UnrealTargetPlatform.Mac && Environment.GetEnvironmentVariable("UBT_NO_POST_DEPLOY") != "true")
 			{
-				return PrepForUATPackageOrDeploy(Configuration, ProjectFile, GameName, ProjectDirectory, BuildPath + "/" + DecoratedGameName, "../../Engine", bForDistribution, "", false, bCreateStubIPA, UPLScripts, SdkVersion, BundleID, bBuildAsFramework);
+				return PrepForUATPackageOrDeploy(Configuration, ProjectFile, GameName, ProjectDirectory, BuildPath + "/" + DecoratedGameName, "../../Engine", bForDistribution, "", false, bCreateStubIPA, UPLScripts, BundleID, bBuildAsFramework);
 			}
 			else
 			{
 				// @todo tvos merge: This used to copy the bundle back - where did that code go? It needs to be fixed up for TVOS directories
 				bool bSupportPortrait, bSupportLandscape;
-				GeneratePList(ProjectFile, Configuration, ProjectDirectory, bIsUnrealGame, GameName, false, (ProjectFile == null) ? "" : Path.GetFileNameWithoutExtension(ProjectFile.FullName), "../../Engine", "", UPLScripts, SdkVersion, BundleID, bBuildAsFramework, out bSupportPortrait, out bSupportLandscape);
+				GeneratePList(ProjectFile, Configuration, ProjectDirectory, bIsUnrealGame, GameName, false, (ProjectFile == null) ? "" : Path.GetFileNameWithoutExtension(ProjectFile.FullName), "../../Engine", "", UPLScripts, BundleID, bBuildAsFramework, out bSupportPortrait, out bSupportLandscape);
 			}
 			return true;
 		}
@@ -1133,13 +1130,13 @@ namespace UnrealBuildTool
 			}
 		}
 
-		protected void CopyFolder(string SourceDirectory, string DestinationDirectory, bool bOverwrite = false, FilenameFilter Filter = null)
+		protected void CopyFolder(string SourceDirectory, string DestinationDirectory, bool bOverwrite = false, FilenameFilter? Filter = null)
 		{
 			Directory.CreateDirectory(DestinationDirectory);
 			RecursiveFolderCopy(new DirectoryInfo(SourceDirectory), new DirectoryInfo(DestinationDirectory), bOverwrite, Filter);
 		}
 
-		static private void RecursiveFolderCopy(DirectoryInfo SourceFolderInfo, DirectoryInfo DestFolderInfo, bool bOverwrite = false, FilenameFilter Filter = null)
+		static private void RecursiveFolderCopy(DirectoryInfo SourceFolderInfo, DirectoryInfo DestFolderInfo, bool bOverwrite = false, FilenameFilter? Filter = null)
 		{
 			foreach(FileInfo SourceFileInfo in SourceFolderInfo.GetFiles())
 			{
