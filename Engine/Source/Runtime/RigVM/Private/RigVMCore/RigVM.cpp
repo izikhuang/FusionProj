@@ -661,7 +661,7 @@ void URigVM::CopyFrom(URigVM* InVM, bool bDeferCopy, bool bReferenceLiteralMemor
 			else if(TargetMemory->GetClass() != SourceMemory->GetClass())
 			{
 				TargetMemory->Rename(nullptr, GetTransientPackage(), REN_ForceNoResetLoaders | REN_DoNotDirty | REN_DontCreateRedirectors | REN_NonTransactional);
-				TargetMemory->MarkPendingKill();
+				TargetMemory->MarkAsGarbage();
 				TargetMemory = NewObject<URigVMMemoryStorage>(Outer, SourceMemory->GetClass());
 			}
 
@@ -680,7 +680,7 @@ void URigVM::CopyFrom(URigVM* InVM, bool bDeferCopy, bool bReferenceLiteralMemor
 		else if(TargetMemory != nullptr)
 		{
 			TargetMemory->Rename(nullptr, GetTransientPackage(), REN_ForceNoResetLoaders | REN_DoNotDirty | REN_DontCreateRedirectors | REN_NonTransactional);
-			TargetMemory->MarkPendingKill();
+			TargetMemory->MarkAsGarbage();
 			TargetMemory = nullptr;
 		}
 	};
@@ -885,14 +885,14 @@ void URigVM::ClearMemory()
 	if(WorkMemoryStorageObject)
 	{
 		WorkMemoryStorageObject->Rename(nullptr, GetTransientPackage(), REN_ForceNoResetLoaders | REN_DoNotDirty | REN_DontCreateRedirectors | REN_NonTransactional);
-		WorkMemoryStorageObject->MarkPendingKill();
+		WorkMemoryStorageObject->MarkAsGarbage();
 		WorkMemoryStorageObject = nullptr;
 	}
 
 	if(DebugMemoryStorageObject)
 	{
 		DebugMemoryStorageObject->Rename(nullptr, GetTransientPackage(), REN_ForceNoResetLoaders | REN_DoNotDirty | REN_DontCreateRedirectors | REN_NonTransactional);
-		DebugMemoryStorageObject->MarkPendingKill();
+		DebugMemoryStorageObject->MarkAsGarbage();
 		DebugMemoryStorageObject = nullptr;
 	}
 

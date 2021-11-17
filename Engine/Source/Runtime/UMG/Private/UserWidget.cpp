@@ -1500,7 +1500,7 @@ void UUserWidget::StopListeningForAllInputActions()
 		UnregisterInputComponent();
 
 		InputComponent->ClearActionBindings();
-		InputComponent->MarkPendingKill();
+		InputComponent->MarkAsGarbage();
 		InputComponent = nullptr;
 	}
 }
