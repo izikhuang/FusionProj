@@ -211,8 +211,6 @@ public class UnrealEd : ModuleRules
 				"AnimationBlueprintLibrary",
 				"MaterialBaking",
 				"CookOnTheFly",
-				"RemoteExecution",
-				"HordeExecutor",
 				"Zen",
 			}
 		);
