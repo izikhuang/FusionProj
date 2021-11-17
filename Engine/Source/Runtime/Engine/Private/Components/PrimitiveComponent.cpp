@@ -2732,7 +2732,10 @@ bool UPrimitiveComponent::ComponentOverlapComponentImpl(class UPrimitiveComponen
 
 	if(FBodyInstance* BI = PrimComp->GetBodyInstance())
 	{
-		return BI->OverlapTestForBody(Pos, Quat, GetBodyInstance());
+		if (FBodyInstance* ThisBodyInstance = GetBodyInstance())
+		{
+			return BI->OverlapTestForBody(Pos, Quat, ThisBodyInstance);
+		}
 	}
 
 	return false;
