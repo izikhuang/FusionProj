@@ -272,7 +272,7 @@ namespace HordeServer.Notifications.Impl
 
 		async Task SetMessageTimestampAsync(ObjectId MessageId, string Channel, string Ts)
 		{
-			FilterDefinition<MessageStateDocument> Filter = Builders<MessageStateDocument>.Filter.Eq(x => x.Id, MessageId) & Builders<MessageStateDocument>.Filter.Eq(x => x.Ts, String.Empty);
+			FilterDefinition<MessageStateDocument> Filter = Builders<MessageStateDocument>.Filter.Eq(x => x.Id, MessageId);
 			UpdateDefinition<MessageStateDocument> Update = Builders<MessageStateDocument>.Update.Set(x => x.Channel, Channel).Set(x => x.Ts, Ts);
 			await MessageStates.FindOneAndUpdateAsync(Filter, Update);
 		}
@@ -649,7 +649,7 @@ namespace HordeServer.Notifications.Impl
 							{
 								SampleText.Append("\n\n");
 							}
-							SampleText.Append($"```{Data.Message}```");
+							SampleText.Append(CultureInfo.InvariantCulture, $"```{Data.Message}```");
 						}
 					}
 				}
@@ -889,12 +889,20 @@ namespace HordeServer.Notifications.Impl
 		/// <inheritdoc/>
 		public async Task NotifyConfigUpdateFailureAsync(string ErrorMessage, string FileName, int? Change = null, IUser? Author = null, string? Description = null)
 		{
-			Logger.LogInformation("Sending config update failure notification for {FileName}", FileName);
+			Logger.LogInformation("Sending config update failure notification for {FileName} (change: {Change}, author: {UserId})", FileName, Change ?? -1, Author?.Id ?? UserId.Empty);
 
 			string? SlackUserId = null;
 			if (Author != null)
 			{
 				SlackUserId = await GetSlackUserId(Author);
+				if (SlackUserId == null)
+				{
+					Logger.LogWarning("Unable to identify Slack user id for {UserId}", Author.Id);
+				}
+				else
+				{
+					Logger.LogInformation("Mappsed user {UserId} to Slack user {SlackUserId}", Author.Id, SlackUserId);
+				}
 			}
 
 			if (SlackUserId != null)
@@ -1187,7 +1195,7 @@ namespace HordeServer.Notifications.Impl
 				Message.Attachments.AddRange(Attachments);
 			}
 
-			string RequestDigest = ContentHash.MD5(JsonSerializer.Serialize(Message, new JsonSerializerOptions { IgnoreNullValues = true })).ToString();
+			string RequestDigest = ContentHash.MD5(JsonSerializer.Serialize(Message, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull })).ToString();
 
 			(MessageStateDocument State, bool IsNew) = await AddOrUpdateMessageStateAsync(Recipient, EventId, UserId, RequestDigest);
 			if (IsNew)
@@ -1218,7 +1226,7 @@ namespace HordeServer.Notifications.Impl
 			{
 				using (HttpRequestMessage SendMessageRequest = new HttpRequestMessage(HttpMethod.Post, RequestUrl))
 				{
-					string RequestJson = JsonSerializer.Serialize(Request, new JsonSerializerOptions { IgnoreNullValues = true });
+					string RequestJson = JsonSerializer.Serialize(Request, new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull });
 					using (StringContent MessageContent = new StringContent(RequestJson, Encoding.UTF8, "application/json"))
 					{
 						SendMessageRequest.Content = MessageContent;

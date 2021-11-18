@@ -17,6 +17,7 @@ using OpenTracing;
 using OpenTracing.Util;
 using UnrealBuildBase;
 using UnrealBuildTool;
+using System.Threading.Tasks;
 
 namespace AutomationTool
 {
@@ -112,35 +113,44 @@ namespace AutomationTool
 		}
 
 		/// <inheritdoc/>
-		public bool Exists(string Path)
+		public Task<bool> ExistsAsync(string Path)
 		{
 			try
 			{
-				return FileReference.Exists(FileReference.Combine(Unreal.RootDirectory, Path));
+				return Task.FromResult(FileReference.Exists(FileReference.Combine(Unreal.RootDirectory, Path)) || DirectoryReference.Exists(DirectoryReference.Combine(Unreal.RootDirectory, Path)));
 			}
 			catch
 			{
-				return false;
+				return Task.FromResult(false);
 			}
 		}
 
 		/// <inheritdoc/>
-		public bool TryRead(string Path, out byte[] Data)
+		public async Task<byte[]> ReadAsync(string Path)
 		{
 			try
 			{
 				FileReference File = FileReference.Combine(Unreal.RootDirectory, Path);
 				if (FileReference.Exists(File))
 				{
-					Data = FileReference.ReadAllBytes(File);
-					return true;
+					return await FileReference.ReadAllBytesAsync(File);
 				}
 			}
 			catch
 			{
 			}
-			Data = null;
-			return false;
+			return null;
+		}
+
+		/// <inheritdoc/>
+		public Task<string[]> FindAsync(string Pattern)
+		{
+			FileFilter Filter = new FileFilter();
+			Filter.AddRule(Pattern, FileFilterType.Include);
+
+			List<string> Files = Filter.ApplyToDirectory(Unreal.RootDirectory, true).ConvertAll(x => x.MakeRelativeTo(Unreal.RootDirectory).Replace('\\', '/'));
+			Files.Sort(StringComparer.OrdinalIgnoreCase);
+			return Task.FromResult(Files.ToArray());
 		}
 	}
 
@@ -405,8 +415,8 @@ namespace AutomationTool
 			ScriptFileName = FullScriptFile.MakeRelativeTo(Unreal.RootDirectory).Replace('\\', '/');
 
 			// Read the script from disk
-			BgScript Graph;
-			if(!BgScriptReader.TryRead(Context, ScriptFileName, Arguments, DefaultProperties, PreprocessedFileName != null, Schema, Logger, out Graph, SingleNodeName))
+			BgGraph Graph = BgScriptReader.ReadAsync(Context, ScriptFileName, Arguments, DefaultProperties, PreprocessedFileName != null, Schema, Logger, SingleNodeName).Result;
+			if(Graph == null)
 			{
 				return ExitCode.Error_Unknown;
 			}
@@ -592,19 +602,19 @@ namespace AutomationTool
 			// Print out all the diagnostic messages which still apply, unless we're running a step as part of a build system or just listing the contents of the file. 
 			if(SingleNode == null && (!bListOnly || bShowDiagnostics))
 			{
-				foreach(BgScriptDiagnostic Diagnostic in Graph.Diagnostics)
+				foreach(BgGraphDiagnostic Diagnostic in Graph.Diagnostics)
 				{
 					if(Diagnostic.EventType == LogEventType.Console)
 					{
-						CommandUtils.LogInformation(Diagnostic.Message);
+						CommandUtils.LogWarning("{0}({1}): {2}", Diagnostic.Location.File, Diagnostic.Location.LineNumber, Diagnostic.Message);
 					}
 					else if(Diagnostic.EventType == LogEventType.Warning)
 					{
-						CommandUtils.LogWarning(Diagnostic.Message);
+						CommandUtils.LogWarning("{0}({1}): warning: {2}", Diagnostic.Location.File, Diagnostic.Location.LineNumber, Diagnostic.Message);
 					}
 					else
 					{
-						CommandUtils.LogError(Diagnostic.Message);
+						CommandUtils.LogError("{0}({1}): error: {2}", Diagnostic.Location.File, Diagnostic.Location.LineNumber, Diagnostic.Message);
 					}
 				}
 				if(Graph.Diagnostics.Any(x => x.EventType == LogEventType.Error))
@@ -660,7 +670,7 @@ namespace AutomationTool
 			return ExitCode.Success;
 		}
 
-		bool CreateTaskInstances(BgScript Graph, Dictionary<string, ScriptTaskBinding> NameToTask, Dictionary<BgTask, CustomTask> TaskInfoToTask)
+		bool CreateTaskInstances(BgGraph Graph, Dictionary<string, ScriptTaskBinding> NameToTask, Dictionary<BgTask, CustomTask> TaskInfoToTask)
 		{
 			bool bResult = true;
 			foreach (BgAgent Agent in Graph.Agents)
@@ -673,10 +683,10 @@ namespace AutomationTool
 			return bResult;
 		}
 
-		bool CreateTaskInstances(BgScript Graph, BgNode Node, Dictionary<string, ScriptTaskBinding> NameToTask, Dictionary<BgTask, CustomTask> TaskInfoToTask)
+		bool CreateTaskInstances(BgGraph Graph, BgNode Node, Dictionary<string, ScriptTaskBinding> NameToTask, Dictionary<BgTask, CustomTask> TaskInfoToTask)
 		{
 			bool bResult = true;
-			foreach (BgTask TaskInfo in Node.TaskInfos)
+			foreach (BgTask TaskInfo in Node.Tasks)
 			{
 				CustomTask Task = BindTask(Node, TaskInfo, NameToTask, Graph.TagNameToNodeOutput);
 				if (Task == null)
@@ -761,7 +771,7 @@ namespace AutomationTool
 			CustomTask NewTask = (CustomTask)Activator.CreateInstance(Task.TaskClass, ParametersObject);
 
 			// Set up the source location for diagnostics
-			NewTask.SourceLocation = TaskInfo.SourceLocation;
+			NewTask.SourceLocation = TaskInfo.Location;
 
 			// Make sure all the read tags are local or listed as a dependency
 			foreach (string ReadTagName in NewTask.FindConsumedTagNames())
@@ -806,7 +816,7 @@ namespace AutomationTool
 			}
 			else if (ValueType == typeof(Boolean))
 			{
-				return BgCondition.Evaluate(ValueText, Context);
+				return BgCondition.EvaluateAsync(ValueText, Context).Result;
 			}
 			else if (ValueType == typeof(FileReference))
 			{
@@ -830,7 +840,7 @@ namespace AutomationTool
 
 		void OutputBindingError(BgTask Task, string Format, params object[] Args)
 		{
-			Logger.LogScriptError(Context.GetNativePath(Task.SourceLocation.Item1), Task.SourceLocation.Item2, Format, Args);
+			Logger.LogScriptError(Task.Location, Format, Args);
 		}
 
 		/// <summary>
@@ -974,7 +984,7 @@ namespace AutomationTool
 		/// </summary>
 		/// <param name="Graph">The graph instance</param>
 		/// <param name="Storage">The temp storage backend which stores the shared state</param>
-		HashSet<BgNode> FindCompletedNodes(BgScript Graph, TempStorage Storage)
+		HashSet<BgNode> FindCompletedNodes(BgGraph Graph, TempStorage Storage)
 		{
 			HashSet<BgNode> CompletedNodes = new HashSet<BgNode>();
 			foreach(BgNode Node in Graph.Agents.SelectMany(x => x.Nodes))
@@ -994,7 +1004,7 @@ namespace AutomationTool
 		/// <param name="Graph">The graph instance</param>
 		/// <param name="Storage">The temp storage backend which stores the shared state</param>
 		/// <returns>True if everything built successfully</returns>
-		bool BuildAllNodes(JobContext Job, BgScript Graph, Dictionary<BgTask, CustomTask> TaskInfoToTask, TempStorage Storage)
+		bool BuildAllNodes(JobContext Job, BgGraph Graph, Dictionary<BgTask, CustomTask> TaskInfoToTask, TempStorage Storage)
 		{
 			// Build a flat list of nodes to execute, in order
 			BgNode[] NodesToExecute = Graph.Agents.SelectMany(x => x.Nodes).ToArray();
@@ -1039,7 +1049,7 @@ namespace AutomationTool
 		/// <param name="Storage">The temp storage backend which stores the shared state</param>
 		/// <param name="bWithBanner">Whether to write a banner before and after this node's log output</param>
 		/// <returns>True if the node built successfully, false otherwise.</returns>
-		bool BuildNode(JobContext Job, BgScript Graph, BgNode Node, Dictionary<BgTask, CustomTask> TaskInfoToTask, TempStorage Storage, bool bWithBanner)
+		bool BuildNode(JobContext Job, BgGraph Graph, BgNode Node, Dictionary<BgTask, CustomTask> TaskInfoToTask, TempStorage Storage, bool bWithBanner)
 		{
 			DirectoryReference RootDir = new DirectoryReference(CommandUtils.CmdEnv.LocalRoot);
 
@@ -1229,7 +1239,7 @@ namespace AutomationTool
 		/// <returns>Whether the task succeeded or not. Exiting with an exception will be caught and treated as a failure.</returns>
 		bool ExecuteTasks(BgNode Node, JobContext Job, Dictionary<BgTask, CustomTask> TaskInfoToTask, Dictionary<string, HashSet<FileReference>> TagNameToFileSet)
 		{
-			List<CustomTask> Tasks = Node.TaskInfos.ConvertAll(x => TaskInfoToTask[x]);
+			List<CustomTask> Tasks = Node.Tasks.ConvertAll(x => TaskInfoToTask[x]);
 
 			// Run each of the tasks in order
 			HashSet<FileReference> BuildProducts = TagNameToFileSet[Node.DefaultOutput.TagName];
@@ -1251,7 +1261,7 @@ namespace AutomationTool
 							ExceptionUtils.AddContext(Ex, "while executing task {0}", Tasks[Idx].GetTraceString());
 							if (Tasks[Idx].SourceLocation != null)
 							{
-								ExceptionUtils.AddContext(Ex, "at {0}({1})", Tasks[Idx].SourceLocation.Item1, Tasks[Idx].SourceLocation.Item2);
+								ExceptionUtils.AddContext(Ex, "at {0}({1})", Tasks[Idx].SourceLocation.File, Tasks[Idx].SourceLocation.LineNumber);
 							}
 							throw;
 						}
@@ -1279,7 +1289,7 @@ namespace AutomationTool
 							}
 							if (Tasks[FirstIdx].SourceLocation != null)
 							{
-								ExceptionUtils.AddContext(Ex, "at {0}({1})", Tasks[FirstIdx].SourceLocation.Item1, Tasks[FirstIdx].SourceLocation.Item2);
+								ExceptionUtils.AddContext(Ex, "at {0}({1})", Tasks[FirstIdx].SourceLocation.File, Tasks[FirstIdx].SourceLocation.LineNumber);
 							}
 							throw;
 						}

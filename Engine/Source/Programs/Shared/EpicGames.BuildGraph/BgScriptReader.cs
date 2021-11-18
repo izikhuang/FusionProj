@@ -3,11 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Schema;
 using EpicGames.Core;
@@ -15,6 +17,40 @@ using Microsoft.Extensions.Logging;
 
 namespace EpicGames.BuildGraph
 {
+	/// <summary>
+	/// Location of an element within a file
+	/// </summary>
+	public class BgScriptLocation
+	{
+		/// <summary>
+		/// The file containing this element
+		/// </summary>
+		public string File { get; }
+
+		/// <summary>
+		/// Native file object
+		/// </summary>
+		public object NativeFile { get; }
+
+		/// <summary>
+		/// The line number containing this element
+		/// </summary>
+		public int LineNumber { get; }
+
+		/// <summary>
+		/// Constructor
+		/// </summary>
+		/// <param name="File"></param>
+		/// <param name="NativeFile"></param>
+		/// <param name="LineNumber"></param>
+		public BgScriptLocation(string File, object NativeFile, int LineNumber)
+		{
+			this.File = File;
+			this.NativeFile = NativeFile;
+			this.LineNumber = LineNumber;
+		}
+	}
+
 	/// <summary>
 	/// Implementation of XmlDocument which preserves line numbers for its elements
 	/// </summary>
@@ -33,7 +69,7 @@ namespace EpicGames.BuildGraph
 		/// <summary>
 		/// Interface to the LineInfo on the active XmlReader
 		/// </summary>
-		IXmlLineInfo LineInfo;
+		IXmlLineInfo? LineInfo;
 
 		/// <summary>
 		/// Set to true if the reader encounters an error
@@ -60,7 +96,8 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		public override XmlElement CreateElement(string Prefix, string LocalName, string NamespaceUri)
 		{
-			return new BgScriptElement(File, NativeFile, LineInfo.LineNumber, Prefix, LocalName, NamespaceUri, this);
+			BgScriptLocation Location = new BgScriptLocation(File, NativeFile, LineInfo!.LineNumber);
+			return new BgScriptElement(Location, Prefix, LocalName, NamespaceUri, this);
 		}
 
 		/// <summary>
@@ -73,14 +110,17 @@ namespace EpicGames.BuildGraph
 		/// <param name="Logger">Logger for output messages</param>
 		/// <param name="OutDocument">If successful, the document that was read</param>
 		/// <returns>True if the document could be read, false otherwise</returns>
-		public static bool TryRead(string File, object NativeFile, byte[] Data, BgScriptSchema Schema, ILogger Logger, out BgScriptDocument OutDocument)
+		public static bool TryRead(string File, object NativeFile, byte[] Data, BgScriptSchema Schema, ILogger Logger, [NotNullWhen(true)] out BgScriptDocument? OutDocument)
 		{
 			BgScriptDocument Document = new BgScriptDocument(File, NativeFile, Logger);
 
 			XmlReaderSettings Settings = new XmlReaderSettings();
-			Settings.Schemas.Add(Schema.CompiledSchema);
-			Settings.ValidationType = ValidationType.Schema;
-			Settings.ValidationEventHandler += Document.ValidationEvent;
+			if (Schema != null)
+			{
+				Settings.Schemas.Add(Schema.CompiledSchema);
+				Settings.ValidationType = ValidationType.Schema;
+				Settings.ValidationEventHandler += Document.ValidationEvent;
+			}
 
 			using (MemoryStream Stream = new MemoryStream(Data))
 			using (XmlReader Reader = XmlReader.Create(Stream, Settings))
@@ -95,7 +135,8 @@ namespace EpicGames.BuildGraph
 				{
 					if (!Document.bHasErrors)
 					{
-						Logger.LogScriptError(NativeFile, Ex.LineNumber, "{Message}", Ex.Message);
+						BgScriptLocation Location = new BgScriptLocation(File, NativeFile, Ex.LineNumber);
+						Logger.LogScriptError(Location, "{Message}", Ex.Message);
 						Document.bHasErrors = true;
 					}
 				}
@@ -110,13 +151,15 @@ namespace EpicGames.BuildGraph
 				// Check that the root element is valid. If not, we didn't actually validate against the schema.
 				if (Document.DocumentElement.Name != BgScriptSchema.RootElementName)
 				{
-					Logger.LogScriptError(NativeFile, 1, "Script does not have a root element called '{ElementName}'", BgScriptSchema.RootElementName);
+					BgScriptLocation Location = new BgScriptLocation(File, NativeFile, 1);
+					Logger.LogScriptError(Location, "Script does not have a root element called '{ElementName}'", BgScriptSchema.RootElementName);
 					OutDocument = null;
 					return false;
 				}
 				if (Document.DocumentElement.NamespaceURI != BgScriptSchema.NamespaceURI)
 				{
-					Logger.LogScriptError(NativeFile, 1, "Script root element is not in the '{Namespace}' namespace (add the xmlns=\"{NewNamespace}\" attribute)", BgScriptSchema.NamespaceURI, BgScriptSchema.NamespaceURI);
+					BgScriptLocation Location = new BgScriptLocation(File, NativeFile, 1);
+					Logger.LogScriptError(Location, "Script root element is not in the '{Namespace}' namespace (add the xmlns=\"{NewNamespace}\" attribute)", BgScriptSchema.NamespaceURI, BgScriptSchema.NamespaceURI);
 					OutDocument = null;
 					return false;
 				}
@@ -133,13 +176,14 @@ namespace EpicGames.BuildGraph
 		/// <param name="Args">Standard argument for ValidationEventHandler</param>
 		void ValidationEvent(object Sender, ValidationEventArgs Args)
 		{
+			BgScriptLocation Location = new BgScriptLocation(File, NativeFile, Args.Exception.LineNumber);
 			if (Args.Severity == XmlSeverityType.Warning)
 			{
-				Logger.LogScriptWarning(NativeFile, Args.Exception.LineNumber, "{Message}", Args.Message);
+				Logger.LogScriptWarning(Location, "{Message}", Args.Message);
 			}
 			else
 			{
-				Logger.LogScriptError(NativeFile, Args.Exception.LineNumber, "{Message}", Args.Message);
+				Logger.LogScriptError(Location, "{Message}", Args.Message);
 				bHasErrors = true;
 			}
 		}
@@ -151,29 +195,17 @@ namespace EpicGames.BuildGraph
 	class BgScriptElement : XmlElement
 	{
 		/// <summary>
-		/// The file containing this element
+		/// Location of the element within the file
 		/// </summary>
-		public string File { get; }
-
-		/// <summary>
-		/// Native file object
-		/// </summary>
-		public object NativeFile { get; }
-
-		/// <summary>
-		/// The line number containing this element
-		/// </summary>
-		public int LineNumber { get; }
+		public BgScriptLocation Location { get; }
 
 		/// <summary>
 		/// Constructor
 		/// </summary>
-		public BgScriptElement(string File, object NativeFile, int LineNumber, string Prefix, string LocalName, string NamespaceUri, BgScriptDocument Document)
+		public BgScriptElement(BgScriptLocation Location, string Prefix, string LocalName, string NamespaceUri, BgScriptDocument Document)
 			: base(Prefix, LocalName, NamespaceUri, Document)
 		{
-			this.File = File;
-			this.NativeFile = NativeFile;
-			this.LineNumber = LineNumber;
+			this.Location = Location;
 		}
 	}
 
@@ -190,7 +222,7 @@ namespace EpicGames.BuildGraph
 		/// <summary>
 		/// Element where the function was declared
 		/// </summary>
-		public readonly BgScriptElement Element;
+		public List<BgScriptElement> Elements = new List<BgScriptElement>();
 
 		/// <summary>
 		/// The total number of arguments
@@ -217,7 +249,7 @@ namespace EpicGames.BuildGraph
 		public BgScriptMacro(string Name, BgScriptElement Element, Dictionary<string, int> ArgumentNameToIndex, int NumRequiredArguments)
 		{
 			this.Name = Name;
-			this.Element = Element;
+			this.Elements.Add(Element);
 			this.NumArguments = ArgumentNameToIndex.Count;
 			this.NumRequiredArguments = NumRequiredArguments;
 			this.ArgumentNameToIndex = ArgumentNameToIndex;
@@ -231,15 +263,21 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="File">Path to a file</param>
 		/// <returns>True if the file exists</returns>
-		bool Exists(string Path);
+		Task<bool> ExistsAsync(string Path);
 
 		/// <summary>
 		/// Tries to read a file from the given path
 		/// </summary>
 		/// <param name="Path">Path of the file to read</param>
-		/// <param name="Data">On success, contains the read data</param>
 		/// <returns></returns>
-		bool TryRead(string Path, out byte[] Data);
+		Task<byte[]?> ReadAsync(string Path);
+
+		/// <summary>
+		/// Finds files matching the given pattern
+		/// </summary>
+		/// <param name="Pattern"></param>
+		/// <returns></returns>
+		Task<string[]> FindAsync(string Pattern);
 
 		/// <summary>
 		/// Converts a path to its native form, for display to the user
@@ -254,20 +292,20 @@ namespace EpicGames.BuildGraph
 	/// </summary>
 	public static class BgScriptExtensions
 	{
-		public static void LogScriptError(this ILogger Logger, object File, int LineNumber, string Format, params object[] Args)
+		public static void LogScriptError(this ILogger Logger, BgScriptLocation Location, string Format, params object[] Args)
 		{
 			object[] AllArgs = new object[Args.Length + 2];
-			AllArgs[0] = File;
-			AllArgs[1] = LineNumber;
+			AllArgs[0] = Location.NativeFile;
+			AllArgs[1] = Location.LineNumber;
 			Args.CopyTo(AllArgs, 2);
 			Logger.LogError($"{{Script}}({{Line}}): error: {Format}", AllArgs);
 		}
 
-		public static void LogScriptWarning(this ILogger Logger, object File, int LineNumber, string Format, params object[] Args)
+		public static void LogScriptWarning(this ILogger Logger, BgScriptLocation Location, string Format, params object[] Args)
 		{
 			object[] AllArgs = new object[Args.Length + 2];
-			AllArgs[0] = File;
-			AllArgs[1] = LineNumber;
+			AllArgs[0] = Location.NativeFile;
+			AllArgs[1] = Location.LineNumber;
 			Args.CopyTo(AllArgs, 2);
 			Logger.LogWarning($"{{Script}}({{Line}}): warning: {Format}", AllArgs);
 		}
@@ -286,7 +324,7 @@ namespace EpicGames.BuildGraph
 		/// <summary>
 		/// The current graph
 		/// </summary>
-		BgScript Graph = new BgScript();
+		BgGraph Graph = new BgGraph();
 
 		/// <summary>
 		/// List of property name to value lookups. Modifications to properties are scoped to nodes and agents. EnterScope() pushes an empty dictionary onto the end of this list, and LeaveScope() removes one. 
@@ -328,7 +366,7 @@ namespace EpicGames.BuildGraph
 		/// <summary>
 		/// The name of the node if only a single node is going to be built, otherwise null.
 		/// </summary>
-		string SingleNodeName;
+		string? SingleNodeName;
 
 		/// <summary>
 		/// Private constructor. Use ScriptReader.TryRead() to read a script file.
@@ -363,17 +401,15 @@ namespace EpicGames.BuildGraph
 		/// <param name="bPreprocessOnly">Preprocess the file, but do not expand any values that are not portable (eg. paths on the local machine)</param>
 		/// <param name="Schema">Schema for the script</param>
 		/// <param name="Logger">Logger for output messages</param>
-		/// <param name="Graph">If successful, the graph constructed from the given script</param>
 		/// <param name="SingleNodeName">If a single node will be processed, the name of that node.</param>
 		/// <returns>True if the graph was read, false if there were errors</returns>
-		public static bool TryRead(IBgScriptReaderContext Context, string File, Dictionary<string, string> Arguments, Dictionary<string, string> DefaultProperties, bool bPreprocessOnly, BgScriptSchema Schema, ILogger Logger, out BgScript Graph, string SingleNodeName = null)
+		public static async Task<BgGraph?> ReadAsync(IBgScriptReaderContext Context, string File, Dictionary<string, string> Arguments, Dictionary<string, string> DefaultProperties, bool bPreprocessOnly, BgScriptSchema Schema, ILogger Logger, string? SingleNodeName = null)
 		{
 			// Read the file and build the graph
 			BgScriptReader Reader = new BgScriptReader(Context, DefaultProperties, bPreprocessOnly, Schema, Logger);
-			if (!Reader.TryRead(File, Arguments, Logger, SingleNodeName) || Reader.NumErrors > 0)
+			if (!await Reader.TryReadAsync(File, Arguments, Logger, SingleNodeName) || Reader.NumErrors > 0)
 			{
-				Graph = null;
-				return false;
+				return null;
 			}
 
 			// Make sure all the arguments were valid
@@ -389,8 +425,7 @@ namespace EpicGames.BuildGraph
 			}
 
 			// Return the constructed graph
-			Graph = Reader.Graph;
-			return true;
+			return Reader.Graph;
 		}
 
 		/// <summary>
@@ -400,11 +435,11 @@ namespace EpicGames.BuildGraph
 		/// <param name="Arguments">Arguments passed in to the graph on the command line</param>
 		/// <param name="Logger">Logger for output messages</param>
 		/// <param name="SingleNodeName">The name of the node if only a single node is going to be built, otherwise null.</param>
-		bool TryRead(string File, Dictionary<string, string> Arguments, ILogger Logger, string SingleNodeName = null)
+		async Task<bool> TryReadAsync(string File, Dictionary<string, string> Arguments, ILogger Logger, string? SingleNodeName = null)
 		{
 			// Get the data for this file
-			byte[] Data;
-			if (!Context.TryRead(File, out Data))
+			byte[]? Data = await Context.ReadAsync(File);
+			if (Data == null)
 			{
 				Logger.LogError("Unable to open file {File}", File);
 				NumErrors++;
@@ -412,7 +447,7 @@ namespace EpicGames.BuildGraph
 			}
 
 			// Read the document and validate it against the schema
-			BgScriptDocument Document;
+			BgScriptDocument? Document;
 			if (!BgScriptDocument.TryRead(File, Context.GetNativePath(File), Data, Schema, Logger, out Document))
 			{
 				NumErrors++;
@@ -421,7 +456,7 @@ namespace EpicGames.BuildGraph
 
 			// Read the root BuildGraph element
 			this.SingleNodeName = SingleNodeName;
-			ReadGraphBody(Document.DocumentElement, Arguments);
+			await ReadGraphBodyAsync(Document.DocumentElement, Arguments);
 			return true;
 		}
 
@@ -430,68 +465,71 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">The parent element to read from</param>
 		/// <param name="Arguments">Arguments passed in to the graph on the command line</param>
-		void ReadGraphBody(XmlElement Element, Dictionary<string, string> Arguments)
+		async Task ReadGraphBodyAsync(XmlElement Element, Dictionary<string, string> Arguments)
 		{
 			foreach (BgScriptElement ChildElement in Element.ChildNodes.OfType<BgScriptElement>())
 			{
 				switch (ChildElement.Name)
 				{
 					case "Include":
-						ReadInclude(ChildElement, Arguments);
+						await ReadIncludeAsync(ChildElement, Arguments);
 						break;
 					case "Option":
-						ReadOption(ChildElement, Arguments);
+						await ReadOptionAsync(ChildElement, Arguments);
 						break;
 					case "Property":
-						ReadProperty(ChildElement);
+						await ReadPropertyAsync(ChildElement);
 						break;
 					case "Regex":
-						ReadRegex(ChildElement);
+						await ReadRegexAsync(ChildElement);
 						break;
 					case "EnvVar":
-						ReadEnvVar(ChildElement);
+						await ReadEnvVarAsync(ChildElement);
 						break;
 					case "Macro":
 						ReadMacro(ChildElement);
 						break;
+					case "Extend":
+						await ReadExtendAsync(ChildElement);
+						break;
 					case "Agent":
-						ReadAgent(ChildElement);
+						await ReadAgentAsync(ChildElement);
 						break;
 					case "Aggregate":
-						ReadAggregate(ChildElement);
+						await ReadAggregateAsync(ChildElement);
 						break;
 					case "Report":
-						ReadReport(ChildElement);
+						await ReadReportAsync(ChildElement);
 						break;
 					case "Badge":
-						ReadBadge(ChildElement);
+						await ReadBadgeAsync(ChildElement);
 						break;
 					case "Label":
-						ReadLabel(ChildElement);
+						await ReadLabelAsync(ChildElement);
 						break;
 					case "Notify":
-						ReadNotifier(ChildElement);
+						await ReadNotifierAsync(ChildElement);
 						break;
 					case "Trace":
-						ReadDiagnostic(ChildElement, LogEventType.Console, null, null);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Console, null, null);
 						break;
 					case "Warning":
-						ReadDiagnostic(ChildElement, LogEventType.Warning, null, null);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Warning, null, null);
 						break;
 					case "Error":
-						ReadDiagnostic(ChildElement, LogEventType.Error, null, null);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Error, null, null);
 						break;
 					case "Do":
-						ReadBlock(ChildElement, x => ReadGraphBody(x, Arguments));
+						await ReadBlockAsync(ChildElement, x => ReadGraphBodyAsync(x, Arguments));
 						break;
 					case "Switch":
-						ReadSwitch(ChildElement, x => ReadGraphBody(x, Arguments));
+						await ReadSwitchAsync(ChildElement, x => ReadGraphBodyAsync(x, Arguments));
 						break;
 					case "ForEach":
-						ReadForEach(ChildElement, x => ReadGraphBody(x, Arguments));
+						await ReadForEachAsync(ChildElement, x => ReadGraphBodyAsync(x, Arguments));
 						break;
 					case "Expand":
-						ReadExpand(ChildElement, x => ReadGraphBody(x, Arguments));
+						await ReadExpandAsync(ChildElement, x => ReadGraphBodyAsync(x, Arguments));
 						break;
 					default:
 						LogError(ChildElement, "Invalid element '{0}'", ChildElement.Name);
@@ -573,7 +611,7 @@ namespace EpicGames.BuildGraph
 		/// <param name="Name">Name of the property</param>
 		/// <param name="Value">On success, contains the value of the property. Set to null otherwise.</param>
 		/// <returns>True if the property was found, false otherwise</returns>
-		bool TryGetPropertyValue(string Name, out string Value)
+		bool TryGetPropertyValue(string Name, out string? Value)
 		{
 			int ValueLength = 0;
 			if (Name.Contains(":"))
@@ -586,7 +624,7 @@ namespace EpicGames.BuildGraph
 			// Check each scope for the property
 			for (int ScopeIdx = ScopedProperties.Count - 1; ScopeIdx >= 0; ScopeIdx--)
 			{
-				string ScopeValue;
+				string? ScopeValue;
 				if (ScopedProperties[ScopeIdx].TryGetValue(Name, out ScopeValue))
 				{
 					Value = ScopeValue;
@@ -648,13 +686,28 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
 		/// <param name="Arguments">Arguments passed in to the graph on the command line</param>
-		void ReadInclude(BgScriptElement Element, Dictionary<string, string> Arguments)
+		async Task ReadIncludeAsync(BgScriptElement Element, Dictionary<string, string> Arguments)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
+				HashSet<string> Files = new HashSet<string>();
 				foreach (string Script in ReadListAttribute(Element, "Script"))
 				{
-					TryRead(CombinePaths(Element.File, Script), Arguments, Logger);
+					string IncludePath = CombinePaths(Element.Location.File, Script);
+					if (Regex.IsMatch(IncludePath, @"\*|\?|\.\.\."))
+					{
+						Files.UnionWith(await Context.FindAsync(IncludePath));
+					}
+					else
+					{
+						Files.Add(IncludePath);
+					}
+				}
+
+				foreach(string File in Files.OrderBy(x => x, StringComparer.OrdinalIgnoreCase))
+				{
+					Logger.LogDebug("Including file {File}", File);
+					await TryReadAsync(File, Arguments, Logger);
 				}
 			}
 		}
@@ -664,9 +717,9 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
 		/// <param name="Arguments">Arguments passed in to the graph on the command line</param>
-		void ReadOption(BgScriptElement Element, IDictionary<string, string> Arguments)
+		async Task ReadOptionAsync(BgScriptElement Element, IDictionary<string, string> Arguments)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				string Name = ReadAttribute(Element, "Name");
 				if (ValidateName(Element, Name))
@@ -678,8 +731,8 @@ namespace EpicGames.BuildGraph
 					}
 
 					// Check if the property already exists. If it does, we don't need to register it as an option.
-					string ExistingValue;
-					if(TryGetPropertyValue(Name, out ExistingValue))
+					string? ExistingValue;
+					if(TryGetPropertyValue(Name, out ExistingValue) && ExistingValue != null)
 					{
 						// If there's a restriction on this definition, check it matches
 						string Restrict = ReadAttribute(Element, "Restrict");
@@ -697,7 +750,7 @@ namespace EpicGames.BuildGraph
 						Graph.Options.Add(Option);
 
 						// Get the value of this property
-						string Value;
+						string? Value;
 						if(!Arguments.TryGetValue(Name, out Value))
 						{
 							Value = Option.DefaultValue;
@@ -727,9 +780,9 @@ namespace EpicGames.BuildGraph
 		/// Reads a property assignment.
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadProperty(BgScriptElement Element)
+		async Task ReadPropertyAsync(BgScriptElement Element)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				string Name = ReadAttribute(Element, "Name");
 				if (ValidateName(Element, Name))
@@ -762,14 +815,15 @@ namespace EpicGames.BuildGraph
 		/// Reads a Regex assignment.
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadRegex(BgScriptElement Element)
+		async Task ReadRegexAsync(BgScriptElement Element)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				// Get the pattern
 				string RegexString = ReadAttribute(Element, "Pattern");
+
 				// Make sure its a valid regex.
-				Regex RegexValue = ParseRegex(Element, RegexString);
+				Regex? RegexValue = ParseRegex(Element, RegexString);
 				if (RegexValue != null)
 				{
 					// read the names in 
@@ -790,7 +844,7 @@ namespace EpicGames.BuildGraph
 						string Input = ReadAttribute(Element, "Input");
 						Match Match = RegexValue.Match(Input);
 
-						bool Optional = BgCondition.Evaluate(ReadAttribute(Element, "Optional"), Context);
+						bool Optional = await BgCondition.EvaluateAsync(ReadAttribute(Element, "Optional"), Context);
 						if (!Match.Success)
 						{
 							if (!Optional)
@@ -815,9 +869,9 @@ namespace EpicGames.BuildGraph
 		/// Reads a property assignment from an environment variable.
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadEnvVar(BgScriptElement Element)
+		async Task ReadEnvVarAsync(BgScriptElement Element)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				string Name = ReadAttribute(Element, "Name");
 				if (ValidateName(Element, Name))
@@ -834,26 +888,24 @@ namespace EpicGames.BuildGraph
 		/// <param name="Element">Xml element to read the definition from</param>
 		void ReadMacro(BgScriptElement Element)
 		{
-			if(EvaluateCondition(Element))
+			string Name = Element.GetAttribute("Name");
+			if (ValidateName(Element, Name))
 			{
-				string Name = ReadAttribute(Element, "Name");
-				if (ValidateName(Element, Name))
+				BgScriptMacro? OriginalDefinition;
+				if(MacroNameToDefinition.TryGetValue(Name, out OriginalDefinition))
 				{
-					BgScriptMacro OriginalDefinition;
-					if(MacroNameToDefinition.TryGetValue(Name, out OriginalDefinition))
-					{
-						LogError(Element, "Function '{0}' has already been declared (see {1} line {2})", OriginalDefinition.Element.File, OriginalDefinition.Element.LineNumber);
-					}
-					else
-					{
-						Dictionary<string, int> ArgumentNameToIndex = new Dictionary<string, int>();
-						ReadMacroArguments(Element, "Arguments", ArgumentNameToIndex);
+					BgScriptLocation Location = OriginalDefinition.Elements[0].Location;
+					LogError(Element, "Macro '{0}' has already been declared (see {1} line {2})", Name, Location.File, Location.LineNumber);
+				}
+				else
+				{
+					Dictionary<string, int> ArgumentNameToIndex = new Dictionary<string, int>();
+					ReadMacroArguments(Element, "Arguments", ArgumentNameToIndex);
 
-						int NumRequiredArguments = ArgumentNameToIndex.Count;
-						ReadMacroArguments(Element, "OptionalArguments", ArgumentNameToIndex);
+					int NumRequiredArguments = ArgumentNameToIndex.Count;
+					ReadMacroArguments(Element, "OptionalArguments", ArgumentNameToIndex);
 
-						MacroNameToDefinition.Add(Name, new BgScriptMacro(Name, Element, ArgumentNameToIndex, NumRequiredArguments));
-					}
+					MacroNameToDefinition.Add(Name, new BgScriptMacro(Name, Element, ArgumentNameToIndex, NumRequiredArguments));
 				}
 			}
 		}
@@ -884,20 +936,41 @@ namespace EpicGames.BuildGraph
 		}
 
 		/// <summary>
+		/// Reads a macro definition
+		/// </summary>
+		/// <param name="Element">Xml element to read the definition from</param>
+		async Task ReadExtendAsync(BgScriptElement Element)
+		{
+			if (await EvaluateConditionAsync(Element))
+			{
+				string Name = ReadAttribute(Element, "Name");
+
+				BgScriptMacro? OriginalDefinition;
+				if (MacroNameToDefinition.TryGetValue(Name, out OriginalDefinition))
+				{
+					OriginalDefinition.Elements.Add(Element);
+				}
+				else
+				{
+					LogError(Element, "Macro '{0}' has not been declared", Name);
+				}
+			}
+		}
+
+		/// <summary>
 		/// Reads the definition for an agent.
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		/// <param name="Trigger">The controlling trigger for nodes in this agent</param>
-		void ReadAgent(BgScriptElement Element)
+		async Task ReadAgentAsync(BgScriptElement Element)
 		{
-			string Name;
-			if (EvaluateCondition(Element) && TryReadObjectName(Element, out Name))
+			string? Name;
+			if (await EvaluateConditionAsync(Element) && TryReadObjectName(Element, out Name))
 			{
 				// Read the valid agent types. This may be omitted if we're continuing an existing agent.
 				string[] Types = ReadListAttribute(Element, "Type");
 
 				// Create the agent object, or continue an existing one
-				BgAgent Agent;
+				BgAgent? Agent;
 				if (Graph.NameToAgent.TryGetValue(Name, out Agent))
 				{
 					if (Types.Length > 0 && Agent.PossibleTypes.Length > 0)
@@ -920,7 +993,7 @@ namespace EpicGames.BuildGraph
 				}
 
 				// Process all the child elements.
-				ReadAgentBody(Element, Agent);
+				await ReadAgentBodyAsync(Element, Agent);
 			}
 		}
 
@@ -929,7 +1002,7 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
 		/// <param name="ParentAgent">The agent to contain the definition</param>
-		void ReadAgentBody(BgScriptElement Element, BgAgent ParentAgent)
+		async Task ReadAgentBodyAsync(BgScriptElement Element, BgAgent ParentAgent)
 		{
 			EnterScope();
 			foreach (BgScriptElement ChildElement in Element.ChildNodes.OfType<BgScriptElement>())
@@ -937,40 +1010,40 @@ namespace EpicGames.BuildGraph
 				switch (ChildElement.Name)
 				{
 					case "Property":
-						ReadProperty(ChildElement);
+						await ReadPropertyAsync(ChildElement);
 						break;
 					case "Regex":
-						ReadRegex(ChildElement);
+						await ReadRegexAsync(ChildElement);
 						break;
 					case "Node":
-						ReadNode(ChildElement, ParentAgent);
+						await ReadNodeAsync(ChildElement, ParentAgent);
 						break;
 					case "Aggregate":
-						ReadAggregate(ChildElement);
+						await ReadAggregateAsync(ChildElement);
 						break;
 					case "Trace":
-						ReadDiagnostic(ChildElement, LogEventType.Console, null, ParentAgent);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Console, null, ParentAgent);
 						break;
 					case "Warning":
-						ReadDiagnostic(ChildElement, LogEventType.Warning, null, ParentAgent);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Warning, null, ParentAgent);
 						break;
 					case "Error":
-						ReadDiagnostic(ChildElement, LogEventType.Error, null, ParentAgent);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Error, null, ParentAgent);
 						break;
 					case "Label":
-						ReadLabel(ChildElement);
+						await ReadLabelAsync(ChildElement);
 						break;
 					case "Do":
-						ReadBlock(ChildElement, x => ReadAgentBody(x, ParentAgent));
+						await ReadBlockAsync(ChildElement, x => ReadAgentBodyAsync(x, ParentAgent));
 						break;
 					case "Switch":
-						ReadSwitch(ChildElement, x => ReadAgentBody(x, ParentAgent));
+						await ReadSwitchAsync(ChildElement, x => ReadAgentBodyAsync(x, ParentAgent));
 						break;
 					case "ForEach":
-						ReadForEach(ChildElement, x => ReadAgentBody(x, ParentAgent));
+						await ReadForEachAsync(ChildElement, x => ReadAgentBodyAsync(x, ParentAgent));
 						break;
 					case "Expand":
-						ReadExpand(ChildElement, x => ReadAgentBody(x, ParentAgent));
+						await ReadExpandAsync(ChildElement, x => ReadAgentBodyAsync(x, ParentAgent));
 						break;
 					default:
 						LogError(ChildElement, "Unexpected element type '{0}'", ChildElement.Name);
@@ -984,10 +1057,10 @@ namespace EpicGames.BuildGraph
 		/// Reads the definition for an aggregate
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadAggregate(BgScriptElement Element)
+		async Task ReadAggregateAsync(BgScriptElement Element)
 		{
-			string Name;
-			if (EvaluateCondition(Element) && TryReadObjectName(Element, out Name) && CheckNameIsUnique(Element, Name))
+			string? Name;
+			if (await EvaluateConditionAsync(Element) && TryReadObjectName(Element, out Name) && CheckNameIsUnique(Element, Name))
 			{
 				string[] RequiredNames = ReadListAttribute(Element, "Requires");
 
@@ -1045,10 +1118,10 @@ namespace EpicGames.BuildGraph
 		/// Reads the definition for a report
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadReport(BgScriptElement Element)
+		async Task ReadReportAsync(BgScriptElement Element)
 		{
-			string Name;
-			if (EvaluateCondition(Element) && TryReadObjectName(Element, out Name) && CheckNameIsUnique(Element, Name))
+			string? Name;
+			if (await EvaluateConditionAsync(Element) && TryReadObjectName(Element, out Name) && CheckNameIsUnique(Element, Name))
 			{
 				string[] RequiredNames = ReadListAttribute(Element, "Requires");
 
@@ -1066,10 +1139,10 @@ namespace EpicGames.BuildGraph
 		/// Reads the definition for a badge
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadBadge(BgScriptElement Element)
+		async Task ReadBadgeAsync(BgScriptElement Element)
 		{
-			string Name;
-			if (EvaluateCondition(Element) && TryReadObjectName(Element, out Name))
+			string? Name;
+			if (await EvaluateConditionAsync(Element) && TryReadObjectName(Element, out Name))
 			{
 				string[] RequiredNames = ReadListAttribute(Element, "Requires");
 				string[] TargetNames = ReadListAttribute(Element, "Targets");
@@ -1094,9 +1167,9 @@ namespace EpicGames.BuildGraph
 		/// Reads the definition for a label
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadLabel(BgScriptElement Element)
+		async Task ReadLabelAsync(BgScriptElement Element)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				string Name = ReadAttribute(Element, "Name");
 				if (!String.IsNullOrEmpty(Name))
@@ -1141,10 +1214,10 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
 		/// <param name="ParentAgent">Agent for the node to be added to</param>
-		void ReadNode(BgScriptElement Element, BgAgent ParentAgent)
+		async Task ReadNodeAsync(BgScriptElement Element, BgAgent ParentAgent)
 		{
-			string Name;
-			if (EvaluateCondition(Element) && TryReadObjectName(Element, out Name))
+			string? Name;
+			if (await EvaluateConditionAsync(Element) && TryReadObjectName(Element, out Name))
 			{
 				string[] RequiresNames = ReadListAttribute(Element, "Requires");
 				string[] ProducesNames = ReadListAttribute(Element, "Produces");
@@ -1177,7 +1250,7 @@ namespace EpicGames.BuildGraph
 				List<string> ValidOutputNames = new List<string>();
 				foreach (string ProducesName in ProducesNames)
 				{
-					BgNodeOutput ExistingOutput;
+					BgNodeOutput? ExistingOutput;
 					if(Graph.TagNameToNodeOutput.TryGetValue(ProducesName, out ExistingOutput))
 					{
 						LogError(Element, "Output tag '{0}' is already generated by node '{1}'", ProducesName, ExistingOutput.ProducingNode.Name);
@@ -1224,7 +1297,7 @@ namespace EpicGames.BuildGraph
 					// Register all the output tags in the global name table.
 					foreach(BgNodeOutput Output in NewNode.Outputs)
 					{
-						BgNodeOutput ExistingOutput;
+						BgNodeOutput? ExistingOutput;
 						if(Graph.TagNameToNodeOutput.TryGetValue(Output.TagName, out ExistingOutput))
 						{
 							LogError(Element, "Node '{0}' already has an output called '{1}'", ExistingOutput.ProducingNode.Name, Output.TagName);
@@ -1236,7 +1309,7 @@ namespace EpicGames.BuildGraph
 					}
 
 					// Add all the tasks
-					ReadNodeBody(Element, NewNode, ParentAgent);
+					await ReadNodeBodyAsync(Element, NewNode, ParentAgent);
 
 					// Add it to the current agent
 					ParentAgent.Nodes.Add(NewNode);
@@ -1250,7 +1323,7 @@ namespace EpicGames.BuildGraph
 		/// <param name="Element">Xml element to read the definition from</param>
 		/// <param name="NewNode">The new node that has been created</param>
 		/// <param name="ParentAgent">Agent for the node to be added to</param>
-		void ReadNodeBody(XmlElement Element, BgNode NewNode, BgAgent ParentAgent)
+		async Task ReadNodeBodyAsync(XmlElement Element, BgNode NewNode, BgAgent ParentAgent)
 		{
 			EnterScope();
 			foreach (BgScriptElement ChildElement in Element.ChildNodes.OfType<BgScriptElement>())
@@ -1258,34 +1331,34 @@ namespace EpicGames.BuildGraph
 				switch (ChildElement.Name)
 				{
 					case "Property":
-						ReadProperty(ChildElement);
+						await ReadPropertyAsync(ChildElement);
 						break;
 					case "Regex":
-						ReadRegex(ChildElement);
+						await ReadRegexAsync(ChildElement);
 						break;
 					case "Trace":
-						ReadDiagnostic(ChildElement, LogEventType.Console, NewNode, ParentAgent);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Console, NewNode, ParentAgent);
 						break;
 					case "Warning":
-						ReadDiagnostic(ChildElement, LogEventType.Warning, NewNode, ParentAgent);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Warning, NewNode, ParentAgent);
 						break;
 					case "Error":
-						ReadDiagnostic(ChildElement, LogEventType.Error, NewNode, ParentAgent);
+						await ReadDiagnosticAsync(ChildElement, LogEventType.Error, NewNode, ParentAgent);
 						break;
 					case "Do":
-						ReadBlock(ChildElement, x => ReadNodeBody(x, NewNode, ParentAgent));
+						await ReadBlockAsync(ChildElement, x => ReadNodeBodyAsync(x, NewNode, ParentAgent));
 						break;
 					case "Switch":
-						ReadSwitch(ChildElement, x => ReadNodeBody(x, NewNode, ParentAgent));
+						await ReadSwitchAsync(ChildElement, x => ReadNodeBodyAsync(x, NewNode, ParentAgent));
 						break;
 					case "ForEach":
-						ReadForEach(ChildElement, x => ReadNodeBody(x, NewNode, ParentAgent));
+						await ReadForEachAsync(ChildElement, x => ReadNodeBodyAsync(x, NewNode, ParentAgent));
 						break;
 					case "Expand":
-						ReadExpand(ChildElement, x => ReadNodeBody(x, NewNode, ParentAgent));
+						await ReadExpandAsync(ChildElement, x => ReadNodeBodyAsync(x, NewNode, ParentAgent));
 						break;
 					default:
-						ReadTask(ChildElement, NewNode);
+						await ReadTaskAsync(ChildElement, NewNode);
 						break;
 				}
 			}
@@ -1296,12 +1369,12 @@ namespace EpicGames.BuildGraph
 		/// Reads a block element
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		/// <param name="ReadContents">Delegate to read the contents of the element, if the condition evaluates to true</param>
-		void ReadBlock(BgScriptElement Element, Action<BgScriptElement> ReadContents)
+		/// <param name="ReadContentsAsync">Delegate to read the contents of the element, if the condition evaluates to true</param>
+		async Task ReadBlockAsync(BgScriptElement Element, Func<BgScriptElement, Task> ReadContentsAsync)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
-				ReadContents(Element);
+				await ReadContentsAsync(Element);
 			}
 		}
 
@@ -1309,15 +1382,14 @@ namespace EpicGames.BuildGraph
 		/// Reads a "Switch" element 
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		/// <param name="ReadContents">Delegate to read the contents of the element, if the condition evaluates to true</param>
-		void ReadSwitch(BgScriptElement Element, Action<BgScriptElement> ReadContents)
+		/// <param name="ReadContentsAsync">Delegate to read the contents of the element, if the condition evaluates to true</param>
+		async Task ReadSwitchAsync(BgScriptElement Element, Func<BgScriptElement, Task> ReadContentsAsync)
 		{
 			foreach (BgScriptElement ChildElement in Element.ChildNodes.OfType<BgScriptElement>())
 			{
-				if (ChildElement.Name == "Default" || EvaluateCondition(ChildElement))
+				if (ChildElement.Name == "Default" || await EvaluateConditionAsync(ChildElement))
 				{
-					ReadContents(ChildElement);
-					break;
+					await ReadContentsAsync(ChildElement);
 				}
 			}
 		}
@@ -1326,11 +1398,11 @@ namespace EpicGames.BuildGraph
 		/// Reads a "ForEach" element 
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		/// <param name="ReadContents">Delegate to read the contents of the element, if the condition evaluates to true</param>
-		void ReadForEach(BgScriptElement Element, Action<BgScriptElement> ReadContents)
+		/// <param name="ReadContentsAsync">Delegate to read the contents of the element, if the condition evaluates to true</param>
+		async Task ReadForEachAsync(BgScriptElement Element, Func<BgScriptElement, Task> ReadContentsAsync)
 		{
 			EnterScope();
-			if(EvaluateCondition(Element))
+			if(await EvaluateConditionAsync(Element))
 			{
 				string Name = ReadAttribute(Element, "Name");
 				string Separator = ReadAttribute(Element, "Separator");
@@ -1356,7 +1428,7 @@ namespace EpicGames.BuildGraph
 						foreach(string Value in Values)
 						{
 							ScopedProperties[ScopedProperties.Count - 1][Name] = Value;
-							ReadContents(Element);
+							await ReadContentsAsync(Element);
 						}
 					}
 				}
@@ -1368,59 +1440,64 @@ namespace EpicGames.BuildGraph
 		/// Reads an "Expand" element 
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		/// <param name="ReadContents">Delegate to read the contents of the element, if the condition evaluates to true</param>
-		void ReadExpand(BgScriptElement Element, Action<BgScriptElement> ReadContents)
+		/// <param name="ReadContentsAsync">Delegate to read the contents of the element, if the condition evaluates to true</param>
+		async Task ReadExpandAsync(BgScriptElement Element, Func<BgScriptElement, Task> ReadContentsAsync)
 		{
-			if(EvaluateCondition(Element))
+			if(await EvaluateConditionAsync(Element))
 			{
 				string Name = ReadAttribute(Element, "Name");
-
-				BgScriptMacro Macro;
-				if(!MacroNameToDefinition.TryGetValue(Name, out Macro))
+				if (ValidateName(Element, Name))
 				{
-					LogError(Element, "Macro '{0}' does not exist", Name);
-				}
-				else
-				{
-					// Parse the argument list
-					string[] Arguments = new string[Macro.ArgumentNameToIndex.Count];
-					foreach(XmlAttribute Attribute in Element.Attributes)
+					BgScriptMacro? Macro;
+					if (!MacroNameToDefinition.TryGetValue(Name, out Macro))
 					{
-						if(Attribute.Name != "Name" && Attribute.Name != "If")
-						{
-							int Index;
-							if(Macro.ArgumentNameToIndex.TryGetValue(Attribute.Name, out Index))
-							{
-								Arguments[Index] = ExpandProperties(Element, Attribute.Value);
-							}
-							else
-							{
-								LogWarning(Element, "Macro '{0}' does not take an argument '{1}'", Name, Attribute.Name);
-							}
-						}
+						LogError(Element, "Macro '{0}' does not exist", Name);
 					}
-
-					// Make sure none of the required arguments are missing
-					bool bHasMissingArguments = false;
-					for(int Idx = 0; Idx < Macro.NumRequiredArguments; Idx++)
+					else
 					{
-						if(Arguments[Idx] == null)
+						// Parse the argument list
+						string[] Arguments = new string[Macro.ArgumentNameToIndex.Count];
+						foreach (XmlAttribute? Attribute in Element.Attributes)
 						{
-							LogWarning(Element, "Macro '{0}' is missing argument '{1}'", Macro.Name, Macro.ArgumentNameToIndex.First(x => x.Value == Idx).Key);
-							bHasMissingArguments = true;
+							if (Attribute != null && Attribute.Name != "Name" && Attribute.Name != "If")
+							{
+								int Index;
+								if (Macro.ArgumentNameToIndex.TryGetValue(Attribute.Name, out Index))
+								{
+									Arguments[Index] = ExpandProperties(Element, Attribute.Value);
+								}
+								else
+								{
+									LogWarning(Element, "Macro '{0}' does not take an argument '{1}'", Name, Attribute.Name);
+								}
+							}
 						}
-					}
 
-					// Expand the function
-					if(!bHasMissingArguments)
-					{
-						EnterScope();
-						foreach(KeyValuePair<string, int> Pair in Macro.ArgumentNameToIndex)
+						// Make sure none of the required arguments are missing
+						bool bHasMissingArguments = false;
+						for (int Idx = 0; Idx < Macro.NumRequiredArguments; Idx++)
 						{
-							ScopedProperties[ScopedProperties.Count - 1][Pair.Key] = Arguments[Pair.Value] ?? "";
+							if (Arguments[Idx] == null)
+							{
+								LogWarning(Element, "Macro '{0}' is missing argument '{1}'", Macro.Name, Macro.ArgumentNameToIndex.First(x => x.Value == Idx).Key);
+								bHasMissingArguments = true;
+							}
 						}
-						ReadContents(Macro.Element);
-						LeaveScope();
+
+						// Expand the function
+						if (!bHasMissingArguments)
+						{
+							EnterScope();
+							foreach (KeyValuePair<string, int> Pair in Macro.ArgumentNameToIndex)
+							{
+								ScopedProperties[ScopedProperties.Count - 1][Pair.Key] = Arguments[Pair.Value] ?? "";
+							}
+							foreach (BgScriptElement MacroElement in Macro.Elements)
+							{
+								await ReadContentsAsync(MacroElement);
+							}
+							LeaveScope();
+						}
 					}
 				}
 			}
@@ -1431,7 +1508,7 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
 		/// <param name="ParentNode">The node which owns this task</param>
-		void ReadTask(BgScriptElement Element, BgNode ParentNode)
+		async Task ReadTaskAsync(BgScriptElement Element, BgNode ParentNode)
 		{
 			// If we're running a single node and this element's parent isn't the single node to run, ignore the error and return.
 			if (!string.IsNullOrWhiteSpace(SingleNodeName) && ParentNode.Name != SingleNodeName)
@@ -1439,18 +1516,18 @@ namespace EpicGames.BuildGraph
 				return;
 			}
 
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
-				BgTask Info = new BgTask(Tuple.Create(Element.File, Element.LineNumber), Element.Name);
-				foreach (XmlAttribute Attribute in Element.Attributes)
+				BgTask Info = new BgTask(Element.Location, Element.Name);
+				foreach (XmlAttribute? Attribute in Element.Attributes)
 				{
-					if (String.Compare(Attribute.Name, "If", StringComparison.InvariantCultureIgnoreCase) != 0)
+					if (String.Compare(Attribute!.Name, "If", StringComparison.InvariantCultureIgnoreCase) != 0)
 					{
 						string ExpandedValue = ExpandProperties(Element, Attribute.Value);
 						Info.Arguments.Add(Attribute.Name, ExpandedValue);
 					}
 				}
-				ParentNode.TaskInfos.Add(Info);
+				ParentNode.Tasks.Add(Info);
 			}
 		}
 
@@ -1458,9 +1535,9 @@ namespace EpicGames.BuildGraph
 		/// Reads the definition for an email notifier
 		/// </summary>
 		/// <param name="Element">Xml element to read the definition from</param>
-		void ReadNotifier(BgScriptElement Element)
+		async Task ReadNotifierAsync(BgScriptElement Element)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				string[] TargetNames = ReadListAttribute(Element, "Targets");
 				string[] ExceptNames = ReadListAttribute(Element, "Except");
@@ -1533,7 +1610,7 @@ namespace EpicGames.BuildGraph
 				{
 					foreach (string ReportName in ReportNames)
 					{
-						BgReport Report;
+						BgReport? Report;
 						if (Graph.NameToReport.TryGetValue(ReportName, out Report))
 						{
 							Report.NotifyUsers.UnionWith(Users);
@@ -1554,17 +1631,13 @@ namespace EpicGames.BuildGraph
 		/// <param name="EventType">The diagnostic event type</param>
 		/// <param name="EnclosingNode">The node that this diagnostic is declared in, or null</param>
 		/// <param name="EnclosingAgent">The agent that this diagnostic is declared in, or null</param>
-		void ReadDiagnostic(BgScriptElement Element, LogEventType EventType, BgNode EnclosingNode, BgAgent EnclosingAgent)
+		async Task ReadDiagnosticAsync(BgScriptElement Element, LogEventType EventType, BgNode? EnclosingNode, BgAgent? EnclosingAgent)
 		{
-			if (EvaluateCondition(Element))
+			if (await EvaluateConditionAsync(Element))
 			{
 				string Message = ReadAttribute(Element, "Message");
 
-				BgScriptDiagnostic Diagnostic = new BgScriptDiagnostic();
-				Diagnostic.EventType = EventType;
-				Diagnostic.Message = String.Format("{0}({1}): {2}", Element.File, Element.LineNumber, Message);
-				Diagnostic.EnclosingNode = EnclosingNode;
-				Diagnostic.EnclosingAgent = EnclosingAgent;
+				BgGraphDiagnostic Diagnostic = new BgGraphDiagnostic(Element.Location, EventType, Message, EnclosingNode, EnclosingAgent);
 				Graph.Diagnostics.Add(Diagnostic);
 			}
 		}
@@ -1597,7 +1670,7 @@ namespace EpicGames.BuildGraph
 			HashSet<BgNode> Nodes = new HashSet<BgNode>();
 			foreach (string ReferenceName in ReferenceNames)
 			{
-				BgNode[] OtherNodes;
+				BgNode[]? OtherNodes;
 				if (Graph.TryResolveReference(ReferenceName, out OtherNodes))
 				{
 					Nodes.UnionWith(OtherNodes);
@@ -1625,7 +1698,7 @@ namespace EpicGames.BuildGraph
 			HashSet<BgNodeOutput> Inputs = new HashSet<BgNodeOutput>();
 			foreach (string ReferenceName in ReferenceNames)
 			{
-				BgNodeOutput[] ReferenceInputs;
+				BgNodeOutput[]? ReferenceInputs;
 				if (Graph.TryResolveInputReference(ReferenceName, out ReferenceInputs))
 				{
 					Inputs.UnionWith(ReferenceInputs);
@@ -1648,7 +1721,7 @@ namespace EpicGames.BuildGraph
 		/// <param name="Element">Element to read the name for</param>
 		/// <param name="Name">Output variable to receive the name of the object</param>
 		/// <returns>True if the object had a valid name (assigned to the Name variable), false if the name was invalid or missing.</returns>
-		bool TryReadObjectName(BgScriptElement Element, out string Name)
+		bool TryReadObjectName(BgScriptElement Element, [NotNullWhen(true)] out string? Name)
 		{
 			// Check the name attribute is present
 			if (!Element.HasAttribute("Name"))
@@ -1668,38 +1741,6 @@ namespace EpicGames.BuildGraph
 
 			// Return it
 			Name = Value;
-			return true;
-		}
-
-		/// <summary>
-		/// Reads an qualified object name from its defining element. Outputs an error if the name is missing.
-		/// </summary>
-		/// <param name="Element">Element to read the name for</param>
-		/// <param name="QualifiedName">Output variable to receive the name of the object</param>
-		/// <returns>True if the object had a valid name (assigned to the Name variable), false if the name was invalid or missing.</returns>
-		bool TryReadQualifiedObjectName(BgScriptElement Element, out string[] QualifiedName)
-		{
-			// Check the name attribute is present
-			if (!Element.HasAttribute("Name"))
-			{
-				LogError(Element, "Missing 'Name' attribute");
-				QualifiedName = null;
-				return false;
-			}
-
-			// Get the value of it, strip any leading or trailing whitespace, and make sure it's not empty
-			string[] Values = ReadAttribute(Element, "Name").Split('.');
-			foreach (string Value in Values)
-			{
-				if (!ValidateName(Element, Value))
-				{
-					QualifiedName = null;
-					return false;
-				}
-			}
-
-			// Return it
-			QualifiedName = Values;
 			return true;
 		}
 
@@ -1741,7 +1782,7 @@ namespace EpicGames.BuildGraph
 		/// <param name="Element">The element that contains the regex</param>
 		/// <param name="Regex">The pattern to construct</param>
 		/// <returns>The regex if is valid, otherwise null</returns>
-		Regex ParseRegex(BgScriptElement Element, string Regex)
+		Regex? ParseRegex(BgScriptElement Element, string Regex)
 		{
 			if(Regex.Length == 0)
 			{
@@ -1875,7 +1916,7 @@ namespace EpicGames.BuildGraph
 		/// <param name="Args">Optional arguments</param>
 		void LogError(BgScriptElement Element, string Format, params object[] Args)
 		{
-			Logger.LogScriptError(Element.NativeFile, Element.LineNumber, Format, Args);
+			Logger.LogScriptError(Element.Location, Format, Args);
 			NumErrors++;
 		}
 
@@ -1887,7 +1928,7 @@ namespace EpicGames.BuildGraph
 		/// <param name="Args">Optional arguments</param>
 		void LogWarning(BgScriptElement Element, string Format, params object[] Args)
 		{
-			Logger.LogScriptWarning(Element.NativeFile, Element.LineNumber, Format, Args);
+			Logger.LogScriptWarning(Element.Location, Format, Args);
 		}
 
 		/// <summary>
@@ -1895,7 +1936,7 @@ namespace EpicGames.BuildGraph
 		/// </summary>
 		/// <param name="Element">The element to check</param>
 		/// <returns>True if the element's condition evaluates to true (or doesn't have a conditional expression), false otherwise</returns>
-		bool EvaluateCondition(BgScriptElement Element)
+		async Task<bool> EvaluateConditionAsync(BgScriptElement Element)
 		{
 			// Check if the element has a conditional attribute
 			const string AttributeName = "If";
@@ -1908,7 +1949,7 @@ namespace EpicGames.BuildGraph
 			try
 			{
 				string Text = ExpandProperties(Element, Element.GetAttribute("If"));
-				return BgCondition.Evaluate(Text, Context);
+				return await BgCondition.EvaluateAsync(Text, Context);
 			}
 			catch (BgConditionException Ex)
 			{
@@ -1940,7 +1981,7 @@ namespace EpicGames.BuildGraph
 				string Name = Result.Substring(Idx + 2, EndIdx - (Idx + 2));
 
 				// Find the value for it, either from the dictionary or the environment block
-				string Value;
+				string? Value;
 				if (!TryGetPropertyValue(Name, out Value))
 				{
 					LogWarning(Element, "Property '{0}' is not defined", Name);

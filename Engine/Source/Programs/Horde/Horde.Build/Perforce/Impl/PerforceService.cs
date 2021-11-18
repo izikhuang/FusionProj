@@ -20,6 +20,8 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using OpenTracing;
+using OpenTracing.Util;
 
 namespace HordeServer.Services
 {
@@ -111,6 +113,10 @@ namespace HordeServer.Services
 
 		public async ValueTask<IUser> FindOrAddUserAsync(string ClusterName, string UserName)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.FindOrAddUserAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("UserName", UserName);
+			
 			IUser? User;
 			if (!UserCache.TryGetValue((ClusterName, UserName), out User))
 			{
@@ -131,7 +137,7 @@ namespace HordeServer.Services
 			return User!;
 		}
 
-		async Task<PerforceCluster> GetClusterAsync(string ClusterName)
+		async Task<PerforceCluster> GetClusterAsync(string? ClusterName)
 		{
 			Globals Globals = await CachedGlobals.GetCached();
 
@@ -146,6 +152,9 @@ namespace HordeServer.Services
 
 		async Task<IPerforceServer> SelectServer(PerforceCluster Cluster)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.SelectServer").StartActive();
+			Scope.Span.SetTag("ClusterName", Cluster.Name);
+			
 			IPerforceServer? Server = await LoadBalancer.SelectServerAsync(Cluster);
 			if (Server == null)
 			{
@@ -154,8 +163,14 @@ namespace HordeServer.Services
 			return Server;
 		}
 
+		[SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
 		static P4.Repository CreateConnection(IPerforceServer Server, string? UserName, string? Ticket)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.CreateConnection").StartActive();
+			Scope.Span.SetTag("Cluster", Server.Cluster);
+			Scope.Span.SetTag("ServerAndPort", Server.ServerAndPort);
+			Scope.Span.SetTag("UserName", UserName);
+			
 			P4.Repository Repository = new P4.Repository(new P4.Server(new P4.ServerAddress(Server.ServerAndPort)));
 			try
 			{
@@ -192,47 +207,52 @@ namespace HordeServer.Services
 		/// <returns></returns>
 		public async Task<NativePerforceConnection?> GetServiceUserConnection(string? ClusterName)
 		{
-			if(ClusterName != null)
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetServiceUserConnection").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+
+			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
+
+			string? UserName = Cluster.ServiceAccount ?? Environment.UserName;
+
+			string? Password = null;
+			if (Cluster.ServiceAccount != null)
 			{
-				Globals Globals = await CachedGlobals.GetCached();
-				PerforceCluster? Cluster = Globals.FindPerforceCluster(ClusterName);
-				if(Cluster != null)
+				PerforceCredentials? Credentials = Cluster.Credentials.FirstOrDefault(x => x.UserName.Equals(UserName, StringComparison.OrdinalIgnoreCase));
+				if (Credentials == null)
 				{
-					string? UserName = null;
-					string? Password = null;
-					if (Cluster.ServiceAccount != null)
-					{
-						PerforceCredentials? Credentials = Cluster.Credentials.FirstOrDefault(x => x.UserName.Equals(Cluster.ServiceAccount, StringComparison.OrdinalIgnoreCase));
-						if (Credentials == null)
-						{
-							throw new Exception($"No credentials defined for {Cluster.ServiceAccount} on {Cluster.Name}");
-						}
-					}
-
-					PerforceSettings Settings = new PerforceSettings();
-					Settings.User = UserName;
-					Settings.Client = "__DOES_NOT_EXIST__";
-
-					NativePerforceConnection NativeConnection = new NativePerforceConnection(Logger);
-					await NativeConnection.ConnectAsync(Settings);
-					if (Password != null)
-					{
-						await NativeConnection.LoginAsync(Password);
-					}
-					return NativeConnection;
+					throw new Exception($"No credentials defined for {Cluster.ServiceAccount} on {Cluster.Name}");
 				}
+				Password = Credentials.Password;
 			}
-			return null;
+
+			IPerforceServer Server = await SelectServer(Cluster);
+
+			PerforceSettings Settings = new PerforceSettings();
+			Settings.ServerAndPort = Server.ServerAndPort;
+			Settings.User = UserName;
+			Settings.Password = Password;
+			Settings.AppName = "Horde.Build";
+			Settings.Client = "__DOES_NOT_EXIST__";
+
+			NativePerforceConnection NativeConnection = new NativePerforceConnection(Logger);
+			await NativeConnection.ConnectAsync(Settings);
+			return NativeConnection;
 		}
 
 		async Task<P4.Repository> GetServiceUserConnection(PerforceCluster Cluster)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetServiceUserConnectionAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", Cluster.Name);
+			
 			IPerforceServer Server = await SelectServer(Cluster);
 			return GetServiceUserConnection(Cluster, Server);
 		}
 
 		P4.Repository GetServiceUserConnection(PerforceCluster Cluster, IPerforceServer Server)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetServiceUserConnection").StartActive();
+			Scope.Span.SetTag("ClusterName", Cluster.Name);
+
 			if (Cluster.Name == PerforceCluster.DefaultName && Settings.P4BridgeServiceUsername != null && Settings.P4BridgeServicePassword != null)
 			{
 				return CreateConnection(Server, Settings.P4BridgeServiceUsername, Settings.P4BridgeServicePassword);
@@ -247,12 +267,18 @@ namespace HordeServer.Services
 				{
 					throw new Exception($"No credentials defined for {Cluster.ServiceAccount} on {Cluster.Name}");
 				}
+				UserName = Credentials.UserName;
+				Password = Credentials.Password;
 			}
 			return CreateConnection(Server, UserName, Password);
 		}
 
 		async Task<CachedTicketInfo> GetImpersonateCredential(PerforceCluster Cluster, string ImpersonateUser)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetImpersonateCredential").StartActive();
+			Scope.Span.SetTag("ClusterName", Cluster.Name);
+			Scope.Span.SetTag("ImpersonateUser", ImpersonateUser);
+			
 			if (!Cluster.CanImpersonate)
 			{
 				throw new Exception($"Service account required to impersonate user {ImpersonateUser}");
@@ -308,12 +334,24 @@ namespace HordeServer.Services
 
 		async Task<P4.Repository> GetImpersonatedConnection(PerforceCluster Cluster, string ImpersonateUser)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetImpersonatedConnection").StartActive();
+			Scope.Span.SetTag("ClusterName", Cluster.Name);
+			Scope.Span.SetTag("ImpersonateUser", ImpersonateUser);
+			
 			CachedTicketInfo TicketInfo = await GetImpersonateCredential(Cluster, ImpersonateUser);
 			return CreateConnection(TicketInfo.Server, TicketInfo.UserName, TicketInfo.Ticket.Ticket);
 		}
 
+		[SuppressMessage("Microsoft.Reliability", "CA2000:DisposeObjectsBeforeLosingScope")]
 		async Task<P4.Repository> GetConnection(PerforceCluster Cluster, string? Stream = null, string? Username = null, bool ReadOnly = true, bool CreateChange = false, int? ClientFromChange = null, bool UseClientFromChange = false, bool UsePortFromChange = false, string? ClientId = null, bool NoClient = false)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetConnection").StartActive();
+			Scope.Span.SetTag("ClusterName", Cluster.Name);
+			Scope.Span.SetTag("Stream", Stream);
+			Scope.Span.SetTag("Username", Username);
+			Scope.Span.SetTag("NoClient", NoClient);
+			Scope.Span.SetTag("ClientId", ClientId);
+			
 			P4.Repository Repository;
 			if (Username == null || !Cluster.CanImpersonate || Username.Equals(Cluster.ServiceAccount, StringComparison.OrdinalIgnoreCase))
 			{
@@ -425,6 +463,11 @@ namespace HordeServer.Services
 
 		static P4.Client GetOrCreateClient(string? ServiceUserName, P4.Repository Repository, string? Stream, string? Username = null, bool ReadOnly = true, bool CreateChange = false, int? ClientFromChange = null, bool UseClientFromChange = false, bool UsePortFromChange = false)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetOrCreateClient").StartActive();
+			Scope.Span.SetTag("ServiceUserName", ServiceUserName);
+			Scope.Span.SetTag("Stream", Stream);
+			Scope.Span.SetTag("Username", Username);
+			
 			P4.Client? Client = null;
 			P4.Changelist? Changelist = null;
 
@@ -586,6 +629,10 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<IStreamView> GetStreamViewAsync(string ClusterName, string StreamName)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetStreamViewAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("StreamName", StreamName);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, NoClient: true))
 			{
@@ -653,6 +700,9 @@ namespace HordeServer.Services
 		/// <returns></returns>
 		static ChangeFile CreateChangeFile(string RelativePath, P4.FileMetaData MetaData)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.CreateChangeFile (FileMetaData)").StartActive();
+			Scope.Span.SetTag("RelativePath", RelativePath);
+			
 			int Revision = GetSyncRevision(MetaData.DepotPath.Path, MetaData.HeadAction, MetaData.HeadRev);
 			Md5Hash? Digest = String.IsNullOrEmpty(MetaData.Digest) ? (Md5Hash?)null : Md5Hash.Parse(MetaData.Digest);
 			return new ChangeFile(RelativePath, MetaData.DepotPath.Path, Revision, MetaData.FileSize, Digest, MetaData.HeadType.ToString());
@@ -666,6 +716,9 @@ namespace HordeServer.Services
 		/// <returns></returns>
 		static ChangeFile CreateChangeFile(string RelativePath, P4.ShelvedFile MetaData)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.CreateChangeFile (ShelvedFile)").StartActive();
+			Scope.Span.SetTag("RelativePath", RelativePath);
+			
 			int Revision = GetSyncRevision(MetaData.Path.Path, MetaData.Action, MetaData.Revision);
 			Md5Hash? Digest = String.IsNullOrEmpty(MetaData.Digest) ? (Md5Hash?)null : Md5Hash.Parse(MetaData.Digest);
 			return new ChangeFile(RelativePath, MetaData.Path.Path, Revision, MetaData.Size, Digest, MetaData.Type.ToString());
@@ -674,6 +727,11 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<List<ChangeFile>> GetStreamSnapshotAsync(string ClusterName, string StreamName, int Change)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetStreamSnapshotAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("StreamName", StreamName);
+			Scope.Span.SetTag("Change", Change);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, Stream: StreamName))
 			{
@@ -704,22 +762,19 @@ namespace HordeServer.Services
 		}
 
 		/// <inheritdoc/>
-		public async Task<List<ChangeSummary>> GetChangesAsync(string ClusterName, int? MinChange, int MaxResults)
+		public async Task<List<ChangeSummary>> GetChangesAsync(string ClusterName, int? MinChange, int? MaxChange, int MaxResults)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetChangesAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("MinChange", MinChange ?? -1);
+			Scope.Span.SetTag("MaxResults", MaxResults);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, NoClient: true))
 			{
 				P4.ChangesCmdOptions Options = new P4.ChangesCmdOptions(P4.ChangesCmdFlags.IncludeTime | P4.ChangesCmdFlags.FullDescription, null, MaxResults, P4.ChangeListStatus.Submitted, null);
 
-				IList<P4.Changelist> Changelists;
-				if (MinChange == null)
-				{
-					Changelists = Repository.GetChangelists(Options);
-				}
-				else
-				{
-					Changelists = Repository.GetChangelists(Options, new P4.FileSpec(new P4.DepotPath($"//...@>={MinChange.Value}"), null, null, null));
-				}
+				IList<P4.Changelist> Changelists = Repository.GetChangelists(Options, new P4.FileSpec(new P4.DepotPath(GetFilter("//...", MinChange, MaxChange)), null, null, null));
 
 				List<ChangeSummary> Changes = new List<ChangeSummary>();
 				if (Changelists != null)
@@ -737,6 +792,13 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<List<ChangeSummary>> GetChangesAsync(string ClusterName, string StreamName, int? MinChange, int? MaxChange, int Results, string? ImpersonateUser)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetChangesAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("MinChange", MinChange ?? -1);
+			Scope.Span.SetTag("MaxChange", MaxChange ?? -1);
+			Scope.Span.SetTag("Results", Results);
+			Scope.Span.SetTag("ImpersonateUser", ImpersonateUser);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, StreamName, ImpersonateUser))
 			{
@@ -767,6 +829,11 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<ChangeDetails> GetChangeDetailsAsync(string ClusterName, string StreamName, int ChangeNumber)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetChangeDetailsAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("StreamName", StreamName);
+			Scope.Span.SetTag("ChangeNumber", ChangeNumber);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, NoClient: true))
 			{
@@ -821,6 +888,12 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<List<ChangeDetails>> GetChangeDetailsAsync(string ClusterName, string StreamName, IReadOnlyList<int> ChangeNumbers, string? ImpersonateUser)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetChangeDetailsAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("StreamName", StreamName);
+			Scope.Span.SetTag("ChangeNumbers.Count", ChangeNumbers.Count);
+			Scope.Span.SetTag("ImpersonateUser", ImpersonateUser);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, Stream: StreamName, Username: ImpersonateUser))
 			{
@@ -897,6 +970,10 @@ namespace HordeServer.Services
 		/// <inheritdoc />
 		public async Task<string> CreateTicket(string ClusterName, string ImpersonateUser)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.CreateTicket").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("ImpersonateUser", ImpersonateUser);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 
 			CachedTicketInfo Credential = await GetImpersonateCredential(Cluster, ImpersonateUser);
@@ -912,6 +989,9 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<List<FileSummary>> FindFilesAsync(string ClusterName, IEnumerable<string> Paths)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.FindFilesAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			
 			List<FileSummary> Results = new List<FileSummary>();
 
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
@@ -948,6 +1028,10 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<byte[]> PrintAsync(string ClusterName, string DepotPath)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.PrintAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("DepotPath", DepotPath);
+			
 			if (DepotPath.EndsWith("...", StringComparison.OrdinalIgnoreCase) || DepotPath.EndsWith("*", StringComparison.OrdinalIgnoreCase))
 			{
 				throw new Exception("PrintAsync requires exactly one file to be specified");
@@ -975,6 +1059,10 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<int> DuplicateShelvedChangeAsync(string ClusterName, int ShelvedChange)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.DuplicateShelvedChangeAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("ShelvedChange", ShelvedChange);
+
 			string? ChangeOwner = null;
 
 			// Get the owner of the shelf
@@ -1021,6 +1109,10 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task DeleteShelvedChangeAsync(string ClusterName, int ShelvedChange)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.DeleteShelvedChangeAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("ShelvedChange", ShelvedChange);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, NoClient: true))
 			{
@@ -1055,6 +1147,10 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task UpdateChangelistDescription(string ClusterName, int Change, string Description)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.UpdateChangelistDescription").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("Change", Change);
+
 			try
 			{
 				PerforceCluster Cluster = await GetClusterAsync(ClusterName);
@@ -1082,6 +1178,11 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<int> CreateNewChangeAsync(string ClusterName, string StreamName, string FilePath)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.CreateNewChangeAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("StreamName", StreamName);
+			Scope.Span.SetTag("FilePath", FilePath);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			P4.SubmitResults? SubmitResults = null;
 
@@ -1241,6 +1342,11 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public async Task<(int? Change, string Message)> SubmitShelvedChangeAsync(string ClusterName, int Change, int OriginalChange)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.SubmitShelvedChangeAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("Change", Change);
+			Scope.Span.SetTag("OriginalChange", OriginalChange);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, NoClient: true))
 			{
@@ -1350,6 +1456,10 @@ namespace HordeServer.Services
 		/// <inheritdoc/>		
 		public async Task<PerforceUserInfo?> GetUserInfoAsync(string ClusterName, string UserName)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetUserInfoAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("UserName", UserName);
+			
 			PerforceCluster Cluster = await GetClusterAsync(ClusterName);
 			using (P4.Repository Repository = await GetConnection(Cluster, NoClient: true))
 			{
@@ -1366,6 +1476,8 @@ namespace HordeServer.Services
 
 		static int ReshelveChange(P4.Repository Repository, int Change)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.ReshelveChange").StartActive();
+			Scope.Span.SetTag("Change", Change);
 
 			bool EdgeServer = false;
 			string? Value;
@@ -1432,6 +1544,11 @@ namespace HordeServer.Services
 		/// <inheritdoc/>
 		public virtual async Task<int> GetCodeChangeAsync(string ClusterName, string StreamName, int Change)
 		{
+			using IScope Scope = GlobalTracer.Instance.BuildSpan("PerforceService.GetCodeChangeAsync").StartActive();
+			Scope.Span.SetTag("ClusterName", ClusterName);
+			Scope.Span.SetTag("StreamName", StreamName);
+			Scope.Span.SetTag("Change", Change);
+			
 			int MaxChange = Change;
 			for (; ; )
 			{
@@ -1472,15 +1589,15 @@ namespace HordeServer.Services
 			StringBuilder Filter = new StringBuilder(BasePath);
 			if (MinChange != null && MaxChange != null)
 			{
-				Filter.Append($"@{MinChange},{MaxChange}");
+				Filter.Append(CultureInfo.InvariantCulture, $"@{MinChange},{MaxChange}");
 			}
 			else if (MinChange != null)
 			{
-				Filter.Append($"@>={MinChange}");
+				Filter.Append(CultureInfo.InvariantCulture, $"@>={MinChange}");
 			}
 			else if (MaxChange != null)
 			{
-				Filter.Append($"@<={MaxChange}");
+				Filter.Append(CultureInfo.InvariantCulture, $"@<={MaxChange}");
 			}
 			return Filter.ToString();
 		}

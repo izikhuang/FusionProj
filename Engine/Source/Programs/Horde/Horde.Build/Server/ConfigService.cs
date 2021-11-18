@@ -27,6 +27,7 @@ using System.Reflection;
 using PoolId = HordeServer.Utilities.StringId<HordeServer.Models.IPool>;
 using System.Globalization;
 using HordeServer.Storage;
+using System.Text.Json.Serialization;
 
 namespace HordeServer.Services
 {
@@ -378,7 +379,7 @@ namespace HordeServer.Services
 
 		static string GetMimeTypeFromPath(Uri Path)
 		{
-			string ContentType;
+			string? ContentType;
 			if (!ContentTypeProvider.TryGetContentType(Path.AbsolutePath, out ContentType))
 			{
 				ContentType = "application/octet-stream";
@@ -484,7 +485,7 @@ namespace HordeServer.Services
 					List<FileSummary> Files = await PerforceService.FindFilesAsync(ConfigPath.Host, new[] { FileName });
 					Change = Files[0].Change;
 
-					List<ChangeSummary> Changes = await PerforceService.GetChangesAsync(ConfigPath.Host, Change, 1);
+					List<ChangeSummary> Changes = await PerforceService.GetChangesAsync(ConfigPath.Host, Change, Change, 1);
 					if (Changes.Count > 0 && Changes[0].Number == Change)
 					{
 						(Author, Description) = (Changes[0].Author, Changes[0].Description);
@@ -813,7 +814,7 @@ namespace HordeServer.Services
 				// This will trigger a setting update as the user config json is set to reload on change
 				try
 				{
-					await FileReference.WriteAllBytesAsync(Program.UserConfigFile, JsonSerializer.SerializeToUtf8Bytes(NewLocalSettings, new JsonSerializerOptions { WriteIndented = true, IgnoreNullValues  = true }));
+					await FileReference.WriteAllBytesAsync(Program.UserConfigFile, JsonSerializer.SerializeToUtf8Bytes(NewLocalSettings, new JsonSerializerOptions { WriteIndented = true, DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull }));
 				}
 				catch (Exception Ex)
 				{

@@ -531,26 +531,29 @@ namespace HordeServer
 						.Build();
 				});
 
-			Services.AddHostedService(Provider => Provider.GetRequiredService<AgentService>());
-			Services.AddHostedService(Provider => Provider.GetRequiredService<AutoscaleService>());
-			Services.AddHostedService(Provider => Provider.GetRequiredService<CommitService>());
-			Services.AddHostedService(Provider => Provider.GetRequiredService<ConsistencyService>());
-			Services.AddHostedService(Provider => (DowntimeService)Provider.GetRequiredService<IDowntimeService>());
-			Services.AddHostedService(Provider => Provider.GetRequiredService<IIssueService>());
-			Services.AddHostedService(Provider => (LogFileService)Provider.GetRequiredService<ILogFileService>());
-			Services.AddHostedService(Provider => (NotificationService)Provider.GetRequiredService<INotificationService>());
-			if (!Settings.DisableSchedules)
+			if (Settings.EnableBackgroundServices)
 			{
-				Services.AddHostedService(Provider => Provider.GetRequiredService<ScheduleService>());
-			}
+				Services.AddHostedService(Provider => Provider.GetRequiredService<AgentService>());
+				Services.AddHostedService(Provider => Provider.GetRequiredService<AutoscaleService>());
+				Services.AddHostedService(Provider => Provider.GetRequiredService<CommitService>());
+				Services.AddHostedService(Provider => Provider.GetRequiredService<ConsistencyService>());
+				Services.AddHostedService(Provider => (DowntimeService)Provider.GetRequiredService<IDowntimeService>());
+				Services.AddHostedService(Provider => Provider.GetRequiredService<IIssueService>());
+				Services.AddHostedService(Provider => (LogFileService)Provider.GetRequiredService<ILogFileService>());
+				Services.AddHostedService(Provider => (NotificationService)Provider.GetRequiredService<INotificationService>());
+				if (!Settings.DisableSchedules)
+				{
+					Services.AddHostedService(Provider => Provider.GetRequiredService<ScheduleService>());
+				}
 
-			Services.AddHostedService<MetricService>();
-			Services.AddHostedService(Provider => Provider.GetRequiredService<PerforceLoadBalancer>());
-			Services.AddHostedService<PoolUpdateService>();
-			Services.AddHostedService(Provider => Provider.GetRequiredService<SlackNotificationSink>());
-			Services.AddHostedService<ConfigService>();
-			Services.AddHostedService<TelemetryService>();
-			Services.AddHostedService(Provider => Provider.GetRequiredService<DeviceService>());
+				Services.AddHostedService<MetricService>();
+				Services.AddHostedService(Provider => Provider.GetRequiredService<PerforceLoadBalancer>());
+				Services.AddHostedService<PoolUpdateService>();
+				Services.AddHostedService(Provider => Provider.GetRequiredService<SlackNotificationSink>());
+				Services.AddHostedService<ConfigService>();
+				Services.AddHostedService<TelemetryService>();
+				Services.AddHostedService(Provider => Provider.GetRequiredService<DeviceService>());
+			}
 
 			// Task sources. Order of registration is important here; it dictates the priority in which sources are served.
 			Services.AddSingleton<JobTaskSource>();
@@ -619,7 +622,7 @@ namespace HordeServer
 
 		public static void ConfigureJsonSerializer(JsonSerializerOptions Options)
 		{
-			Options.IgnoreNullValues = true;
+			Options.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
 			Options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
 			Options.PropertyNameCaseInsensitive = true;
 			Options.Converters.Add(new JsonObjectIdConverter());
@@ -849,8 +852,8 @@ namespace HordeServer
 
 		static void LaunchBrowser(IApplicationBuilder App)
 		{
-			IServerAddressesFeature Feature = App.ServerFeatures.Get<IServerAddressesFeature>();
-			if (Feature.Addresses.Count > 0)
+			IServerAddressesFeature? Feature = App.ServerFeatures.Get<IServerAddressesFeature>();
+			if (Feature != null && Feature.Addresses.Count > 0)
 			{
 				// with a development cert, host will be set by default to localhost, otherwise there will be no host in address
 				string Address = Feature.Addresses.First().Replace("[::]", System.Net.Dns.GetHostName(), StringComparison.OrdinalIgnoreCase);
