@@ -249,7 +249,7 @@ public:
 	UPROPERTY(transient)
 	ERigExecutionType ExecutionType;
 
-	UPROPERTY(EditAnywhere, Category = "VM")
+	UPROPERTY()
 	FRigVMRuntimeSettings VMRuntimeSettings;
 
 	/** Execute */
@@ -576,7 +576,7 @@ private:
 	UPROPERTY(transient, BlueprintGetter = GetInteractionRig, BlueprintSetter = SetInteractionRig, Category = "Interaction")
 	TObjectPtr<UControlRig> InteractionRig;
 
-	UPROPERTY(EditAnywhere, transient, BlueprintGetter = GetInteractionRigClass, BlueprintSetter = SetInteractionRigClass, Category = "Interaction", Meta=(DisplayName="Interaction Rig"))
+	UPROPERTY(EditInstanceOnly, transient, BlueprintGetter = GetInteractionRigClass, BlueprintSetter = SetInteractionRigClass, Category = "Interaction", Meta=(DisplayName="Interaction Rig"))
 	TSubclassOf<UControlRig> InteractionRigClass;
 
 public:
