@@ -14,7 +14,7 @@ public class NeuralNetworkInference : ModuleRules
 			PublicDefinitions.Add("WITH_UE_AND_ORT_SUPPORT");
 		}
 
-		ShortName = "NNI"; // Could be removed when plugin moves to Experimental, NFL path is too long
+		ShortName = "NNI"; // Shorten to avoid path-too-long errors
 		PCHUsage = ModuleRules.PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicIncludePaths.AddRange(
@@ -29,7 +29,7 @@ public class NeuralNetworkInference : ModuleRules
 				"Core",
 				"CoreUObject",
 				"Engine",
-				"NeuralNetworkInferenceCore",
+				"NeuralNetworkInferenceProfiling",
 				// Internal (Backend-related)
 				"ModelProto"
 			}
@@ -80,6 +80,11 @@ public class NeuralNetworkInference : ModuleRules
 				);
 
 				AddEngineThirdPartyPrivateStaticDependencies(Target, "DX12");
+
+				if (Target.bBuildEditor)
+				{
+					PublicDependencyModuleNames.Add("WinPixEventRuntime");
+				}
 			}
 		}
 

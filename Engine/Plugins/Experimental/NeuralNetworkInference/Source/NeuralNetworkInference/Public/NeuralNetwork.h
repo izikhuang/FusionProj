@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "NeuralEnumClasses.h"
 #include "NeuralTensor.h"
+#include "NeuralStats.h"
 #include "NeuralNetwork.generated.h"
 
 /**
@@ -121,12 +122,13 @@ public:
 	 * GetBackEnd()/GetBackEndForCurrentPlatform():
 	 * - If BackEnd == Auto, GetBackEnd() will return Auto and GetBackEndForCurrentPlatform() will return the actual BackEnd being used for the current platform (UEAndORT or UEOnly).
 	 * - If BackEnd != Auto, GetBackEnd() and GetBackEndForCurrentPlatform() will both return the same value (UEAndORT or UEOnly).
-	 * SetBackEnd() will modify both BackEnd and BackEndForCurrentPlatform.
+	 * SetBackEnd() will modify both BackEnd and BackEndForCurrentPlatform and return IsLoaded(). 
+	 * Important! SetBackEnd is NOT THREAD SAFE, please ensure that no other Neural Network function such as Run() is running when SetBackEnd is called. 
 	 * @see ENeuralBackEnd for more details.
 	 */
 	ENeuralBackEnd GetBackEnd() const;
 	ENeuralBackEnd GetBackEndForCurrentPlatform() const;
-	void SetBackEnd(const ENeuralBackEnd InBackEnd);
+	bool SetBackEnd(const ENeuralBackEnd InBackEnd);
 	
 	/**
 	 * IsGPUConfigCompatible will always return true for ENeuralBackEnd::UEOnly. For ENeuralBackEnd::UEAndORT, IsGPUConfigCompatible() and IsGPUConfigCompatibleForUEAndORTBackEnd() will return the same value:
@@ -146,10 +148,18 @@ public:
 	int64 GetInputTensorNumber() const;
 
 	/**
+	 * Slow functions (as they will copy every input/output FNeuralNetwork) only meant for debugging purposes.
+	 */
+	TArray<FNeuralTensor> CreateInputArrayCopy() const;
+	void SetInputFromArrayCopy(const TArray<FNeuralTensor>& InTensorDataArray);
+	TArray<FNeuralTensor> CreateOutputArrayCopy() const;
+
+	/**
 	 * Functions to get output. The returned FNeuralTensor(s) are constant to prevent the user from modifying the tensor properties (e.g., size or dimensions).
 	 */
 	const FNeuralTensor& GetOutputTensor(const int32 InTensorIndex = 0) const;
 	int64 GetOutputTensorNumber() const;
+
 	/**
 	 * Non-efficient functions meant to be used only for debugging purposes.
 	 * - InputTensorsToCPU will send the CPU memory of the desired input tensor(s) to GPU memory. Used to debug InputDeviceType == ENeuralDeviceType::GPU.
@@ -163,9 +173,22 @@ public:
 	 * Run() executes the forward pass on the current UNeuralNetwork given the current input FDeprecatedNeuralTensor(s), which were previously filled with
 	 * SetInputFromArrayCopy() or GetInputDataPointerMutable().
 	 * Its output results can be retrieved with GetOutputTensor() or GetOutputTensors().
-	 * @param GPUSynchronousMode Whether it should block the thread until the UNeuralNetwork has fully run.
+	 *
+	 * If Run() is called asynchronously, this does not guarantee that calling SetInputFromArrayCopy multiple times will result in each one being applied for a different Run. The user is
+	 * responable of not calling SetInputFromArrayCopy until Run() is completed and its delegate (OnAsyncRunCompletedDelegate) called. Otherwise, the wrong results might be returned.
 	 */
 	void Run();
+
+	/**
+	 * Stats functions: 
+	 * - GetLastInferenceTime will provide the last inference time measured milliseconds
+	 * - GetInferenceStats, returns Inference time statistics. (NumberSamples, Average, StdDev, Min, Max statistics measured in milliseconds)
+	 * - GetInputMemoryTransferStats, returns Input Memory Transfer statistics. (NumberSamples, Average, StdDev, Min, Max statistics measured in milliseconds)
+	 */
+	float GetLastInferenceTime() const;
+	FNeuralStatsData GetInferenceStats() const;
+	FNeuralStatsData GetInputMemoryTransferStats() const;
+	void ResetStats();
 
 protected:
 	/**
@@ -208,6 +231,19 @@ protected:
 
 private:
 	bool bIsLoaded;
+
+	/**
+	 * Whether an inference pass (i.e., Run) is happening.
+	 * This variable is thread safe as long as only "Run" modifies it. Other functions can safely read it at any time.
+	 * If other functions outside of Run() have to modify it, consider using a mutex with a bool rather than just a std::atomic<bool>.
+	 */
+	std::atomic<bool> bIsBackgroundThreadRunning;
+
+	/**
+	 * Critical section (mutex) used to avoid issues or crashes due to the asynchronous Run being run at the same time than any other non-const class function.
+	 * @see UNeuralNetwork::Run().
+	 */
+	FCriticalSection ResoucesCriticalSection;
 
 	UPROPERTY()
 	TArray<uint8> ModelReadFromFileInBytes;
@@ -255,7 +291,16 @@ private:
 	FNeuralTensor& GetInputTensorMutable(const int32 InTensorIndex = 0);
 	FNeuralTensor& GetOutputTensorMutable(const int32 InTensorIndex = 0);
 
+	FNeuralStats ComputeStatsModule;
+	FNeuralStats InputMemoryTransferStatsModule;
+
 public:
+	/**
+	 * Internal function not needed by the user.
+	 * Used to create custom networks without an ONNX file for QA testing in FOperatorTester::TestOperator().
+	 */
+	bool Load(TArray<FNeuralTensor>& InTensors, const TArray<FNeuralTensor*>& InInputTensors, const TArray<FNeuralTensor*>& InOutputTensors, const TArray<TSharedPtr<class FNeuralOperator>>& InOperators);
+
 #if WITH_EDITOR
 	/**
 	 * Internal and Editor-only functions not needed by the user.
@@ -281,5 +326,6 @@ private:
 	virtual void PostInitProperties() override;
 	virtual void PostLoad() override;
 	virtual void Serialize(FArchive& Archive) override;
+	virtual bool IsReadyForFinishDestroy() override;
 	//~End of UObject interface
 };

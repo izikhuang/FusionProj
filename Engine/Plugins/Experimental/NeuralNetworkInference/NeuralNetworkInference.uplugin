@@ -13,15 +13,11 @@
 	"EnabledByDefault": false,
 	"CanContainContent": false,
 	"IsBetaVersion": true,
+	"IsExperimentalVersion": true,
 	"Installed": false,
 	"Modules": [
 		{
 			"Name": "NeuralNetworkInference",
-			"Type": "RuntimeAndProgram",
-			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "NeuralNetworkInferenceCore",
 			"Type": "RuntimeAndProgram",
 			"LoadingPhase": "Default"
 		},
@@ -32,6 +28,11 @@
 		},
 		{
 			"Name": "NeuralNetworkInferenceQA",
+			"Type": "RuntimeAndProgram",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "NeuralNetworkInferenceProfiling",
 			"Type": "RuntimeAndProgram",
 			"LoadingPhase": "Default"
 		},
@@ -59,17 +60,7 @@
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "ModelProtoConverter",
-			"Type": "RuntimeAndProgram",
-			"LoadingPhase": "Default"
-		},
-		{
 			"Name": "NeuralNetworkInferenceEditor",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "NeuralNetworkInferenceQAEditor",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
 		}

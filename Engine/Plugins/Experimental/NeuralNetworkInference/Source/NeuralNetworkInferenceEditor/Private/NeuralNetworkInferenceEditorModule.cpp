@@ -1,10 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "NeuralNetworkInferenceEditorModule.h"
-#include "NeuralNetworkAssetTypeActions.h"
-#include "NeuralNetworkLegacyAssetTypeActions.h"
 #include "IAssetTypeActions.h"
 #include "Interfaces/IPluginManager.h"
+#include "NeuralNetworkAssetTypeActions.h"
+#include "QA/NeuralNetworkInferenceQAAssetTypeActions.h"
 
 
 
@@ -34,11 +34,12 @@ private:
 // This code will execute after your module is loaded into memory; the exact timing is specified in the .uplugin file per-module
 void FNeuralNetworkInferenceEditorModule::StartupModule()
 {
-	// UNeuralNetwork - Register asset types
 	IAssetTools& AssetTools = FModuleManager::LoadModuleChecked<FAssetToolsModule>("AssetTools").Get();
+	// UNeuralNetwork - Register asset types
 	Actions.Emplace(MakeShared<FNeuralNetworkAssetTypeActions>());
 	AssetTools.RegisterAssetTypeActions(Actions.Last().ToSharedRef());
-	Actions.Emplace(MakeShared<FNeuralNetworkLegacyAssetTypeActions>());
+	// NNI QA - Register asset types
+	Actions.Emplace(MakeShared<FNeuralNetworkAssetTypeActions>());
 	AssetTools.RegisterAssetTypeActions(Actions.Last().ToSharedRef());
 	// Register ML category so that ML assets can register to it
 	MLAssetCategoryBit = AssetTools.RegisterAdvancedAssetCategory(FName(TEXT("ML")), NSLOCTEXT("MLAssetCategory", "MLAssetCategory_ML", "Machine Learning"));

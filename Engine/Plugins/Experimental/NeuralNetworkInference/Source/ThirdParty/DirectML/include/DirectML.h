@@ -4,6 +4,12 @@
 #define DIRECTML_H
 #pragma once
 
+
+#include "ThirdPartyWarningDisabler.h" // WITH_UE
+NNI_THIRD_PARTY_INCLUDES_START
+#undef check
+#undef TEXT
+
 #ifdef _GAMING_XBOX
 #include "d3d12_xs.h"
 #else
@@ -20,7 +26,7 @@
 
 #if !defined(NTDDI_VERSION) || defined(DML_TARGET_VERSION_USE_LATEST) // Use the latest if using redist or no Windows target set.
 #define DML_TARGET_VERSION 0x3000
-#elif NTDDI_VERSION >= NTDDI_WIN10_FE
+#elif defined(NTDDI_WIN10_FE) && NTDDI_VERSION >= NTDDI_WIN10_FE // WITH_UE: Added defined(NTDDI_WIN10_FE)
 #define DML_TARGET_VERSION 0x3000
 #elif NTDDI_VERSION >= NTDDI_WIN10_VB // Windows 10 2004 Update
 #define DML_TARGET_VERSION 0x2000
@@ -2058,3 +2064,5 @@ interface DML_DECLARE_INTERFACE("a0884f9a-d2be-4355-aa5d-5901281ad1d2") IDMLDevi
 
 #endif // WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP | WINAPI_PARTITION_GAMES)
 #endif // DIRECTML_H
+
+NNI_THIRD_PARTY_INCLUDES_END // WITH_UE

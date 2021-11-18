@@ -3,34 +3,123 @@
 #pragma once
 
 #include "NeuralNetwork.h"
+#include "Async/AsyncWork.h"
+
+// RHI includes must happen before onnxruntime_cxx_api.h (both files include Windows.h)
+#include "HAL/CriticalSection.h"
+#include "RHI.h"
+#include "DynamicRHI.h"
+
+#if defined(WITH_UE_AND_ORT_SUPPORT) && defined(PLATFORM_WIN64)
+	// Disable NOMINMAX & WIN32_LEAN_AND_MEAN defines to avoid compiler warnings
+#pragma push_macro("NOMINMAX")
+#pragma push_macro("WIN32_LEAN_AND_MEAN")
+#undef NOMINMAX
+#undef WIN32_LEAN_AND_MEAN
+#include "D3D12RHIPrivate.h"
+#pragma pop_macro("WIN32_LEAN_AND_MEAN")
+#pragma pop_macro("NOMINMAX")
+#endif
 
 #include "ThirdPartyWarningDisabler.h"
 NNI_THIRD_PARTY_INCLUDES_START
 #undef check
 #undef TEXT
 #ifdef WITH_UE_AND_ORT_SUPPORT
-	#include "onnxruntime/core/session/onnxruntime_cxx_api.h"
-	#ifdef PLATFORM_WIN64
-		struct OrtDMLProviderOptions;
-		namespace Ort
-		{
-			class DMLGPUResourceAllocator;
-		}
-	#endif
+#include "core/session/onnxruntime_cxx_api.h"
+#ifdef PLATFORM_WIN64
+struct OrtDmlApi;
+#endif
 #endif //WITH_UE_AND_ORT_SUPPORT
 NNI_THIRD_PARTY_INCLUDES_END
 
 
-
 struct UNeuralNetwork::FImplBackEndUEAndORT
 {
+	/// Helper class to run session as an async task
+	class FNeuralNetworkAsyncTask : public FNonAbandonableTask
+	{
+		friend class FAsyncTask<FNeuralNetworkAsyncTask>;
+
+	public:
+		FNeuralNetworkAsyncTask(UNeuralNetwork::FImplBackEndUEAndORT* InBackEnd)
+			: BackEnd(InBackEnd)
+		{}
+
+		void SetRunSessionArgs(const ENeuralNetworkSynchronousMode InSyncMode, const ENeuralDeviceType InDeviceType,
+			const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType)
+		{
+#ifdef WITH_UE_AND_ORT_SUPPORT
+			const FScopeLock ResourcesLock(&BackEnd->ResoucesCriticalSection);
+
+			SyncMode = InSyncMode;
+			DeviceType = InDeviceType;
+			InputDeviceType = InInputDeviceType;
+			OutputDeviceType = InOutputDeviceType;
+#endif
+		}
+
+	protected:
+		void DoWork()
+		{
+#ifdef WITH_UE_AND_ORT_SUPPORT
+			if (SyncMode == ENeuralNetworkSynchronousMode::Asynchronous)
+			{
+				BackEnd->RunSessionAsync(DeviceType, InputDeviceType, OutputDeviceType);
+			}
+			else
+			{
+				BackEnd->RunSessionSync(DeviceType, InputDeviceType, OutputDeviceType);
+			}
+#endif
+		}
+
+		// This next section of code needs to be here. Not important as to why.
+		FORCEINLINE TStatId GetStatId() const
+		{
+			RETURN_QUICK_DECLARE_CYCLE_STAT(FNeuralNetworkAsyncTask, STATGROUP_ThreadPoolAsyncTasks);
+		}
+
+	private:
+		UNeuralNetwork::FImplBackEndUEAndORT* BackEnd;
+
+		/// Variables that could change on each inference run
+		ENeuralNetworkSynchronousMode SyncMode;
+		ENeuralDeviceType DeviceType;
+		ENeuralDeviceType InputDeviceType;
+		ENeuralDeviceType OutputDeviceType;
+	};
+
 public:
 	/**
 	 * InputTensors and OutputTensors represent the input and output TArray<FNeuralTensor> of the network, respectively.
 	 */
 	TArray<FNeuralTensor> InputTensors;
 	TArray<FNeuralTensor> OutputTensors;
+
+	static void WarnAndSetDeviceToCPUIfDX12NotEnabled(ENeuralDeviceType& InOutDeviceType);
+
+	static bool IsGPUConfigCompatible();
+
+	static bool Load(TSharedPtr<FImplBackEndUEAndORT>& InOutImplBackEndUEAndORT, FOnAsyncRunCompleted& InOutOnAsyncRunCompletedDelegate,
+		std::atomic<bool>& bInOutIsBackgroundThreadRunning, FCriticalSection& InOutResoucesCriticalSection, TArray<bool>& OutAreInputTensorSizesVariable,
+		const TArray<uint8>& InModelReadFromFileInBytes, const FString& InModelFullFilePath, const ENeuralDeviceType InDeviceType,
+		const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
+	
 #ifdef WITH_UE_AND_ORT_SUPPORT
+	FImplBackEndUEAndORT(FOnAsyncRunCompleted& InOutOnAsyncRunCompletedDelegate, std::atomic<bool>& bInIsBackgroundThreadRunning,
+		FCriticalSection& InResoucesCriticalSection);
+#endif
+
+	void Run(const ENeuralNetworkSynchronousMode InSynchronousMode, const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType,
+		const ENeuralDeviceType InOutputDeviceType);
+
+#ifdef WITH_UE_AND_ORT_SUPPORT
+private:
+	/** Async support */
+	FOnAsyncRunCompleted& OnAsyncRunCompletedDelegate;
+	std::atomic<bool>& bIsBackgroundThreadRunning;
+	FCriticalSection& ResoucesCriticalSection;
 	/** Network-related variables */
 	TUniquePtr<Ort::Env> Environment;
 	TUniquePtr<Ort::Session> Session;
@@ -39,39 +128,41 @@ public:
 	/** Tensor-related variables */
 	TUniquePtr<Ort::MemoryInfo> AllocatorInfo; /* Memory allocator information */
 #ifdef PLATFORM_WIN64
-	TUniquePtr<OrtDMLProviderOptions> DmlProviderOptions; /* DirectML execution provider options */
-	TUniquePtr<Ort::DMLGPUResourceAllocator> DmlGPUAllocator; /* DirectML GPU allocator */
+	const OrtDmlApi* DmlApi;
+	TUniquePtr<Ort::MemoryInfo> DmlGPUMemoryInfo; /* DirectML GPU memory information */
 	TArray<void*> DmlGPUResources; /* Shared D3D12 resources with DirectML GPU execution provider */
 #endif
 	TArray<Ort::Value> InputOrtTensors; /* Actual ONNXRuntime tensors */
 	TArray<const char*> InputTensorNames; /* Tensor names */
 	TArray<Ort::Value> OutputOrtTensors; /* Actual ONNXRuntime tensors */
 	TArray<const char*> OutputTensorNames; /* Tensor names */
-#endif //WITH_UE_AND_ORT_SUPPORT
 
-	static void WarnAndSetDeviceToCPUIfDX12NotEnabled(ENeuralDeviceType& InOutDeviceType);
+	TUniquePtr<FAsyncTask<FNeuralNetworkAsyncTask>> NeuralNetworkAsyncTask;
 
-	static bool IsGPUConfigCompatible();
+	void IsAsyncTaskDone() const;
 
-	static bool Load(TSharedPtr<FImplBackEndUEAndORT>& InOutImplBackEndUEAndORT, TArray<bool>& OutAreInputTensorSizesVariable, const TArray<uint8>& InModelReadFromFileInBytes, const FString& InModelFullFilePath, const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
-	
-	void Run(const ENeuralNetworkSynchronousMode InSynchronousMode, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
-
-#ifdef WITH_UE_AND_ORT_SUPPORT
-private:
-	static bool InitializedAndConfigureMembers(TSharedPtr<FImplBackEndUEAndORT>& InOutImplBackEndUEAndORT, const FString& InModelFullFilePath, const ENeuralDeviceType InDeviceType);
+	static bool InitializedAndConfigureMembers(TSharedPtr<FImplBackEndUEAndORT>& InOutImplBackEndUEAndORT,
+		FOnAsyncRunCompleted& InOutOnAsyncRunCompletedDelegate, std::atomic<bool>& bInOutIsBackgroundThreadRunning,
+		FCriticalSection& InOutResoucesCriticalSection, const FString& InModelFullFilePath, const ENeuralDeviceType InDeviceType);
 
 	bool ConfigureMembers(const ENeuralDeviceType InDeviceType);
 
-	bool ConfigureTensors(TArray<FNeuralTensor>& OutTensors, TArray<bool>* OutAreInputTensorSizesVariable, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
+	bool ConfigureTensors(TArray<FNeuralTensor>& OutTensors, TArray<bool>* OutAreInputTensorSizesVariable, const ENeuralDeviceType InDeviceType,
+		const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
 
-	bool SetTensorsFromNetwork(TArray<FNeuralTensor>& OutTensors, TArray<const char*>& InTensorNames, TArray<ENeuralDataType>& InTensorDataTypes, TArray<TArray<int64>>& InSizes, TArray<ENeuralTensorTypeGPU>& InTensorGPUTypes, const bool bIsInput);
+	bool SetTensorsFromNetwork(TArray<FNeuralTensor>& OutTensors, TArray<const char*>& InTensorNames, TArray<ENeuralDataType>& InTensorDataTypes,
+		TArray<TArray<int64>>& InSizes, TArray<ENeuralTensorTypeGPU>& InTensorGPUTypes, const bool bIsInput);
 
-	static void LinkTensorToONNXRuntime(TArray<FNeuralTensor>& InOutTensors, TArray<Ort::Value>& InOutOrtTensors, Ort::MemoryInfo& InOutAllocatorInfo, const int32 InTensorIndex);
+	static void LinkTensorToONNXRuntime(TArray<FNeuralTensor>& InOutTensors, TArray<Ort::Value>& InOutOrtTensors, Ort::MemoryInfo& InOutAllocatorInfo,
+		const int32 InTensorIndex);
 
 #ifdef PLATFORM_WIN64
 	bool LinkTensorResourceToONNXRuntime(FNeuralTensor& InOutTensor, Ort::Value& InOutOrtTensor, void* D3DResource);
 #endif
+
+	void RunSessionAsync(const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
+	void RunSessionSync(const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
+	void RunSessionImpl(const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType);
 
 	void ClearResources();
 

@@ -1,11 +1,11 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "NeuralNetworkImplBackEndUEOnly.h"
-#include "GraphProtoToNeuralNetworkConverter.h"
 #include "ModelProtoFileReader.h"
 #include "NeuralNetworkInferenceUtils.h"
 #include "RenderGraphBuilder.h"
 #include "RenderingThread.h"
+#include "UEOnly/GraphProtoToNeuralNetworkConverter.h"
 #include "RHI.h"
 
 
@@ -15,18 +15,8 @@
 
 bool UNeuralNetwork::FImplBackEndUEOnly::Load(TSharedPtr<FImplBackEndUEOnly>& InOutImplBackEndUEOnly, const TArray<uint8>& InModelReadFromFileInBytes)
 {
-	// Initialize InOutImplBackEndUEOnly
-	if (!InOutImplBackEndUEOnly.IsValid())
-	{
-		InOutImplBackEndUEOnly = MakeShared<FImplBackEndUEOnly>();
-	}
-	// Clean previous networks
-	else
-	{
-		InOutImplBackEndUEOnly->Operators.Empty();
-		InOutImplBackEndUEOnly->ModelProto = FModelProto();
-		InOutImplBackEndUEOnly->bAreTensorsInGpu = false;
-	}
+	// Reset InOutImplBackEndUEOnly
+	Reset(InOutImplBackEndUEOnly);
 	// Read ModelProto
 	if (!FModelProtoFileReader::ReadModelProtoFromArray(InOutImplBackEndUEOnly->ModelProto, InModelReadFromFileInBytes))
 	{
@@ -53,6 +43,20 @@ bool UNeuralNetwork::FImplBackEndUEOnly::Load(TSharedPtr<FImplBackEndUEOnly>& In
 	return true;
 }
 
+bool UNeuralNetwork::FImplBackEndUEOnly::Load(TSharedPtr<FImplBackEndUEOnly>& InOutImplBackEndUEOnly, FNeuralTensorManager& InTensorManager, const TArray<TSharedPtr<FNeuralOperator>>& InOperators)
+{
+	// Reset InOutImplBackEndUEOnly
+	Reset(InOutImplBackEndUEOnly);
+	// Load
+	if (!InTensorManager.IsLoaded())
+	{
+		UE_LOG(LogNeuralNetworkInference, Warning, TEXT("UNeuralNetworkLegacy::Load(): TensorManager could not be loaded."));
+	}
+	Swap(InOutImplBackEndUEOnly->TensorManager, InTensorManager);
+	InOutImplBackEndUEOnly->Operators = InOperators;
+	return (InOutImplBackEndUEOnly->Operators.Num() > 0 && InOutImplBackEndUEOnly->TensorManager.IsLoaded());
+}
+
 //bool UNeuralNetwork::FImplBackEndUEOnly::Load(TSharedPtr<FImplBackEndUEOnly>& InOutImplBackEndUEOnly, FNeuralTensorManager& InTensorManager, const TArray<TSharedPtr<FNeuralOperator>>& InOperators)
 //{
 //	// Initialize InOutImplBackEndUEOnly
@@ -70,7 +74,7 @@ bool UNeuralNetwork::FImplBackEndUEOnly::Load(TSharedPtr<FImplBackEndUEOnly>& In
 //	return (InOutImplBackEndUEOnly->Operators.Num() > 0 && InOutImplBackEndUEOnly->TensorManager.IsLoaded());
 //}
 
-void UNeuralNetwork::FImplBackEndUEOnly::Run(FOnAsyncRunCompleted& InOutOnAsyncRunCompletedDelegate, const ENeuralNetworkSynchronousMode InSynchronousMode, const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType)
+void UNeuralNetwork::FImplBackEndUEOnly::Run(FOnAsyncRunCompleted& InOutOnAsyncRunCompletedDelegate, std::atomic<bool>& bInIsBackgroundThreadRunning, const ENeuralNetworkSynchronousMode InSynchronousMode, const ENeuralDeviceType InDeviceType, const ENeuralDeviceType InInputDeviceType, const ENeuralDeviceType InOutputDeviceType)
 {
 	// Run UNeuralNetwork::UEOnly
 	if (Operators.Num() > 0)
@@ -102,7 +106,7 @@ void UNeuralNetwork::FImplBackEndUEOnly::Run(FOnAsyncRunCompleted& InOutOnAsyncR
 
 			// On RHI thread
 			ENQUEUE_RENDER_COMMAND(UNeuralNetwork_UEOnly_Run_RenderThread)(
-				[this, &InOutOnAsyncRunCompletedDelegate, InSynchronousMode, InInputDeviceType, InOutputDeviceType](FRHICommandListImmediate& RHICmdList)
+				[this, &InOutOnAsyncRunCompletedDelegate, &bInIsBackgroundThreadRunning, InSynchronousMode, InInputDeviceType, InOutputDeviceType](FRHICommandListImmediate& RHICmdList)
 				{
 					FRDGBuilder GraphBuilder(RHICmdList, RDG_EVENT_NAME("FImplBackEndUEOnly::Run()"));
 
@@ -192,12 +196,14 @@ void UNeuralNetwork::FImplBackEndUEOnly::Run(FOnAsyncRunCompleted& InOutOnAsyncR
 					// Broadcast delegates (from the render thread)
 					if (InSynchronousMode == ENeuralNetworkSynchronousMode::Asynchronous)
 					{
+						bInIsBackgroundThreadRunning = true; // This will be done right away
 						GraphBuilder.AddPass(
 							RDG_EVENT_NAME("Async delegate broadcast"),
 							ERDGPassFlags::None,
-							[&InOutOnAsyncRunCompletedDelegate](FRHICommandListImmediate& RHICmdList)
+							[&InOutOnAsyncRunCompletedDelegate, &bInIsBackgroundThreadRunning](FRHICommandListImmediate& RHICmdList)
 						{
 							InOutOnAsyncRunCompletedDelegate.ExecuteIfBound();
+							bInIsBackgroundThreadRunning = false; // This will be done in the render graph after all NNI operators have been run
 						});
 					}
 
@@ -264,3 +270,24 @@ void UNeuralNetwork::FImplBackEndUEOnly::Run(FOnAsyncRunCompleted& InOutOnAsyncR
 //	// Return result
 //	return String;
 //}
+
+
+
+/* FImplBackEndUEOnly private functions
+ *****************************************************************************/
+
+void UNeuralNetwork::FImplBackEndUEOnly::Reset(TSharedPtr<FImplBackEndUEOnly>& InOutImplBackEndUEOnly)
+{
+	// Initialize InOutImplBackEndUEOnly
+	if (!InOutImplBackEndUEOnly.IsValid())
+	{
+		InOutImplBackEndUEOnly = MakeShared<FImplBackEndUEOnly>();
+	}
+	// If already initialized, clean previous network
+	else
+	{
+		InOutImplBackEndUEOnly->Operators.Empty();
+		InOutImplBackEndUEOnly->ModelProto = FModelProto();
+		InOutImplBackEndUEOnly->bAreTensorsInGpu = false;
+	}
+}

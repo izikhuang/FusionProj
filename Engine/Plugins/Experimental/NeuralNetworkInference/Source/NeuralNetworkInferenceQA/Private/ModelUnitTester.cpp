@@ -1,9 +1,64 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "ModelUnitTester.h"
-#include "NeuralNetworkInferenceQATimer.h"
+#include "NeuralTimer.h"
 #include "NeuralNetworkInferenceQAUtils.h"
 #include "Misc/Paths.h"
+
+
+
+/* FModelUnitTester axuiliary functions
+ *****************************************************************************/
+
+struct FNNIUnitTesterTimeData
+{
+	FNeuralStatsData ComputeTimeData;
+	FNeuralStatsData InputCopyTimeData;
+	FNeuralStatsData OutputCopyTimeData;
+
+	FNNIUnitTesterTimeData(const FNeuralStatsData& InComputeTimeData, const FNeuralStatsData& InInputCopyTimeData, const FNeuralStatsData& InOutputCopyTimeData)
+		: ComputeTimeData(InComputeTimeData)
+		, InputCopyTimeData(InInputCopyTimeData)
+		, OutputCopyTimeData(InOutputCopyTimeData)
+	{}
+};
+
+FNNIUnitTesterTimeData FModelUnitTester_GetTimeInformation(UNeuralNetwork* InOutNetwork, TArray<float>& OutCPUGPUCPUOutput, const TArray<float>& InInputArray, const int32 InRepetitions)
+{
+	/* Input/output copy speed */
+	FNeuralStats OutCopyingStats;
+	FNeuralTimer Timer;
+	for (int32 TimerIndex = 0; TimerIndex < InRepetitions; ++TimerIndex)
+	{
+		InOutNetwork->SetInputFromArrayCopy(InInputArray);
+		Timer.Tic();
+		OutCPUGPUCPUOutput = InOutNetwork->GetOutputTensor().GetArrayCopy<float>();
+		const float CurrentCopyingTime = Timer.Toc();
+		OutCopyingStats.StoreSample(CurrentCopyingTime);
+
+	}
+
+	/* Forward() speed */
+	if (InRepetitions > 1)
+	{
+		for (int32 TimerIndex = 0; TimerIndex < 5; ++TimerIndex)
+		{
+			InOutNetwork->Run();
+		}
+	}
+
+	if (InRepetitions > 0)
+	{
+		for (int32 TimerIndex = 0; TimerIndex < InRepetitions; ++TimerIndex)
+		{
+			InOutNetwork->SetInputFromArrayCopy(InInputArray);
+			InOutNetwork->Run();
+			OutCPUGPUCPUOutput = InOutNetwork->GetOutputTensor().GetArrayCopy<float>();
+		}
+	}
+	// Return NetworkTimeData
+	return FNNIUnitTesterTimeData(InOutNetwork->GetInferenceStats(), InOutNetwork->GetInputMemoryTransferStats(), OutCopyingStats.GetStats());
+}
 
 
 
@@ -12,14 +67,41 @@
 
 bool FModelUnitTester::GlobalTest(const FString& InProjectContentDir, const FString& InModelZooRelativeDirectory)
 {
+	// NOTE: models are separated into multiple lines to enable/disable particular network for faster testing
+
 	// Model names, input values, and number of repetitions for profiling
-	const TArray<FString> ModelNames({ TEXT("MLRigDeformer"), TEXT("cloth_network"), TEXT("HS"), TEXT("RL") });
-	const TArray<float> InputArrayValues({ 1.f, 0.f, -1.f, 100.f, -100.f, 0.5f, -0.5f }); // This one can be shorter than CPU/GPUGroundTruths
+	const TArray<FString> ModelNames({
+		TEXT("MLRigDeformer"),
+		TEXT("cloth_network"),
+		TEXT("HS"),
+		TEXT("RL")
+	});
+
 	// Ground truths
-	const TArray<TArray<double>> CPUGroundTruths({ {3.728547, 0.008774, 4.595651, 212.193216, 742.434561, 4.250668, 4.717748}, {0.042571, 0.023693, 0.015783, 13.100505, 8.050994, 0.028807, 0.016387},
-		{138.372906, 126.753839, 127.287254, 130.316062, 127.303424, 124.800896, 126.546051}, {0.488662, 0.472437, 0.478862, 0.522685, 0.038322, 0.480848, 0.483821} });
-	const TArray<TArray<double>> GPUGroundTruths({ {3.728547, 0.008774, 4.595651, 212.193208, 742.434578, 4.250668, 4.717748}, {0.042571, 0.023693, 0.015783, 13.100504, 8.050994, 0.028807, 0.016387},
-		{138.373184, 126.754100, 127.287398, 130.316194, 127.303495, 124.801134, 126.5462530}, {0.488662, 0.472437, 0.478862, 0.522685, 0.038322, 0.480848, 0.483821} });
+	const TArray<TArray<double>> CPUGroundTruths({
+		{3.728547, 0.008774, 4.595651, 212.193216, 742.434561, 4.250668, 4.717748},
+		{0.042571, 0.023693, 0.015783, 13.100505, 8.050994, 0.028807, 0.016387},
+		{138.372906, 126.753839, 127.287254, 130.316062, 127.303424, 124.800896, 126.546051},
+		{0.488662, 0.472437, 0.478862, 0.522685, 0.038322, 0.480848, 0.483821}
+	});
+	
+	const TArray<TArray<double>> GPUGroundTruths({
+		{3.728547, 0.008774, 4.595651, 212.193208, 742.434578, 4.250668, 4.717748},
+		{0.042571, 0.023693, 0.015783, 13.100504, 8.050994, 0.028807, 0.016387},
+		{138.373184, 126.754100, 127.287398, 130.316194, 127.303495, 124.801134, 126.5462530},
+		{0.488662, 0.472437, 0.478862, 0.522685, 0.038322, 0.480848, 0.483821}
+	});
+
+	const TArray<float> InputArrayValues({ // This one can be shorter than CPU/GPUGroundTruths
+		1.f,
+		0.f,
+		-1.f,
+		100.f,
+		-100.f,
+		0.5f,
+		-0.5f
+	});
+	
 	// Speed profiling test - 0 repetitions means that test will not be run
 #ifdef WITH_UE_AND_ORT_SUPPORT
 	const TArray<int32> CPURepetitionsForUEAndORTBackEnd({ 1000, 1000,  50, 1000 });
@@ -36,6 +118,7 @@ bool FModelUnitTester::GlobalTest(const FString& InProjectContentDir, const FStr
 	const TArray<int32> GPURepetitionsForUEOnlyBackEnd({ 0, 0, 0, 0 });
 #endif //WITH_EDITOR
 	// Run tests
+	UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("ENeuralBackEnd::UEOnly test for FModelUnitTester::GlobalTest disabled due to not being compatible with ORT (linking error issues)."));
 	return ModelLoadAccuracyAndSpeedTests(InProjectContentDir, InModelZooRelativeDirectory, ModelNames, InputArrayValues, CPUGroundTruths, GPUGroundTruths, CPURepetitionsForUEAndORTBackEnd, GPURepetitionsForUEAndORTBackEnd, CPURepetitionsForUEOnlyBackEnd, GPURepetitionsForUEOnlyBackEnd);
 }
 
@@ -83,7 +166,7 @@ bool FModelUnitTester::ModelLoadAccuracyAndSpeedTests(const FString& InProjectCo
 		{
 			bDidGlobalTestPassed &= ModelAccuracyTest(Network, ENeuralBackEnd::UEAndORT, InInputArrayValues, CPUGroundTruths, GPUGroundTruths);
 		}
-		const bool bShouldRunUEOnlyBackEnd = (InCPURepetitionsForUEOnlyBackEnd[ModelIndex] * InCPURepetitionsForUEOnlyBackEnd[ModelIndex] > 0);
+		const bool bShouldRunUEOnlyBackEnd = false; // (InCPURepetitionsForUEOnlyBackEnd[ModelIndex] * InCPURepetitionsForUEOnlyBackEnd[ModelIndex] > 0);
 		if (bShouldRunUEOnlyBackEnd)
 		{
 			bDidGlobalTestPassed &= ModelAccuracyTest(Network, ENeuralBackEnd::UEOnly, InInputArrayValues, CPUGroundTruths, GPUGroundTruths);
@@ -123,15 +206,26 @@ bool FModelUnitTester::ModelLoadAccuracyAndSpeedTests(const FString& InProjectCo
 #ifdef WITH_UE_AND_ORT_SUPPORT
 		bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::CPU, ENeuralBackEnd::UEAndORT, InCPURepetitionsForUEAndORTBackEnd[ModelIndex]);
 #ifdef PLATFORM_WIN64
-		bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::GPU, ENeuralBackEnd::UEAndORT, InGPURepetitionsForUEAndORTBackEnd[ModelIndex]);
+		if (UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd())
+		{
+			bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::GPU, ENeuralBackEnd::UEAndORT, InGPURepetitionsForUEAndORTBackEnd[ModelIndex]);
+		}
+		else
+		{
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("-------------------- ModelSpeedTest-UEAndORT-GPU skipped (DX12 not enabled)."));
+		}
 #else //PLATFORM_WIN64
 		bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::GPU, ENeuralBackEnd::UEAndORT, 0);
 #endif //PLATFORM_WIN64
 #endif //WITH_UE_AND_ORT_SUPPORT
 
 		// UEOnly
-		bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::CPU, ENeuralBackEnd::UEOnly, InCPURepetitionsForUEOnlyBackEnd[ModelIndex]);
-		bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::GPU, ENeuralBackEnd::UEOnly, InGPURepetitionsForUEOnlyBackEnd[ModelIndex]);
+		const bool bShouldRunUEOnlyBackEnd = false;
+		if (bShouldRunUEOnlyBackEnd)
+		{
+			bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::CPU, ENeuralBackEnd::UEOnly, InCPURepetitionsForUEOnlyBackEnd[ModelIndex]);
+			bDidGlobalTestPassed &= ModelSpeedTest(UAssetModelFilePath, ENeuralDeviceType::GPU, ENeuralBackEnd::UEOnly, InGPURepetitionsForUEOnlyBackEnd[ModelIndex]);
+		}
 	}
 
 	return bDidGlobalTestPassed;
@@ -160,6 +254,11 @@ UNeuralNetwork* FModelUnitTester::NetworkUassetLoadTest(const FString& InUAssetP
 		ensureMsgf(false, TEXT("UNeuralNetwork is a nullptr. Path: \"%s\"."), *InUAssetPath);
 		return nullptr;
 	}
+	if (!UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd())
+	{
+		UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("NetworkUassetLoadTest-UEAndORT: Set to CPU (DX12 not enabled)."));
+		Network->SetDeviceType(ENeuralDeviceType::CPU);
+	}
 	if (!Network->IsLoaded())
 	{
 		ensureMsgf(false, TEXT("UNeuralNetwork could not be loaded from uasset disk location. Path: \"%s\"."), *InUAssetPath);
@@ -176,6 +275,11 @@ UNeuralNetwork* FModelUnitTester::NetworkONNXOrORTLoadTest(const FString& InMode
 	{
 		ensureMsgf(false, TEXT("UNeuralNetwork is a nullptr. Path: \"%s\"."), *InModelFilePath);
 		return nullptr;
+	}
+	if (!UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd())
+	{
+		UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("NetworkONNXOrORTLoadTest-UEAndORT: Set to CPU (DX12 not enabled)."));
+		Network->SetDeviceType(ENeuralDeviceType::CPU);
 	}
 	if (!Network->Load(InModelFilePath))
 	{
@@ -210,92 +314,99 @@ bool FModelUnitTester::ModelAccuracyTest(UNeuralNetwork* InOutNetwork, const ENe
 			return false;
 		}
 	}
+	
 	// Save original network state
 	const ENeuralDeviceType OriginalDeviceType = InOutNetwork->GetDeviceType();
 	const ENeuralDeviceType OriginalInputDeviceType = InOutNetwork->GetInputDeviceType();
 	const ENeuralDeviceType OriginalOutputDeviceType = InOutNetwork->GetOutputDeviceType();
 	const ENeuralBackEnd OriginalBackEnd = InOutNetwork->GetBackEnd();
+	
 	// Set back end
-	InOutNetwork->SetBackEnd(InBackEnd);
+	if (!InOutNetwork->SetBackEnd(InBackEnd))
+	{
+		UE_LOG(LogNeuralNetworkInferenceQA, Warning, TEXT("Backend %s is disabled."), *GetBackEndString(InBackEnd));
+		return false;
+	}
 	const FString BackEndString = GetBackEndString(InBackEnd);
+	
 	// Run each input with CPU/GPU and compare with each other and with the ground truth
 	// Multiple for loops to make sure that running on the CPU does not affect GPU results or vice versa
 	bool bDidGlobalTestPassed = true;
-	TArray<TArray<float>> CPUOutputs, CPUGPUCPUOutputs, CPUGPUGPUOutputs;
+	TArray<TArray<float>> CPUOutputs, CPUGPUCPUOutputs, CPUGPUGPUOutputs, GPUGPUCPUOutputs;
+	
 	// Input CPU + Network CPU + Output CPU
 	for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
 	{
-		InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
 		// CPU
 		InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::CPU, /*InputDeviceType*/ENeuralDeviceType::CPU, /*OutputDeviceType*/ENeuralDeviceType::CPU);
+		InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
 		InOutNetwork->Run();
 		CPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
 	}
-	// Input CPU + Network GPU + Output CPU
-	for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
+	
+	if (UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd())
 	{
-		InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
-		InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::GPU, /*InputDeviceType*/ENeuralDeviceType::CPU, /*OutputDeviceType*/ENeuralDeviceType::CPU);
-		InOutNetwork->Run();
-		CPUGPUCPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
+		// Input CPU + Network GPU + Output CPU
+		for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
+		{
+			InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::GPU, /*InputDeviceType*/ENeuralDeviceType::CPU, /*OutputDeviceType*/ENeuralDeviceType::CPU);
+			InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
+			InOutNetwork->Run();
+			CPUGPUCPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
+		}
+		
+		// Input CPU + Network GPU + Output GPU
+		for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
+		{
+			InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::GPU, /*InputDeviceType*/ENeuralDeviceType::CPU, /*OutputDeviceType*/ENeuralDeviceType::GPU);
+			InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
+			InOutNetwork->Run();
+			InOutNetwork->OutputTensorsToCPU();
+			CPUGPUGPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
+		}
+
+		// Input GPU + Network GPU + Output CPU
+		for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
+		{
+			InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::GPU, /*InputDeviceType*/ENeuralDeviceType::GPU, /*OutputDeviceType*/ENeuralDeviceType::CPU);
+			InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
+			InOutNetwork->InputTensorsToGPU();
+			InOutNetwork->Run();
+			GPUGPUCPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
+		}
 	}
-	// Input CPU + Network GPU + Output GPU
-	for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
+	else
 	{
-// @todo: Remove if/else (and else contents) once DX12 version of NNI (UEAndORT) is ready
-if (InBackEnd == ENeuralBackEnd::UEOnly /*|| true*/)
-{
-		InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
-		InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::GPU, /*InputDeviceType*/ENeuralDeviceType::CPU, /*OutputDeviceType*/ENeuralDeviceType::GPU);
-		InOutNetwork->Run();
-		InOutNetwork->OutputTensorsToCPU();
-		CPUGPUGPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
-}
-else
-{
-	UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("FModelUnitTester::ModelAccuracyTest(): GPU output for UEAndORT back end not working yet. Uncomment this line to test it."));
-	CPUGPUGPUOutputs.Push(CPUGPUCPUOutputs[Index]);
-}
+		UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("-------------------- ModelAccuracyTest-UEAndORT-GPU skipped (DX12 not enabled)."));
 	}
-	// Input GPU + Network GPU + Output CPU
+	
 	for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
 	{
-// @todo: Remove if/else (and else contents) once DX12 version of NNI (UEAndORT) is ready
-if (InBackEnd == ENeuralBackEnd::UEOnly /*|| true*/)
-{
-		InOutNetwork->SetInputFromArrayCopy(InputArrays[Index]);
-		InOutNetwork->InputTensorsToGPU();
-		InOutNetwork->SetDeviceType(/*DeviceType*/ENeuralDeviceType::GPU, /*InputDeviceType*/ENeuralDeviceType::GPU, /*OutputDeviceType*/ENeuralDeviceType::CPU);
-		InOutNetwork->Run();
-		CPUGPUGPUOutputs.Emplace(InOutNetwork->GetOutputTensor().GetArrayCopy<float>());
-}
-else
-{
-	UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("FModelUnitTester::ModelAccuracyTest(): GPU output for UEAndORT back end not working yet. Uncomment this line to test it."));
-	CPUGPUGPUOutputs.Push(CPUGPUCPUOutputs[Index]);
-}
-	}
-	for (int32 Index = 0; Index < InputArrays.Num(); ++Index)
-	{
+		const TArray<float>& GPUGPUCPUOutput = (UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd() ? GPUGPUCPUOutputs[Index] : CPUOutputs[Index]);
+		const TArray<float>& CPUGPUCPUOutput = (UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd() ? CPUGPUCPUOutputs[Index] : CPUOutputs[Index]);
+		const TArray<float>& CPUGPUGPUOutput = (UNeuralNetwork::IsGPUConfigCompatibleForUEAndORTBackEnd() ? CPUGPUGPUOutputs[Index] : CPUOutputs[Index]);
 		// Prepare verbose
 		const double CPUAvgL1Norm = GetAveragedL1Norm(CPUOutputs[Index]);
-		const double CPUGPUCPUAvgL1Norm = GetAveragedL1Norm(CPUGPUCPUOutputs[Index]);
-		const double CPUGPUGPUAvgL1Norm = GetAveragedL1Norm(CPUGPUGPUOutputs[Index]);
+		const double CPUGPUCPUAvgL1Norm = GetAveragedL1Norm(CPUGPUCPUOutput);
+		const double GPUGPUCPUAvgL1Norm = GetAveragedL1Norm(GPUGPUCPUOutput);
+		const double CPUGPUGPUAvgL1Norm = GetAveragedL1Norm(CPUGPUGPUOutput);
 		const double RelativeCoefficient = 1. / FMath::Max(1., FMath::Min(CPUAvgL1Norm, CPUGPUCPUAvgL1Norm)); // Max(1, X) to avoid 0s
-		const double CPUGPUAvgL1NormDiff = GetAveragedL1NormDiff(CPUOutputs[Index], CPUGPUCPUOutputs[Index]) * RelativeCoefficient * 1e6;
-		const double GPUGPUAvgL1NormDiff = GetAveragedL1NormDiff(CPUGPUCPUOutputs[Index], CPUGPUGPUOutputs[Index]) / FMath::Max(1., FMath::Min(CPUGPUGPUAvgL1Norm, CPUGPUCPUAvgL1Norm)) * 1e12;
+		const double CPUGPUAvgL1NormDiff = GetAveragedL1NormDiff(CPUOutputs[Index], CPUGPUCPUOutput) * RelativeCoefficient * 1e6;
+		const double GPUGPUInputAvgL1NormDiff = GetAveragedL1NormDiff(CPUGPUCPUOutput, GPUGPUCPUOutput) / FMath::Max(1., FMath::Min(GPUGPUCPUAvgL1Norm, CPUGPUCPUAvgL1Norm)) * 1e12;
+		const double GPUGPUOutputAvgL1NormDiff = GetAveragedL1NormDiff(CPUGPUCPUOutput, CPUGPUGPUOutput) / FMath::Max(1., FMath::Min(CPUGPUGPUAvgL1Norm, CPUGPUCPUAvgL1Norm)) * 1e12;
 		const double FastCPUGPUAvgL1NormDiff = FMath::Abs((CPUAvgL1Norm - CPUGPUCPUAvgL1Norm)) * RelativeCoefficient * 1e6;
 		const double FastCPUAvgL1NormDiff = FMath::Abs(CPUAvgL1Norm - InCPUGroundTruths[Index]) / FMath::Max(1., FMath::Min(CPUAvgL1Norm, InCPUGroundTruths[Index])) * 1e7;
 		const double FastGPUAvgL1NormDiff = FMath::Abs(CPUGPUCPUAvgL1Norm - InGPUGroundTruths[Index]) / FMath::Max(1., FMath::Min(CPUGPUCPUAvgL1Norm, InGPUGroundTruths[Index])) * 1e7;
 		// Print verbose
 		UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("%s: InputNorm = %f, OutputNormCPU = %f, OutputNormGPU = %f, OutputNormCPUGPUGPU = %f, OutputNormGT = %f, CPUAvgL1Norm = %f, CPUGPUCPUAvgL1Norm = %f,"),
 			*BackEndString, GetAveragedL1Norm(InputArrays[Index]), CPUAvgL1Norm, CPUGPUCPUAvgL1Norm, CPUGPUGPUAvgL1Norm, InCPUGroundTruths[Index], CPUAvgL1Norm, CPUGPUCPUAvgL1Norm);
-		UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("\tCPUGPUAvgL1NormDiff = %fe-6, GPUGPUAvgL1NormDiff = %fe-7, FastCPUGPUAvgL1NormDiff = %fe-6, FastCPUAvgL1NormDiff = %fe-7, FastGPUAvgL1NormDiff = %fe-7 (1e-7 is roughly the precision for float)."),
-			CPUGPUAvgL1NormDiff, GPUGPUAvgL1NormDiff, FastCPUGPUAvgL1NormDiff, FastCPUAvgL1NormDiff, FastGPUAvgL1NormDiff);
+		UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("\tCPUGPUAvgL1NormDiff = %fe-6, GPUGPUInputAvgL1NormDiff = %fe-7, GPUGPUOutputAvgL1NormDiff = %fe-7, FastCPUGPUAvgL1NormDiff = %fe-6, FastCPUAvgL1NormDiff = %fe-7, FastGPUAvgL1NormDiff = %fe-7 (1e-7 is roughly the precision for float)."),
+			CPUGPUAvgL1NormDiff, GPUGPUInputAvgL1NormDiff, GPUGPUOutputAvgL1NormDiff, FastCPUGPUAvgL1NormDiff, FastCPUAvgL1NormDiff, FastGPUAvgL1NormDiff);
 		// Check if test failed and (if so) display information
 		const bool bDidSomeTestFailed = (!FMath::IsFinite(FastCPUGPUAvgL1NormDiff) || FastCPUGPUAvgL1NormDiff > 5)
 			|| (!FMath::IsFinite(CPUGPUAvgL1NormDiff) || CPUGPUAvgL1NormDiff > 5)
-			|| (!FMath::IsFinite(GPUGPUAvgL1NormDiff) || GPUGPUAvgL1NormDiff > 1)
+			|| (!FMath::IsFinite(GPUGPUInputAvgL1NormDiff) || GPUGPUInputAvgL1NormDiff > 1)
+			|| (!FMath::IsFinite(GPUGPUOutputAvgL1NormDiff) || GPUGPUOutputAvgL1NormDiff > 1)
 			|| (!FMath::IsFinite(FastCPUAvgL1NormDiff) || FastCPUAvgL1NormDiff > 30)
 			|| (!FMath::IsFinite(FastGPUAvgL1NormDiff) || FastGPUAvgL1NormDiff > 30);
 		if (bDidSomeTestFailed)
@@ -305,15 +416,17 @@ else
 			const TArray<int64>& OutputSizes = InOutNetwork->GetOutputTensor().GetSizes();
 			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("FastCPUGPUAvgL1NormDiff (%fe-6) < 5e-6 might have failed."), FastCPUGPUAvgL1NormDiff);
 			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("CPUGPUAvgL1NormDiff (%fe-6) < 5e-6 might have failed."), CPUGPUAvgL1NormDiff);
-			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("GPUGPUAvgL1NormDiff (%fe-12) < 1e-12 might have failed."), GPUGPUAvgL1NormDiff);
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("GPUGPUInputAvgL1NormDiff (%fe-12) < 1e-12 might have failed."), GPUGPUInputAvgL1NormDiff);
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("GPUGPUOutputAvgL1NormDiff (%fe-12) < 1e-12 might have failed."), GPUGPUOutputAvgL1NormDiff);
 			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("FastCPUAvgL1NormDiff (%fe-7) < 30e-7 might have failed (~30 times the float precision).\nCPUOutput = %s."), FastCPUAvgL1NormDiff, *FNeuralTensor(CPUOutputs[Index], OutputSizes).ToString(MaxNumberElementsToDisplay));
-			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("FastGPUAvgL1NormDiff (%fe-7) < 30e-7 might have failed (~30 times the float precision).\nCPUGPUCPUOutput = %s."), FastGPUAvgL1NormDiff, *FNeuralTensor(CPUGPUCPUOutputs[Index], OutputSizes).ToString(MaxNumberElementsToDisplay));
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("FastGPUAvgL1NormDiff (%fe-7) < 30e-7 might have failed (~30 times the float precision).\nCPUGPUCPUOutput = %s."), FastGPUAvgL1NormDiff, *FNeuralTensor(CPUGPUCPUOutput, OutputSizes).ToString(MaxNumberElementsToDisplay));
 			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("Input = %s"),
 				*FNeuralTensor(InOutNetwork->GetInputTensor().GetArrayCopy<float>(), InputSizes).ToString(MaxNumberElementsToDisplay));
 			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("CPUOutput = %s"), *FNeuralTensor(CPUOutputs[Index], OutputSizes).ToString(MaxNumberElementsToDisplay));
-			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("CPUGPUCPUOutput = %s"), *FNeuralTensor(CPUGPUCPUOutputs[Index], OutputSizes).ToString(MaxNumberElementsToDisplay));
-			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("CPUGPUGPUOutput = %s"), *FNeuralTensor(CPUGPUGPUOutputs[Index], OutputSizes).ToString(MaxNumberElementsToDisplay));
-			UE_LOG(LogNeuralNetworkInferenceQA, Warning, TEXT("At least 1 of the 5 CPU/GPU tests failed."));
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("CPUGPUCPUOutput = %s"), *FNeuralTensor(CPUGPUCPUOutput, OutputSizes).ToString(MaxNumberElementsToDisplay));
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("GPUGPUCPUOutput = %s"), *FNeuralTensor(GPUGPUCPUOutput, OutputSizes).ToString(MaxNumberElementsToDisplay));
+			UE_LOG(LogNeuralNetworkInferenceQA, Display, TEXT("CPUGPUGPUOutput = %s"), *FNeuralTensor(CPUGPUGPUOutput, OutputSizes).ToString(MaxNumberElementsToDisplay));
+			UE_LOG(LogNeuralNetworkInferenceQA, Warning, TEXT("At least 1 of the 6 CPU/GPU tests failed."));
 			return false;
 		}
 		bDidGlobalTestPassed &= !bDidSomeTestFailed;
@@ -325,34 +438,6 @@ else
 	return bDidGlobalTestPassed;
 }
 
-#define MODEL_UNIT_TESTER_SPEED_TEST(OutCopyTimeInMilliSeconds, OutNetworkTimeInMilliSeconds, InRepetitions, bInIsGPU) \
-	/* Input/output copy speed */ \
-	Timer.Tic(); \
-	for (int32 TimerIndex = 0; TimerIndex < InRepetitions; ++TimerIndex) \
-	{ \
-		InOutNetwork->SetInputFromArrayCopy(InputArray); \
-		CPUGPUCPUOutput = InOutNetwork->GetOutputTensor().GetArrayCopy<float>(); \
-	} \
-	const float OutCopyTimeInMilliSeconds = Timer.Toc() / InRepetitions; \
-	/* Forward() speed */ \
-	if (InRepetitions > 1) \
-	{ \
-		for (int32 TimerIndex = 0; TimerIndex < 5; ++TimerIndex) \
-		{ \
-			InOutNetwork->Run(); \
-		} \
-	} \
-	Timer.Tic(); \
-	if (InRepetitions > 0) \
-	{ \
-		for (int32 TimerIndex = 0; TimerIndex < InRepetitions; ++TimerIndex) \
-		{ \
-			InOutNetwork->SetInputFromArrayCopy(InputArray); \
-			InOutNetwork->Run(); \
-			CPUGPUCPUOutput = InOutNetwork->GetOutputTensor().GetArrayCopy<float>(); \
-		} \
-	} \
-	const float OutNetworkTimeInMilliSeconds = Timer.Toc() / InRepetitions - OutCopyTimeInMilliSeconds
 
 bool FModelUnitTester::ModelSpeedTest(const FString& InUAssetPath, const ENeuralDeviceType InDeviceType, const ENeuralBackEnd InBackEnd, const int32 InRepetitions)
 {
@@ -377,24 +462,32 @@ bool FModelUnitTester::ModelSpeedTest(const FString& InUAssetPath, const ENeural
 	const ENeuralDeviceType OriginalDeviceType = InOutNetwork->GetDeviceType();
 	const ENeuralBackEnd OriginalBackEnd = InOutNetwork->GetBackEnd();
 	// Set desired back end
-	InOutNetwork->SetBackEnd(InBackEnd);
+	if (!InOutNetwork->SetBackEnd(InBackEnd))
+	{
+		UE_LOG(LogNeuralNetworkInferenceQA, Warning, TEXT("Backend %s is disabled."), *GetBackEndString(InBackEnd));
+		return false;
+	}
 	// Needed variables
 	const int64 NetworkSize = InOutNetwork->GetInputTensor().Num();
 	TArray<float> InputArray;
 	InputArray.Init(1.f, NetworkSize);
 	TArray<float> CPUGPUCPUOutput;
-	// Speed profiling
-	FNeuralNetworkInferenceQATimer Timer;
 	// Run profiling 1 time
 	InOutNetwork->SetDeviceType(InDeviceType);
-	MODEL_UNIT_TESTER_SPEED_TEST(CopyTimer1, NetworkTimer1, 1, /*bIsGPU*/false);
+	InOutNetwork->ResetStats();
+	const FNNIUnitTesterTimeData TimeData1 = FModelUnitTester_GetTimeInformation(InOutNetwork, CPUGPUCPUOutput, InputArray, 1);
+
 	// Run profiling n times
 	InOutNetwork->SetDeviceType(InDeviceType);
-	MODEL_UNIT_TESTER_SPEED_TEST(CopyTimer, NetworkTimer, InRepetitions, /*bIsGPU*/false);
+	InOutNetwork->ResetStats();
+	const FNNIUnitTesterTimeData TimeDataN = FModelUnitTester_GetTimeInformation(InOutNetwork, CPUGPUCPUOutput, InputArray, InRepetitions);
+
 	// Display speed times
 	UE_LOG(LogNeuralNetworkInferenceQA, Display,
-		TEXT("%s-%s:\t1 time = %f+%f msec, avg(%d times) = %f+%f msec."),
-		*BackEndString, *DeviceTypeString, CopyTimer1, NetworkTimer1, InRepetitions, CopyTimer, NetworkTimer);
+		TEXT("%s-%s:, Times(msec)-> Inference = %f, Copy In = %f, Copy Out %f, avg(%d times) = Inference = %f, Copy In = %f, Copy Out %f."),
+		*BackEndString, *DeviceTypeString, TimeData1.ComputeTimeData.Average, TimeData1.InputCopyTimeData.Average, TimeData1.OutputCopyTimeData.Average,
+		InRepetitions, TimeDataN.ComputeTimeData.Average, TimeDataN.InputCopyTimeData.Average, TimeDataN.OutputCopyTimeData.Average);
+
 	// Reset to original network state
 	InOutNetwork->SetDeviceType(OriginalDeviceType);
 	InOutNetwork->SetBackEnd(OriginalBackEnd);
