@@ -1083,7 +1083,7 @@ void CompileShader_Metal(const FShaderCompilerInput& _Input,FShaderCompilerOutpu
 
 	}
 
-	ShaderParameterParser.ValidateShaderParameterTypes(Input, Output);
+	ShaderParameterParser.ValidateShaderParameterTypes(Input, bIsMobile, Output);
 }
 
 bool StripShader_Metal(TArray<uint8>& Code, class FString const& DebugPath, bool const bNative)
