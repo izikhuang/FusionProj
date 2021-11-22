@@ -380,8 +380,10 @@ void FLevelEditorModule::SummonWorldBrowserComposition()
 void FLevelEditorModule::AttachSequencer( TSharedPtr<SWidget> SequencerWidget, TSharedPtr<IAssetEditorInstance> SequencerAssetEditor )
 {
 	TSharedPtr<SLevelEditor> LevelEditorInstance = LevelEditorInstancePtr.Pin();
-
-	LevelEditorInstance->AttachSequencer( SequencerWidget, SequencerAssetEditor );
+	if (LevelEditorInstance)
+	{
+		LevelEditorInstance->AttachSequencer(SequencerWidget, SequencerAssetEditor);
+	}
 }
 
 TSharedPtr<IAssetViewport> FLevelEditorModule::GetFirstActiveViewport()
