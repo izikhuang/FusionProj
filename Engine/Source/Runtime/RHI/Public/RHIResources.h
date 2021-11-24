@@ -1176,6 +1176,8 @@ public:
 
 	FName GetName() const { return BufferName; }
 
+	virtual uint32 GetParentGPUIndex() const { return 0; }
+
 protected:
 	void Swap(FRHIBuffer& Other)
 	{
