@@ -124,8 +124,6 @@
 
 #define LOCTEXT_NAMESPACE "Cooker"
 
-extern void TestFunctionInNewCpp();
-
 DEFINE_LOG_CATEGORY(LogCook);
 
 int32 GCookProgressDisplay = (int32)ECookProgressDisplayMode::RemainingPackages;
@@ -4876,8 +4874,6 @@ void UCookOnTheFlyServer::Initialize( ECookMode::Type DesiredCookMode, ECookInit
 			}
 		}
 	});
-
-	TestFunctionInNewCpp();
 }
 
 bool UCookOnTheFlyServer::Exec(class UWorld* InWorld, const TCHAR* Cmd, FOutputDevice& Ar)
