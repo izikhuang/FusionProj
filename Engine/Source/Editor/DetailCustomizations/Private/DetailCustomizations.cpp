@@ -451,7 +451,12 @@ void FDetailCustomizationsModule::RegisterSectionMappings()
 			Section->AddCategory("Cooking");
 			Section->AddCategory("Input");
 			Section->AddCategory("Replication");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Actor", "Streaming", LOCTEXT("Streaming", "Streaming"));
 			Section->AddCategory("World Partition");
+			Section->AddCategory("HLOD");
 		}
 	}
 
@@ -470,9 +475,13 @@ void FDetailCustomizationsModule::RegisterSectionMappings()
 			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("ActorComponent", "Misc", LOCTEXT("Misc", "Misc"));
 			Section->AddCategory("Asset User Data");
 			Section->AddCategory("Cooking");
-			Section->AddCategory("Data Layers");
 			Section->AddCategory("Tags");
+		}
+
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("ActorComponent", "Streaming", LOCTEXT("Streaming", "Streaming"));
 			Section->AddCategory("World Partition");
+			Section->AddCategory("Data Layers");
 		}
 	}
 
@@ -725,6 +734,22 @@ void FDetailCustomizationsModule::RegisterSectionMappings()
 		{
 			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("Brush", "General", LOCTEXT("General", "General"));
 			Section->AddCategory("Brush Settings");
+		}
+	}
+
+	// WorldPartition
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("WorldPartition", "Streaming", LOCTEXT("Streaming", "Streaming"));
+			Section->AddCategory("RuntimeHash");
+		}
+	}
+
+	// WorldSettings
+	{
+		{
+			TSharedRef<FPropertySection> Section = PropertyModule.FindOrCreateSection("WorldSettings", "Streaming", LOCTEXT("Streaming", "Streaming"));
+			Section->AddCategory("Foliage");
 		}
 	}
 }
