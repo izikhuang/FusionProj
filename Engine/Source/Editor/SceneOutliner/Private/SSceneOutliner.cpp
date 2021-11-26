@@ -465,6 +465,7 @@ void SSceneOutliner::FullRefresh()
 	UE_LOG(LogSceneOutliner, Verbose, TEXT("Full Refresh"));
 	bDisableIntermediateSorting = true;
 	bFullRefresh = true;
+	RefreshSelection();
 	Refresh();
 }
 
