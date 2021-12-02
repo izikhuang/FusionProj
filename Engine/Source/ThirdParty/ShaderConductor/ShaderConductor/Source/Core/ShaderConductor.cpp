@@ -106,7 +106,7 @@ static bool ParseSpirvCrossOptionGlsl(spirv_cross::CompilerGLSL::Options& opt, c
     PARSE_SPIRVCROSS_OPTION(define, "emit_uniform_buffer_as_plain_uniforms", opt.emit_uniform_buffer_as_plain_uniforms);
     PARSE_SPIRVCROSS_OPTION(define, "flatten_multidimensional_arrays", opt.flatten_multidimensional_arrays);
     PARSE_SPIRVCROSS_OPTION(define, "force_flattened_io_blocks", opt.force_flattened_io_blocks);
-	PARSE_SPIRVCROSS_OPTION(define, "emit_ssbo_alias_type_name", opt.emit_ssbo_alias_type_name);
+    PARSE_SPIRVCROSS_OPTION(define, "emit_ssbo_alias_type_name", opt.emit_ssbo_alias_type_name);
     PARSE_SPIRVCROSS_OPTION(define, "separate_texture_types", opt.separate_texture_types);
     PARSE_SPIRVCROSS_OPTION(define, "disable_ssbo_block_layout", opt.disable_ssbo_block_layout);
     PARSE_SPIRVCROSS_OPTION(define, "force_ubo_std140_layout", opt.force_ubo_std140_layout);
