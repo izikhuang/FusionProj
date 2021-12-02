@@ -118,6 +118,10 @@ public:
 		FRDGTextureRef SceneColorTexture,
 		const FSceneWithoutWaterTextures& SceneWithoutWaterTextures);
 
+	void RenderSimulation(
+		FRDGBuilder& GraphBuilder,
+		FRDGTextureRef SceneColorTexture);
+
 	void RenderOcclusion(
 		FRDGBuilder& GraphBuilder,
 		FRDGTextureRef SceneDepthTexture,
