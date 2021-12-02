@@ -2580,8 +2580,6 @@ PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
 #endif
 
-#endif
-
 #if USE_IO_DISPATCHER
 	{
 		SCOPED_BOOT_TIMING("InitIoDispatcher");
