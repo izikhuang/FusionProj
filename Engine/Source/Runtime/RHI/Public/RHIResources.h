@@ -1907,6 +1907,13 @@ typedef TRefCountPtr<FRHIRayTracingPipelineState> FRayTracingPipelineStateRHIRef
 // Ray tracing resources
 //
 
+struct FRayTracingAccelerationStructureSize
+{
+	uint64 ResultSize = 0;
+	uint64 BuildScratchSize = 0;
+	uint64 UpdateScratchSize = 0;
+};
+
 class FRHIRayTracingAccelerationStructure
 	: public FRHIResource
 #if ENABLE_RHI_VALIDATION
@@ -1924,6 +1931,7 @@ class FRHIRayTracingGeometry : public FRHIRayTracingAccelerationStructure
 public:
 	virtual FRayTracingAccelerationStructureAddress GetAccelerationStructureAddress(uint64 GPUIndex) const = 0;
 	virtual uint32 GetNumSegments() const = 0;
+	virtual FRayTracingAccelerationStructureSize GetSizeInfo() const = 0;
 };
 
 typedef TRefCountPtr<FRHIRayTracingGeometry>     FRayTracingGeometryRHIRef;
