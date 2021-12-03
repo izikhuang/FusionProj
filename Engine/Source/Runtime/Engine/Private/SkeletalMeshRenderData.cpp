@@ -186,7 +186,7 @@ static void SerializeLODInfoForDDC(USkeletalMesh* SkeletalMesh, FString& KeySuff
 // differences, etc.) replace the version GUID below with a new one.
 // In case of merge conflicts with DDC versions, you MUST generate a new GUID
 // and set this new GUID as the version.
-#define SKELETALMESH_DERIVEDDATA_VER TEXT("ACF593EAAE354FCBB34CF44F5AA1BFD2")
+#define SKELETALMESH_DERIVEDDATA_VER TEXT("31C5045864E572HEB3C0686189A9E7ED")
 
 const FString& GetSkeletalMeshDerivedDataVersion()
 {
@@ -362,7 +362,7 @@ void FSkeletalMeshRenderData::Cache(const ITargetPlatform* TargetPlatform, USkel
 		if(bAllowDdcFetch && DDCUtils64Bit::GetSynchronous(DerivedDataKey, Owner, DerivedData))
 		{
 			COOK_STAT(Timer.AddHit(DerivedData.Num()));
-			
+
 			FLargeMemoryReader Ar(DerivedData.GetData(), DerivedData.Num(), ELargeMemoryReaderFlags::Persistent);
 
 			//With skeletal mesh build refactor we serialize the LODModel data into the DDC
@@ -486,7 +486,7 @@ void FSkeletalMeshRenderData::Cache(const ITargetPlatform* TargetPlatform, USkel
 			}
 
 			FLargeMemoryWriter Ar(0, /*bIsPersistent=*/ true);
-			
+
 			//If we load an old asset we want to be sure the serialize ddc will be the same has before the skeletalmesh build refactor
 			//So we do not serialize the LODModel sections.
 			if (!Owner->GetUseLegacyMeshDerivedDataKey())
