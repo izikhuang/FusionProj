@@ -1213,6 +1213,11 @@ public:
 						MaxProjectedSize = GLumenSceneFarFieldTexelDensity * MaxExtent * LumenCard.ResolutionScale;
 					}
 
+					if (GLumenSceneCardFixedDebugResolution > 0)
+					{
+						MaxProjectedSize = GLumenSceneCardFixedDebugResolution;
+					}
+
 					const int32 MaxSnappedRes = FMath::RoundUpToPowerOfTwo(FMath::Min(FMath::TruncToInt(MaxProjectedSize), GetCardMaxResolution()));
 					const bool bVisible = ViewerDistance < CardMaxDistance && MaxSnappedRes >= MinCardResolution;
 					const int32 ResLevel = FMath::FloorLog2(FMath::Max<uint32>(MaxSnappedRes, Lumen::MinCardResolution));
