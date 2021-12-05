@@ -251,6 +251,37 @@ DECLARE_GPU_STAT(PostOpaqueExtensions);
 
 CSV_DEFINE_CATEGORY(LightCount, true);
 
+/*-----------------------------------------------------------------------------
+	Global Illumination Plugin Function Delegates (experimental)
+-----------------------------------------------------------------------------*/
+
+static FGlobalIlluminationExperimentalPluginDelegates::FAnyRayTracingPassEnabled GIExperimentalPluginAnyRaytracingPassEnabledDelegate;
+FGlobalIlluminationExperimentalPluginDelegates::FAnyRayTracingPassEnabled& FGlobalIlluminationExperimentalPluginDelegates::AnyRayTracingPassEnabled()
+{
+	return GIExperimentalPluginAnyRaytracingPassEnabledDelegate;
+}
+
+static FGlobalIlluminationExperimentalPluginDelegates::FPrepareRayTracing GIExperimentalPluginPrepareRayTracingDelegate;
+FGlobalIlluminationExperimentalPluginDelegates::FPrepareRayTracing& FGlobalIlluminationExperimentalPluginDelegates::PrepareRayTracing()
+{
+	return GIExperimentalPluginPrepareRayTracingDelegate;
+}
+
+static FGlobalIlluminationExperimentalPluginDelegates::FRenderDiffuseIndirectLight GIExperimentalPluginRenderDiffuseIndirectLightDelegate;
+FGlobalIlluminationExperimentalPluginDelegates::FRenderDiffuseIndirectLight& FGlobalIlluminationExperimentalPluginDelegates::RenderDiffuseIndirectLight()
+{
+	return GIExperimentalPluginRenderDiffuseIndirectLightDelegate;
+}
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+static FGlobalIlluminationExperimentalPluginDelegates::FRenderDiffuseIndirectVisualizations GIExperimentalPluginRenderDiffuseIndirectVisualizationsDelegate;
+FGlobalIlluminationExperimentalPluginDelegates::FRenderDiffuseIndirectVisualizations& FGlobalIlluminationExperimentalPluginDelegates::RenderDiffuseIndirectVisualizations()
+{
+	return GIExperimentalPluginRenderDiffuseIndirectVisualizationsDelegate;
+}
+#endif //!(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+
 const TCHAR* GetDepthPassReason(bool bDitheredLODTransitionsUseStencil, EShaderPlatform ShaderPlatform)
 {
 	if (IsForwardShadingEnabled(ShaderPlatform))
@@ -1090,6 +1121,7 @@ bool FDeferredShadingSceneRenderer::DispatchRayTracingWorldUpdates(FRHICommandLi
 		PrepareRayTracingAmbientOcclusion(View, RayGenShaders);
 		PrepareRayTracingSkyLight(View, RayGenShaders);
 		PrepareRayTracingGlobalIllumination(View, RayGenShaders);
+		PrepareRayTracingGlobalIlluminationPlugin(View, RayGenShaders);
 		PrepareRayTracingTranslucency(View, RayGenShaders);
 		PrepareRayTracingDebug(View, RayGenShaders);
 		PreparePathTracing(View, RayGenShaders);
@@ -2104,7 +2136,7 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		SCOPE_CYCLE_COUNTER(STAT_FDeferredShadingSceneRenderer_Lighting);
 
 		FRDGTextureRef DynamicBentNormalAOTexture = nullptr;
-		RenderDiffuseIndirectAndAmbientOcclusion(GraphBuilder, SceneTextures, SceneColorTexture.Target, HairDatas);
+		RenderDiffuseIndirectAndAmbientOcclusion(GraphBuilder, SceneTextures, SceneColorTexture.Target, LightingChannelsTexture, HairDatas);
 
 		// These modulate the scenecolor output from the basepass, which is assumed to be indirect lighting
 		if (SceneContext.IsStaticLightingAllowed())
@@ -2181,6 +2213,11 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 
 		// Render diffuse sky lighting and reflections that only operate on opaque pixels
 		RenderDeferredReflectionsAndSkyLighting(GraphBuilder, SceneTextures, SceneColorTexture, DynamicBentNormalAOTexture, VelocityTexture, HairDatas);
+
+#if !(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+		// Renders debug visualizations for global illumination plugins (experimental)
+		RenderGlobalIlluminationExperimentalPluginVisualizations(GraphBuilder, LightingChannelsTexture);
+#endif
 
 		SceneColorTexture = FRDGTextureMSAA(AddSubsurfacePass(GraphBuilder, SceneTextures, Views, SceneColorTexture.Target));
 
@@ -2725,9 +2762,9 @@ bool AnyRayTracingPassEnabled(const FScene* Scene, const FViewInfo& View)
 		|| ShouldRenderRayTracingTranslucency(View)
 		|| ShouldRenderRayTracingSkyLight(Scene ? Scene->SkyLight : nullptr)
 		|| ShouldRenderRayTracingShadows()
+		|| ShouldRenderExperimentalPluginRayTracingGlobalIllumination()
 		|| View.RayTracingRenderMode == ERayTracingRenderMode::PathTracing
-		|| View.RayTracingRenderMode == ERayTracingRenderMode::RayTracingDebug
-		)
+		|| View.RayTracingRenderMode == ERayTracingRenderMode::RayTracingDebug)
 	{
 		return true;
 	}

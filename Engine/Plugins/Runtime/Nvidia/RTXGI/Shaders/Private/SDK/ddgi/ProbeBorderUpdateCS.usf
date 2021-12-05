@@ -1,0 +1,129 @@
+/*
+* Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
+*
+* NVIDIA CORPORATION and its licensors retain all intellectual property
+* and proprietary rights in and to this software, related documentation
+* and any modifications thereto.  Any use, reproduction, disclosure or
+* distribution of this software and related documentation without an express
+* license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/
+
+// These are turned on/off together in the plugin settings. Turned on if the lighting values are too large to be stored (like in extended radiance mode)
+#define RTXGI_DDGI_DEBUG_FORMAT_IRRADIANCE RTXGI_DDGI_DEBUG_FORMAT_RADIANCE
+
+#include "/Engine/Private/Common.ush"
+
+// Below is Adapted from ProbeBorderUpdateCS.hlsl in the SDK aiming for minimal changes to help future merges.
+
+#include "../DDGIVolumeDefines.ush"
+//#include "../DDGIVolumeDescGPU.ush"
+
+uint    ProbeNumIrradianceOrDistanceTexels;
+
+// Probe irradiance or filtered distance
+RWTexture2D<float4> DDGIProbeUAV;
+
+[numthreads(8, 8, 1)]
+void DDGIProbeBorderRowUpdateCS(uint3 DispatchThreadID : SV_DispatchThreadID)
+{
+    uint probeSideLength = (ProbeNumIrradianceOrDistanceTexels + 2);
+    uint probeSideLengthMinusOne = (probeSideLength - 1);
+
+    // Map thread index to border row texel coordinates
+    uint2 threadCoordinates = DispatchThreadID.xy;
+    threadCoordinates.y *= probeSideLength;
+
+    // Ignore the corner texels
+    int mod = (DispatchThreadID.x % probeSideLength);
+    if (mod == 0 || mod == int(probeSideLengthMinusOne))
+    {
+        return;
+    }
+
+    // Compute the interior texel coordinates to copy (top row)
+    uint probeStart = uint(threadCoordinates.x / probeSideLength) * probeSideLength;
+    uint offset = probeSideLengthMinusOne - (threadCoordinates.x % probeSideLength);
+
+    uint2 copyCoordinates = uint2(probeStart + offset, (threadCoordinates.y + 1));
+
+#if RTXGI_DDGI_DEBUG_BORDER_COPY_INDEXING && RTXGI_DDGI_DEBUG_FORMAT_IRRADIANCE
+    DDGIProbeUAV[threadCoordinates] = float4(threadCoordinates, copyCoordinates);
+    threadCoordinates.y += probeSideLengthMinusOne;
+    copyCoordinates = uint2(probeStart + offset, threadCoordinates.y - 1);
+    DDGIProbeUAV[threadCoordinates] = float4(threadCoordinates, copyCoordinates);
+    return;
+#endif
+
+    // Top row
+    DDGIProbeUAV[threadCoordinates] = DDGIProbeUAV[copyCoordinates];
+
+    // Compute the interior texel coordinate to copy (bottom row)
+    threadCoordinates.y += probeSideLengthMinusOne;
+    copyCoordinates = uint2(probeStart + offset, threadCoordinates.y - 1);
+
+    // Bottom row
+    DDGIProbeUAV[threadCoordinates] = DDGIProbeUAV[copyCoordinates];
+}
+
+[numthreads(8, 8, 1)]
+void DDGIProbeBorderColumnUpdateCS(uint3 DispatchThreadID : SV_DispatchThreadID)
+{
+    uint probeSideLength = (ProbeNumIrradianceOrDistanceTexels + 2);
+    uint probeSideLengthMinusOne = (probeSideLength - 1);
+
+    // Map thread index to border row texel coordinates
+    uint2 threadCoordinates = DispatchThreadID.xy;
+    threadCoordinates.x *= probeSideLength;
+
+    uint2 copyCoordinates = uint2(0, 0);
+
+    // Handle the corner texels
+    int mod = (threadCoordinates.y % probeSideLength);
+    if (mod == 0 || mod == int(probeSideLengthMinusOne))
+    {
+        // Left corner
+        copyCoordinates.x = threadCoordinates.x + ProbeNumIrradianceOrDistanceTexels;
+        copyCoordinates.y = threadCoordinates.y - sign(mod - 1) * ProbeNumIrradianceOrDistanceTexels;
+
+#if RTXGI_DDGI_DEBUG_BORDER_COPY_INDEXING && RTXGI_DDGI_DEBUG_FORMAT_IRRADIANCE
+        DDGIProbeUAV[threadCoordinates] = float4(threadCoordinates, copyCoordinates);
+#else
+        DDGIProbeUAV[threadCoordinates] = DDGIProbeUAV[copyCoordinates];
+#endif
+
+        // Right corner
+        threadCoordinates.x += probeSideLengthMinusOne;
+        copyCoordinates.x = threadCoordinates.x - ProbeNumIrradianceOrDistanceTexels;
+
+#if RTXGI_DDGI_DEBUG_BORDER_COPY_INDEXING & RTXGI_DDGI_DEBUG_FORMAT_IRRADIANCE
+        DDGIProbeUAV[threadCoordinates] = float4(threadCoordinates, copyCoordinates);
+#else
+        DDGIProbeUAV[threadCoordinates] = DDGIProbeUAV[copyCoordinates];
+#endif
+        return;
+    }
+
+    // Compute the interior texel coordinates to copy (left column)
+    uint probeStart = uint(threadCoordinates.y / probeSideLength) * probeSideLength;
+    uint offset = probeSideLengthMinusOne - (threadCoordinates.y % probeSideLength);
+
+    copyCoordinates = uint2(threadCoordinates.x + 1, probeStart + offset);
+
+#if RTXGI_DDGI_DEBUG_BORDER_COPY_INDEXING && RTXGI_DDGI_DEBUG_FORMAT_IRRADIANCE
+    DDGIProbeUAV[threadCoordinates] = float4(threadCoordinates, copyCoordinates);
+    threadCoordinates.x += probeSideLengthMinusOne;
+    copyCoordinates = uint2(threadCoordinates.x - 1, probeStart + offset);
+    DDGIProbeUAV[threadCoordinates] = float4(threadCoordinates, copyCoordinates);
+    return;
+#endif
+
+    // Left column
+    DDGIProbeUAV[threadCoordinates] = DDGIProbeUAV[copyCoordinates];
+
+    // Compute the interior texel coordinate to copy (right column)
+    threadCoordinates.x += probeSideLengthMinusOne;
+    copyCoordinates = uint2(threadCoordinates.x - 1, probeStart + offset);
+
+    // Right column
+    DDGIProbeUAV[threadCoordinates] = DDGIProbeUAV[copyCoordinates];
+}

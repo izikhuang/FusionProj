@@ -1,0 +1,105 @@
+/*
+* Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
+*
+* NVIDIA CORPORATION and its licensors retain all intellectual property
+* and proprietary rights in and to this software, related documentation
+* and any modifications thereto.  Any use, reproduction, disclosure or
+* distribution of this software and related documentation without an express
+* license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/
+
+#include "/Engine/Private/Common.ush"
+
+// Below is Adapted from ProbeStateClassifierCS.hlsl in the SDK aiming for minimal changes to help future merges.
+
+#include "ProbeCommon.ush"
+
+RWTexture2D<float4> DDGIProbeRTRadianceUAV;
+RWTexture2D<uint> DDGIProbeStates;
+
+float3   DDGIVolume_probeGridSpacing;
+int3     DDGIVolume_probeGridCounts;
+int      DDGIVolume_numRaysPerProbe;
+float    DDGIVolume_probeBackfaceThreshold;
+int3     DDGIVolume_probeScrollOffsets;
+int      DDGIVolume_ProbeIndexStart;
+int      DDGIVolume_ProbeIndexCount;
+
+[numthreads(8, 4, 1)]
+void DDGIProbeStateClassifierCS(uint3 DispatchThreadID : SV_DispatchThreadID, uint GroupIndex : SV_GroupIndex)
+{
+    // Compute the probe index for this thread
+    int probeIndex = DDGIGetProbeIndex(DispatchThreadID.xy, DDGIVolume_probeGridCounts);
+
+    // Early out if the thread maps past the number of probes
+    int numTotalProbes = DDGIVolume_probeGridCounts.x * DDGIVolume_probeGridCounts.y * DDGIVolume_probeGridCounts.z;
+    if (probeIndex >= numTotalProbes)
+    {
+        return;
+    }
+
+    // Handle round robin updating.
+    // If this probe is outside of the window for updating, bail out.
+    {
+        int numProbes = DDGIVolume_probeGridCounts.x * DDGIVolume_probeGridCounts.y * DDGIVolume_probeGridCounts.z;
+        int probeRRIndex = (probeIndex < DDGIVolume_ProbeIndexStart) ? probeIndex + numProbes : probeIndex;
+        if (probeRRIndex >= DDGIVolume_ProbeIndexStart + DDGIVolume_ProbeIndexCount)
+            return;
+    }
+
+#if RTXGI_DDGI_PROBE_SCROLL
+    int storageProbeIndex = DDGIGetProbeIndexOffset(probeIndex, DDGIVolume_probeGridCounts, DDGIVolume_probeScrollOffsets);
+#else
+    int storageProbeIndex = probeIndex;
+#endif
+    uint2 offsetTexelPosition = DDGIGetProbeTexelPosition(storageProbeIndex, DDGIVolume_probeGridCounts);
+
+    // Compute the bounds used to check for surrounding geometry
+    float3 geometryBounds = DDGIVolume_probeGridSpacing;
+
+    // Conservatively increase the geometry search area
+    geometryBounds *= 2.f;
+
+#if RTXGI_DDGI_PROBE_RELOCATION
+    // A conservative bound that assumes the maximum offset value for this probe
+    geometryBounds *= 1.45f;
+#endif
+
+    float closestFrontfaceDistance = 1e27f;
+    int   backfaceCount = 0;
+
+    // Get the number of ray samples to inspect
+    int numRays = min(DDGIVolume_numRaysPerProbe, RTXGI_DDGI_NUM_FIXED_RAYS);
+
+    // Iterate over the rays cast for this probe
+    for (int rayIndex = 0; rayIndex < numRays; rayIndex++)
+    {
+        int2 rayTexCoord = int2(rayIndex, probeIndex);
+
+        // Load the hit distance from the ray cast
+#if RTXGI_DDGI_DEBUG_FORMAT_RADIANCE
+        float hitDistance = DDGIProbeRTRadianceUAV[rayTexCoord].a;
+#else
+        float hitDistance = DDGIProbeRTRadianceUAV[rayTexCoord].g;
+#endif
+
+        // Don't include backface hit distances
+        if (hitDistance < 0.f)
+        {
+            backfaceCount++;
+            continue;
+        }
+
+        // Store the closest front face hit distance
+        closestFrontfaceDistance = min(closestFrontfaceDistance, hitDistance);
+    }
+
+    // If this probe is near geometry, wake it up if the backface percentage is above probeBackfaceThreshold
+    if (all(closestFrontfaceDistance <= geometryBounds) && (float(backfaceCount) / numRays < DDGIVolume_probeBackfaceThreshold))
+    {
+        DDGIProbeStates[offsetTexelPosition] = PROBE_STATE_ACTIVE;
+        return;
+    }
+
+    DDGIProbeStates[offsetTexelPosition] = PROBE_STATE_INACTIVE;
+}

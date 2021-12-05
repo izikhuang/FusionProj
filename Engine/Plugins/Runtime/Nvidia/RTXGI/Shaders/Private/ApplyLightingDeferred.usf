@@ -1,0 +1,226 @@
+/*
+* Copyright (c) 2019-2021, NVIDIA CORPORATION.  All rights reserved.
+*
+* NVIDIA CORPORATION and its licensors retain all intellectual property
+* and proprietary rights in and to this software, related documentation
+* and any modifications thereto.  Any use, reproduction, disclosure or
+* distribution of this software and related documentation without an express
+* license agreement from NVIDIA CORPORATION is strictly prohibited.
+*/
+
+#include "/Engine/Public/Platform.ush"
+#include "/Engine/Private/GammaCorrectionCommon.ush"
+
+struct DDGIVolumeDescGPU
+{
+    float3      origin;
+    float       probeIrradianceEncodingGamma;
+    float4      rotation;
+    float3      probeGridSpacing;
+    float       normalBias;
+    int3        probeGridCounts;
+    int         probeNumIrradianceTexels;
+    int         probeNumDistanceTexels;
+    float       viewBias;
+    int3        probeScrollOffsets;
+};
+
+#include "/Plugin/RTXGI/Private/SDK/ddgi/Irradiance.ush"
+
+// VOLUME_LIST is defined by DDGIVolumeComponent.cpp and is a macro list like: VOLUME_ENTRY(0), VOLUME_ENTRY(1), etc
+
+Texture2D<float4> Normals;
+Texture2D<float>  Depth;
+Texture2D<float4> BaseColor;
+Texture2D<float4> Metallic;
+
+SamplerState LinearClampSampler;
+
+#if USE_LIGHTING_CHANNELS
+Texture2D<uint> LightingChannelsTexture;
+#endif
+
+float4x4 ScreenToTranslatedWorld;
+float3 WorldCameraOrigin;
+float PreExposure;
+float4 InvDeviceZToWorldZTransform;
+uint ShouldUsePreExposure;
+uint NumVolumes;
+
+// generate an array of structures for each probe volume
+#define VOLUME_ENTRY(x) \
+    Texture2D<float4> DDGIVolume_##x##_ProbeIrradiance; \
+    Texture2D<float4> DDGIVolume_##x##_ProbeDistance; \
+    RWTexture2D<float4> DDGIVolume_##x##_ProbeOffsets; \
+    Texture2D<uint> DDGIVolume_##x##_ProbeStates; \
+    float3 DDGIVolume_##x##_Position; \
+    float4 DDGIVolume_##x##_Rotation; \
+    float3 DDGIVolume_##x##_Radius; \
+    float3 DDGIVolume_##x##_ProbeGridSpacing; \
+    int3   DDGIVolume_##x##_ProbeGridCounts; \
+    uint   DDGIVolume_##x##_LightingChannelMask; \
+    int    DDGIVolume_##x##_ProbeNumIrradianceTexels; \
+    int    DDGIVolume_##x##_ProbeNumDistanceTexels; \
+    float  DDGIVolume_##x##_ProbeIrradianceEncodingGamma; \
+    float  DDGIVolume_##x##_NormalBias; \
+    float  DDGIVolume_##x##_ViewBias; \
+    float  DDGIVolume_##x##_BlendDistance; \
+    float  DDGIVolume_##x##_BlendDistanceBlack; \
+    float  DDGIVolume_##x##_ApplyLighting; \
+    int3   DDGIVolume_##x##_ProbeScrollOffsets; \
+    float  DDGIVolume_##x##_IrradianceScalar;
+VOLUME_LIST
+#undef VOLUME_ENTRY
+
+float ConvertFromDeviceZ(float DeviceZ)
+{
+    // Supports ortho and perspective, see CreateInvDeviceZToWorldZTransform()
+    return DeviceZ * InvDeviceZToWorldZTransform[0] + InvDeviceZToWorldZTransform[1] + 1.0f / (DeviceZ * InvDeviceZToWorldZTransform[2] - InvDeviceZToWorldZTransform[3]);
+}
+
+void MainVS(
+    in uint VertexId : SV_VertexID,
+    out float4 OutPosition : SV_POSITION,
+    out float3 OutScreenVector : TEXCOORD0)
+{
+    float2 uv = float2((VertexId << 1) & 2, VertexId & 2);
+    OutPosition = float4(uv * float2(2.0f, -2.0f) + float2(-1.0f, 1.0f), 0.0f, 1.0f);
+    OutScreenVector = mul(float4(OutPosition.xy, 1, 0), ScreenToTranslatedWorld).xyz;
+}
+
+bool ApplyVolumeLightingContribution(out float4 lightWeight, in Texture2D<float4> ProbeIrradiance, in Texture2D<float4> ProbeDistance, in RWTexture2D<float4> ProbeOffsets, in Texture2D<uint> ProbeStates, in float3 WorldPosition, in float3 Normal, in float3 CameraDirection,
+uint pixelLightingMask, in uint volumeLightingChannelMask, in float3 volumeRadius, in DDGIVolumeDescGPU DDGIVolume, in float3 albedo, in float BlendDistance, in float BlendDistanceBlack, in float ApplyLighting, in float IrradianceScalar)
+{
+    lightWeight = float4(0.0f, 0.0f, 0.0f, 0.0f);
+
+    // ignore the volume if the lighting mask doesn't overlap
+    #if USE_LIGHTING_CHANNELS
+    if ((pixelLightingMask & volumeLightingChannelMask) == 0)
+        return false;
+    #endif
+
+    // ignore the volume if the pixel is outside of the volume
+    float3 relPos = WorldPosition - DDGIVolume.origin;
+    relPos = abs(RTXGIQuaternionRotate(relPos, RTXGIQuaternionConjugate(DDGIVolume.rotation)));
+    if((relPos.x > volumeRadius.x || relPos.y > volumeRadius.y || relPos.z > volumeRadius.z))
+        return false;
+
+    // fill out a DDGIVolumeResources
+    DDGIVolumeResources resources;
+    {
+        resources.probeIrradianceSRV = ProbeIrradiance;
+        resources.probeDistanceSRV = ProbeDistance;
+        resources.bilinearSampler = LinearClampSampler;
+#if RTXGI_DDGI_PROBE_RELOCATION
+        resources.probeOffsets = ProbeOffsets;
+#endif
+#if RTXGI_DDGI_PROBE_STATE_CLASSIFIER
+        resources.probeStates = ProbeStates;
+#endif
+    }
+
+    // Get irradiance from the DDGIVolume
+    if (ApplyLighting > 0.0f)
+    {
+        float3 surfaceBias = DDGIGetSurfaceBias(Normal, CameraDirection, DDGIVolume);
+        float3 irradiance = DDGIGetVolumeIrradiance(
+            WorldPosition,
+            surfaceBias,
+            Normal,
+            DDGIVolume,
+            resources
+        );
+
+        lightWeight.rgb = irradiance * (albedo / RTXGI_PI) / IrradianceScalar;
+    }
+    else
+    {
+        lightWeight.rgb = float3(0.0f, 0.0f, 0.0f);
+    }
+
+    float3 edgeDist = (volumeRadius - abs(relPos));
+    float edgeMinDist = min(edgeDist.x, min(edgeDist.y, edgeDist.z));
+    if (BlendDistance == 0.0f)
+        lightWeight.a = (edgeMinDist < BlendDistanceBlack) ? 0.0f : 1.0f;
+    else
+        lightWeight.a = clamp((edgeMinDist - BlendDistanceBlack) / BlendDistance, 0.0f, 1.0f);
+    return true;
+}
+
+void MainPS(
+    float4 SvPosition : SV_POSITION,
+    float3 InScreenVector : TEXCOORD0,
+    out float4 OutColor : SV_Target0
+    )
+{
+    int2 PixelPos = int2(SvPosition.xy);
+
+    // get information about our pixel
+    float DeviceZ = Depth.Load(int3(PixelPos, 0));
+    float SceneDepth = ConvertFromDeviceZ(DeviceZ);
+    float3 WorldPosition = InScreenVector * SceneDepth + WorldCameraOrigin;
+    float3 Normal = normalize(Normals.Load(int3(PixelPos, 0)).xyz * 2.0f - 1.0f);
+    float3 baseColor = BaseColor.Load(int3(PixelPos, 0)).rgb;
+    float metallic = Metallic.Load(int3(PixelPos, 0)).r;
+    float3 CameraDirection = normalize(InScreenVector);
+
+    float3 albedo = baseColor - baseColor * metallic;
+
+    #if USE_LIGHTING_CHANNELS
+    uint pixelLightingMask = uint(LightingChannelsTexture.Load(int3(PixelPos, 0)).x);
+    #else
+    uint pixelLightingMask = 0;
+    #endif
+
+    // Make DDGIVolumeDescGPU's. Rely on inlining and deadstripping to make this a noop.
+    #define VOLUME_ENTRY(x) \
+        DDGIVolumeDescGPU DDGIVolume_##x; \
+        DDGIVolume_##x.origin = DDGIVolume_##x##_Position; \
+        DDGIVolume_##x.rotation = DDGIVolume_##x##_Rotation; \
+        DDGIVolume_##x.probeGridSpacing = DDGIVolume_##x##_ProbeGridSpacing; \
+        DDGIVolume_##x.probeGridCounts = DDGIVolume_##x##_ProbeGridCounts; \
+        DDGIVolume_##x.probeNumIrradianceTexels = DDGIVolume_##x##_ProbeNumIrradianceTexels; \
+        DDGIVolume_##x.probeNumDistanceTexels = DDGIVolume_##x##_ProbeNumDistanceTexels; \
+        DDGIVolume_##x.probeIrradianceEncodingGamma = DDGIVolume_##x##_ProbeIrradianceEncodingGamma; \
+        DDGIVolume_##x.normalBias = DDGIVolume_##x##_NormalBias; \
+        DDGIVolume_##x.viewBias = DDGIVolume_##x##_ViewBias; \
+        DDGIVolume_##x.probeScrollOffsets = DDGIVolume_##x##_ProbeScrollOffsets;
+    VOLUME_LIST
+    #undef VOLUME_ENTRY
+
+    // NOTE: if wanting to visualize / debug the blend, it's useful to hard code some colors temporarily.
+    // like have volume zero be red, and volume one be yellow
+
+    // Gather up to 2 lighting contributions
+    float4 primaryLightWeight = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 secondaryLightWeight = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    float4 lightWeight = float4(0.0f, 0.0f, 0.0f, 0.0f);
+    #define VOLUME_ENTRY(x) \
+    if (x < NumVolumes && primaryLightWeight.a < 1.0f && secondaryLightWeight.a == 0.0f && ApplyVolumeLightingContribution(lightWeight, DDGIVolume_##x##_ProbeIrradiance, DDGIVolume_##x##_ProbeDistance, DDGIVolume_##x##_ProbeOffsets, DDGIVolume_##x##_ProbeStates, WorldPosition, Normal, CameraDirection, pixelLightingMask, \
+        uint(DDGIVolume_##x##_LightingChannelMask), DDGIVolume_##x##_Radius, DDGIVolume_##x, albedo, DDGIVolume_##x##_BlendDistance, DDGIVolume_##x##_BlendDistanceBlack, DDGIVolume_##x##_ApplyLighting, DDGIVolume_##x##_IrradianceScalar)) \
+        { \
+            if (primaryLightWeight.a == 0.0f) \
+                primaryLightWeight = lightWeight; \
+            else \
+                secondaryLightWeight = lightWeight; \
+        }
+    VOLUME_LIST
+    #undef VOLUME_ENTRY
+
+    float preExposure = ShouldUsePreExposure ? PreExposure : 1.0f;
+
+    // Explanation of the statements below
+    // 1) If the pixel is not inside of any volume, return black.
+    // 2) If the pixel is inside of 1 volume, we want to fade it out by multiplying the primaryLightWeight color by the weight.
+    // 3) If we are in the non fade region of the primary volume, just use that color.
+    // 4) if we are in the fade region of both volumes, do something that preserves luminance of fade, since the color is going to be real similar anyways (this is the case for the max usage)
+    if (primaryLightWeight.a == 0.0f || secondaryLightWeight.a == 0.0f || primaryLightWeight.a == 1.0f || secondaryLightWeight.a < 1.0f)
+    {
+        OutColor = float4(primaryLightWeight.rgb * max(primaryLightWeight.a, secondaryLightWeight.a) * preExposure, 1.0f);
+    }
+    // else we are in the fade region of the primary volume, but not the fade region of the secondary volume, so blend between primary and secondary
+    else
+    {
+        OutColor = float4(lerp(secondaryLightWeight.rgb, primaryLightWeight.rgb, primaryLightWeight.a) * preExposure, 1.0f);
+    }
+}
