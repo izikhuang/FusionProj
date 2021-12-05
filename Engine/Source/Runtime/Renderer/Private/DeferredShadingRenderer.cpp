@@ -2135,6 +2135,8 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 		RDG_CSV_STAT_EXCLUSIVE_SCOPE(GraphBuilder, RenderLighting);
 		SCOPE_CYCLE_COUNTER(STAT_FDeferredShadingSceneRenderer_Lighting);
 
+		RenderSimulation(GraphBuilder, SceneColorTexture.Target);
+
 		FRDGTextureRef DynamicBentNormalAOTexture = nullptr;
 		RenderDiffuseIndirectAndAmbientOcclusion(GraphBuilder, SceneTextures, SceneColorTexture.Target, LightingChannelsTexture, HairDatas);
 
