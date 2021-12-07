@@ -390,7 +390,6 @@ namespace Chaos
 					// Add the constraint to the active list
 					ActivateConstraintImp(NewConstraint);
 				}
-				SortConstraintsHandles();
 			}
 		}
 
