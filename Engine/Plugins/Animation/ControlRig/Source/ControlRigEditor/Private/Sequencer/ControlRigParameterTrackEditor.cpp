@@ -2048,7 +2048,11 @@ void FControlRigParameterTrackEditor::SelectSequencerNodeInSection(UMovieSceneCo
 		{
 			if (pChannelIndex->ParentControlIndex == INDEX_NONE)
 			{
-				GetSequencer()->SelectByNthCategoryNode(ParamSection, pChannelIndex->ControlIndex, bSelected);
+				int32 CategoryIndex = ParamSection->GetActiveCategoryIndex(ControlName);
+				if (CategoryIndex != INDEX_NONE)
+				{
+					GetSequencer()->SelectByNthCategoryNode(ParamSection, CategoryIndex, bSelected);
+				}
 			}
 			else
 			{
@@ -2215,34 +2219,70 @@ void FControlRigParameterTrackEditor::HandleSpaceKeyMoved(UMovieSceneControlRigP
 	}
 }
 
+void FControlRigParameterTrackEditor::SetUpEditModeIfNeeded(UControlRig* ControlRig)
+{
+
+	FControlRigEditMode* ControlRigEditMode = GetEditMode();
+	if (!ControlRigEditMode)
+	{
+		ControlRigEditMode = GetEditMode(true);
+		if (TSharedPtr<IControlRigObjectBinding> ObjectBinding = ControlRig->GetObjectBinding())
+		{
+			if (ControlRigEditMode)
+			{
+				ControlRigEditMode->SetObjects(ControlRig, nullptr, GetSequencer());
+			}
+		}
+	}
+	else
+	{
+		if (ControlRigEditMode->GetControlRig(false) != ControlRig)
+		{
+			if (ControlRigEditMode->GetControlRig(false))
+			{
+				ControlRigEditMode->GetControlRig(false)->ClearControlSelection();
+			}
+			ControlRigEditMode->SetObjects(ControlRig, nullptr, GetSequencer());
+			//force an evaluation, this will get the control rig setup so edit mode looks good.
+			if (GetSequencer().IsValid())
+			{
+				GetSequencer()->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::Unknown);
+			}
+		}
+	}
+}
+
 void FControlRigParameterTrackEditor::HandleControlSelected(UControlRig* Subject, FRigControlElement* ControlElement, bool bSelected)
 {
 	//if parent selected we select child here if it's a bool,integer or single float
 	TArray<FRigControl> Controls;
 
 	URigHierarchy* Hierarchy = Subject->GetHierarchy();
-	if (URigHierarchyController* Controller = Hierarchy->GetController())
+	if (bSelected)
 	{
-		Hierarchy->ForEach<FRigControlElement>([ControlElement, Controller, bSelected](FRigControlElement* OtherControlElement) -> bool
-			{
-				if (OtherControlElement->Settings.ControlType == ERigControlType::Bool ||
-					OtherControlElement->Settings.ControlType == ERigControlType::Float ||
-					OtherControlElement->Settings.ControlType == ERigControlType::Integer)
+		if (URigHierarchyController* Controller = Hierarchy->GetController())
+		{
+			Hierarchy->ForEach<FRigControlElement>([ControlElement, Controller, bSelected](FRigControlElement* OtherControlElement) -> bool
 				{
-					for (const FRigElementParentConstraint& ParentConstraint : OtherControlElement->ParentConstraints)
+					if (OtherControlElement->Settings.ControlType == ERigControlType::Bool ||
+						OtherControlElement->Settings.ControlType == ERigControlType::Float ||
+						OtherControlElement->Settings.ControlType == ERigControlType::Integer)
 					{
-						if (ParentConstraint.ParentElement == ControlElement)
+						for (const FRigElementParentConstraint& ParentConstraint : OtherControlElement->ParentConstraints)
 						{
-							Controller->SelectElement(OtherControlElement->GetKey(), bSelected);
-							break;
+							if (ParentConstraint.ParentElement == ControlElement)
+							{
+								Controller->SelectElement(OtherControlElement->GetKey(), bSelected);
+								break;
+							}
 						}
 					}
-				}
 
-				return true;
-			});
+					return true;
+				});
+		}
+
 	}
-
 	if (bIsDoingSelection)
 	{
 		return;
@@ -2274,17 +2314,14 @@ void FControlRigParameterTrackEditor::HandleControlSelected(UControlRig* Subject
 		if (Track)
 		{
 			GetSequencer()->SuspendSelectionBroadcast();
-			for (UMovieSceneSection* Section : Track->GetAllSections())
-			{
-				UMovieSceneControlRigParameterSection* ParamSection = Cast<UMovieSceneControlRigParameterSection>(Section);
-				SelectSequencerNodeInSection(ParamSection, ControlElement->GetName(), bSelected);
-			}
+			//Just set in the section to key not all
+			UMovieSceneSection* Section = Track->GetSectionToKey();
+			UMovieSceneControlRigParameterSection* ParamSection = Cast<UMovieSceneControlRigParameterSection>(Section);
+			SelectSequencerNodeInSection(ParamSection, ControlElement->GetName(), bSelected);
+			
 			GetSequencer()->ResumeSelectionBroadcast();
 
-			TArray<const IKeyArea*> KeyAreas;
-			const bool UseSelectedKeys = CVarSelectedKeysSelectControls.GetValueOnGameThread();
-			GetSequencer()->GetSelectedKeyAreas(KeyAreas, UseSelectedKeys);
-			SelectRigsAndControls(Subject, KeyAreas);
+			SetUpEditModeIfNeeded(Subject);
 
 			//Force refresh later, not now
 			GetSequencer()->NotifyMovieSceneDataChanged(EMovieSceneDataChangeType::RefreshTree);				
