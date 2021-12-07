@@ -79,6 +79,53 @@ static FORCEINLINE D3D12_SHADER_RESOURCE_VIEW_DESC GetIndexBufferSRVDesc(FD3D12B
 	return SRVDesc;
 }
 
+void FD3D12ShaderResourceView::CreateView(const D3D12_SHADER_RESOURCE_VIEW_DESC& InDesc, FD3D12BaseShaderResource* InBaseShaderResource, FD3D12ResourceLocation& InResourceLocation)
+{
+	InitializeInternal(InBaseShaderResource, InResourceLocation);
+
+	if (ResourceLocation->GetResource())
+	{
+		ID3D12Resource* D3DResource = ResourceLocation->GetResource()->GetResource();
+		Descriptor.CreateView(Desc, D3DResource);
+	}
+}
+
+void FD3D12UnorderedAccessView::CreateView(const D3D12_UNORDERED_ACCESS_VIEW_DESC& InDesc, FD3D12BaseShaderResource* InBaseShaderResource, FD3D12ResourceLocation& InResourceLocation, FD3D12Resource* InCounterResource)
+{
+	InitializeInternal(InBaseShaderResource, InResourceLocation);
+
+	if (Resource)
+	{
+		ID3D12Resource* D3DResource = Resource->GetUAVAccessResource() ? Resource->GetUAVAccessResource() : Resource->GetResource();
+		ID3D12Resource* D3DCounterResource = InCounterResource ? InCounterResource->GetResource() : nullptr;
+		Descriptor.CreateViewWithCounter(Desc, D3DResource, D3DCounterResource);
+	}
+}
+
+void FD3D12RenderTargetView::CreateView(const D3D12_RENDER_TARGET_VIEW_DESC& InDesc, FD3D12BaseShaderResource* InBaseShaderResource, FD3D12ResourceLocation& InResourceLocation)
+{
+	SetDesc(InDesc);
+	InitializeInternal(InBaseShaderResource, InResourceLocation);
+
+	if (ResourceLocation->GetResource())
+	{
+		ID3D12Resource* D3DResource = ResourceLocation->GetResource()->GetResource();
+		Descriptor.CreateView(Desc, D3DResource);
+	}
+}
+
+void FD3D12DepthStencilView::CreateView(const D3D12_DEPTH_STENCIL_VIEW_DESC& InDesc, FD3D12BaseShaderResource* InBaseShaderResource, FD3D12ResourceLocation& InResourceLocation)
+{
+	SetDesc(InDesc);
+	InitializeInternal(InBaseShaderResource, InResourceLocation);
+
+	if (ResourceLocation->GetResource())
+	{
+		ID3D12Resource* D3DResource = ResourceLocation->GetResource()->GetResource();
+		Descriptor.CreateView(Desc, D3DResource);
+	}
+}
+
 template<typename TextureType>
 FD3D12ShaderResourceView* CreateSRV(TextureType* Texture, D3D12_SHADER_RESOURCE_VIEW_DESC& Desc)
 {
