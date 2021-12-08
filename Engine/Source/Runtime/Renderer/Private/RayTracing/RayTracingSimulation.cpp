@@ -121,6 +121,24 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 		//	FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, DisPatchSize);
 		//});
 
+		FLightSceneInfo* DirectionalLightSceneInfo = NULL;
+
+		for (TSparseArray<FLightSceneInfoCompact>::TConstIterator LightIt(Scene->Lights); LightIt; ++LightIt)
+		{
+			const FLightSceneInfoCompact& LightSceneInfoCompact = *LightIt;
+			FLightSceneInfo* LightSceneInfo = LightSceneInfoCompact.LightSceneInfo;
+
+			if (ViewFamily.EngineShowFlags.LightFunctions
+				&& LightSceneInfo->Proxy->GetLightType() == LightType_Directional
+				// Band-aid fix for extremely rare case that light scene proxy contains NaNs.
+				&& !LightSceneInfo->Proxy->GetDirection().ContainsNaN()
+				&& LightSceneInfo->ShouldRenderLightViewIndependent()
+				&& LightSceneInfo->ShouldRenderLight(View))
+			{
+				DirectionalLightSceneInfo = LightSceneInfo;
+			}
+		}
+
 		FRenderSimulationParameters* SimParameters = GraphBuilder.AllocParameters<FRenderSimulationParameters>();
 		SimParameters->SceneTextures = SceneTextureBuffers;
 		SimParameters->WorldPos = WorldPosTexture;
@@ -130,20 +148,29 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 			RDG_EVENT_NAME("SimParameters"),
 			SimParameters,
 			PassFlags,
-			[this, WorldPosTexture, viewIndex](FRHICommandListImmediate& RHICmdList)
+			[this, WorldPosTexture, &View, DirectionalLightSceneInfo](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHITexture* WorldPosTex = TryGetRHI(WorldPosTexture);
 
-			int ImageWidth = Views[viewIndex].ViewRect.Width();
-			int ImageHeight = Views[viewIndex].ViewRect.Height();
+			int ImageWidth = View.ViewRect.Width();
+			int ImageHeight = View.ViewRect.Height();
 			FReadSurfaceDataFlags readPixelFlags(RCM_UNorm);
-			FIntRect IntRect(Views[viewIndex].ViewRect.Min.X, Views[viewIndex].ViewRect.Min.Y, ImageWidth, ImageHeight);
+			FIntRect IntRect(View.ViewRect.Min.X, View.ViewRect.Min.Y, ImageWidth, ImageHeight);
 			TArray<FFloat16Color> WorldPosData;
 			//RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 			GDynamicRHI->RHIReadSurfaceFloatData_RenderThread(RHICmdList, WorldPosTex, IntRect, WorldPosData, CubeFace_PosX, 0, 0);
+
+			FViewUniformShaderParameters ViewVoxelizeParameters = *View.CachedViewUniformShaderParameters;
 			FLinearColor TempWorldPos = FLinearColor(WorldPosData[100]);
 			UE_LOG(LogRenderer, Log, TEXT("WorldPosData %s"), *TempWorldPos.ToString());
+			UE_LOG(LogRenderer, Log, TEXT("camera pos: %s"), *ViewVoxelizeParameters.WorldCameraOrigin.ToString());
+			UE_LOG(LogRenderer, Log, TEXT("camera forword: %s"), *ViewVoxelizeParameters.ViewForward.ToString());
 
+			if (DirectionalLightSceneInfo)
+			{
+				const FVector LightDirection = DirectionalLightSceneInfo->Proxy->GetDirection().GetSafeNormal();
+				UE_LOG(LogRenderer, Log, TEXT("DirectionLight LightDirection: %s"), *LightDirection.ToString());
+			}
 		});
 	}
 }
