@@ -206,6 +206,7 @@ inline bool operator!=(const FMaterialParameterValue& Lhs, const FMaterialParame
 struct FMaterialParameterMetadata
 {
 	FMaterialParameterValue Value;
+	int32 PrimitiveDataIndex = INDEX_NONE;
 
 	FMaterialParameterMetadata() = default;
 	FMaterialParameterMetadata(const FMaterialParameterValue& InValue) : Value(InValue) {}

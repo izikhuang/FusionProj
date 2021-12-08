@@ -241,6 +241,7 @@ void FMaterialCachedExpressionData::UpdateForExpressions(const FMaterialCachedEx
 				case EMaterialParameterType::Scalar:
 					Parameters.ScalarValues.Insert(ParameterMeta.Value.AsScalar(), Index);
 					Parameters.ScalarMinMaxValues.Insert(FVector2D(ParameterMeta.ScalarMin, ParameterMeta.ScalarMax), Index);
+					Parameters.ScalarPrimitiveDataIndexValues.Insert(ParameterMeta.PrimitiveDataIndex, Index);
 					if (ParameterMeta.bUsedAsAtlasPosition)
 					{
 						Parameters.ScalarCurveValues.Insert(ParameterMeta.ScalarCurve.Get(), Index);
@@ -257,6 +258,7 @@ void FMaterialCachedExpressionData::UpdateForExpressions(const FMaterialCachedEx
 					Parameters.VectorValues.Insert(ParameterMeta.Value.AsLinearColor(), Index);
 					Parameters.VectorChannelNameValues.Insert(ParameterMeta.ChannelNames, Index);
 					Parameters.VectorUsedAsChannelMaskValues.Insert(ParameterMeta.bUsedAsChannelMask, Index);
+					Parameters.VectorPrimitiveDataIndexValues.Insert(ParameterMeta.PrimitiveDataIndex, Index);
 					break;
 				case EMaterialParameterType::DoubleVector:
 					Parameters.DoubleVectorValues.Insert(ParameterMeta.Value.AsVector4d(), Index);
@@ -478,6 +480,8 @@ void FMaterialCachedParameters::Reset()
 	}
 #endif
 
+	ScalarPrimitiveDataIndexValues.Reset();
+	VectorPrimitiveDataIndexValues.Reset();
 	ScalarValues.Reset();
 	VectorValues.Reset();
 	DoubleVectorValues.Reset();
@@ -525,6 +529,8 @@ void FMaterialCachedParameters::GetParameterValueByIndex(EMaterialParameterType 
 	{
 	case EMaterialParameterType::Scalar:
 		OutResult.Value = ScalarValues[ParameterIndex];
+		OutResult.PrimitiveDataIndex = ScalarPrimitiveDataIndexValues[ParameterIndex];
+
 #if WITH_EDITORONLY_DATA
 		if (!bIsEditorOnlyDataStripped)
 		{
@@ -545,6 +551,8 @@ void FMaterialCachedParameters::GetParameterValueByIndex(EMaterialParameterType 
 		break;
 	case EMaterialParameterType::Vector:
 		OutResult.Value = VectorValues[ParameterIndex];
+		OutResult.PrimitiveDataIndex = VectorPrimitiveDataIndexValues[ParameterIndex];
+
 #if  WITH_EDITORONLY_DATA
 		if (!bIsEditorOnlyDataStripped)
 		{

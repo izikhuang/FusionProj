@@ -65,6 +65,7 @@ public class DetailCustomizations : ModuleRules
 				"PhysicsCore",
 				"RenderCore",
 				"ToolWidgets",
+				"MaterialEditor",
 			}
 		);
 
