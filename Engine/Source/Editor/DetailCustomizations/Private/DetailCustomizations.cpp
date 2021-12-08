@@ -42,6 +42,7 @@
 #include "Customizations/MathStructCustomizations.h"
 #include "Customizations/SlateBrushCustomization.h"
 #include "Customizations/SlateFontInfoCustomization.h"
+#include "CustomPrimitiveDataCustomization.h"
 #include "DataTableCategoryCustomization.h"
 #include "DataTableCustomization.h"
 #include "DateTimeStructCustomization.h"
@@ -147,7 +148,6 @@
 #include "VectorStructCustomization.h"
 #include "WindowsTargetSettingsDetails.h"
 #include "WorldSettingsDetails.h"
-#include "CustomPrimitiveDataCustomization.h"
 
 IMPLEMENT_MODULE( FDetailCustomizationsModule, DetailCustomizations );
 
