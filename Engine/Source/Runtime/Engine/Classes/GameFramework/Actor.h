@@ -2218,8 +2218,11 @@ public:
 	/** Set if this actor should be spatially loaded or not. */
 	void SetIsSpatiallyLoaded(bool bInIsSpatiallyLoaded)
 	{
-		check(CanChangeIsSpatiallyLoadedFlag());
-		bIsSpatiallyLoaded = bInIsSpatiallyLoaded;
+		if (bIsSpatiallyLoaded != bInIsSpatiallyLoaded)
+		{
+			check(CanChangeIsSpatiallyLoadedFlag());
+			bIsSpatiallyLoaded = bInIsSpatiallyLoaded;
+		}
 	}
 
 	/** Returns true if this actor allows changing the spatially loaded flag.  */
