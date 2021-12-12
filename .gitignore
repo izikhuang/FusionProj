@@ -230,3 +230,5 @@ Saved/
 
 # Ignore the headers and cpp files in the clang toolchain on Linux
 Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/**
+
+!/Engine/Source/Runtime/Renderer/Private/AlphaCore/lib/Release/AlphaCore.lib
