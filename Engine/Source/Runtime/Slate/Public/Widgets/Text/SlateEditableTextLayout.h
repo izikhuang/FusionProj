@@ -586,7 +586,7 @@ private:
 	TArray<FTextLineHighlight> ActiveLineHighlights;
 
 	/** The scroll offset (in unscaled Slate units) for this text */
-	FVector2D ScrollOffset;
+	FVector2f ScrollOffset;
 
 	/** If set, the pending data containing a position that should be scrolled into view */
 	TOptional<SlateEditableTextTypes::FScrollInfo> PositionToScrollIntoView;
@@ -637,7 +637,7 @@ private:
 	TOptional<ETextOverflowPolicy> OverflowPolicyOverride;
 
 	/** The last known size of the widget from the previous OnPaint, used to recalculate wrapping */
-	FVector2D CachedSize;
+	FVector2f CachedSize;
 
 	/** A list commands to execute if a user presses the corresponding key-binding in the text box */
 	TSharedPtr<FUICommandList> UICommandList;
