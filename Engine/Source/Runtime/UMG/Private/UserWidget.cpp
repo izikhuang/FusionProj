@@ -30,6 +30,7 @@
 #include "UObject/Package.h"
 #include "Editor/WidgetCompilerLog.h"
 #include "GameFramework/InputSettings.h"
+#include "Engine/InputDelegateBinding.h"
 
 #define LOCTEXT_NAMESPACE "UMG"
 
@@ -1348,6 +1349,12 @@ void UUserWidget::BindToAnimationEvent(UWidgetAnimation* InAnimation, FWidgetAni
 
 void UUserWidget::NativeOnInitialized()
 {
+	// Bind any input delegates that may be on this widget to its owning player controller
+	if(APlayerController* PC = GetOwningPlayer())
+	{
+		UInputDelegateBinding::BindInputDelegates(GetClass(), PC->InputComponent, this);		
+	}
+	
 	OnInitialized();
 }
 
@@ -1574,7 +1581,11 @@ void UUserWidget::InitializeInputComponent()
 {
 	if ( APlayerController* Controller = GetOwningPlayer() )
 	{
-		InputComponent = NewObject< UInputComponent >( this, UInputSettings::GetDefaultInputComponentClass(), NAME_None, RF_Transient );
+		// Use the existing PC's input class, or fallback to the project default. We should use the existing class
+		// instead of just the default one because if you have a plugin that has a PC with a different default input
+		// class then this would fail
+		UClass* InputClass = Controller->PlayerInput ? Controller->PlayerInput->GetClass() : UInputSettings::GetDefaultInputComponentClass();
+		InputComponent = NewObject< UInputComponent >( this, InputClass, NAME_None, RF_Transient );
 		InputComponent->bBlockInput = bStopAction;
 		InputComponent->Priority = Priority;
 		Controller->PushInputComponent( InputComponent );
