@@ -42,13 +42,14 @@ namespace Chaos
 	public:
 		FPBDCollisionSolverAdapter()
 			: Constraint(nullptr)
+			, bIsIncremental(false)
 		{
 		}
 
 		FPBDCollisionSolver& GetSolver() { return Solver; }
 		FPBDCollisionConstraint* GetConstraint() { return Constraint; }
 
-		bool IsIncrementalManifold() const { return Constraint->GetUseIncrementalCollisionDetection(); }
+		bool IsIncrementalManifold() const { return bIsIncremental; }
 
 		/**
 		 * @brief Initialize the data required for the solver, and bind to the bodies
@@ -61,6 +62,7 @@ namespace Chaos
 			FSolverBodyContainer& SolverBodyContainer)
 		{
 			Constraint = &InConstraint;
+			bIsIncremental = Constraint->GetUseIncrementalCollisionDetection();
 
 			// Find the solver bodies for the particles we constrain. This will add them to the container
 			// if they aren't there already, and ensure that they are populated with the latest data.
@@ -145,6 +147,7 @@ namespace Chaos
 	private:
 		FPBDCollisionSolver Solver;
 		FPBDCollisionConstraint* Constraint;
+		bool bIsIncremental;
 	};
 
 
