@@ -774,11 +774,11 @@ void FCurveEditor::StepToNextKey()
 
 	if (NextTime.IsSet())
 	{
-		WeakTimeSliderController.Pin()->SetScrubPosition(NextTime.GetValue() * TickResolution);
+		WeakTimeSliderController.Pin()->SetScrubPosition(NextTime.GetValue() * TickResolution,/*bEvaluate*/ true);
 	}
 	else if (MinTime.IsSet())
 	{
-		WeakTimeSliderController.Pin()->SetScrubPosition(MinTime.GetValue() * TickResolution);
+		WeakTimeSliderController.Pin()->SetScrubPosition(MinTime.GetValue() * TickResolution, /*bEvaluate*/ true);
 	}
 }
 
@@ -832,11 +832,11 @@ void FCurveEditor::StepToPreviousKey()
 
 	if (PreviousTime.IsSet())
 	{
-		WeakTimeSliderController.Pin()->SetScrubPosition(PreviousTime.GetValue() * TickResolution);
+		WeakTimeSliderController.Pin()->SetScrubPosition(PreviousTime.GetValue() * TickResolution,/*bEvaluate*/ true);
 	}
 	else if (MaxTime.IsSet())
 	{
-		WeakTimeSliderController.Pin()->SetScrubPosition(MaxTime.GetValue() * TickResolution);
+		WeakTimeSliderController.Pin()->SetScrubPosition(MaxTime.GetValue() * TickResolution, /*bEvaluate*/ true);
 	}
 }
 
@@ -853,7 +853,7 @@ void FCurveEditor::StepForward()
 
 	FFrameTime OneFrame = FFrameRate::TransformTime(FFrameTime(1), DisplayRate, TickResolution);
 
-	WeakTimeSliderController.Pin()->SetScrubPosition(WeakTimeSliderController.Pin()->GetScrubPosition() + OneFrame);
+	WeakTimeSliderController.Pin()->SetScrubPosition(WeakTimeSliderController.Pin()->GetScrubPosition() + OneFrame, /*bEvaluate*/ true);
 }
 
 void FCurveEditor::StepBackward()
@@ -868,7 +868,7 @@ void FCurveEditor::StepBackward()
 
 	FFrameTime OneFrame = FFrameRate::TransformTime(FFrameTime(1), DisplayRate, TickResolution);
 
-	WeakTimeSliderController.Pin()->SetScrubPosition(WeakTimeSliderController.Pin()->GetScrubPosition() - OneFrame);
+	WeakTimeSliderController.Pin()->SetScrubPosition(WeakTimeSliderController.Pin()->GetScrubPosition() - OneFrame, /*bEvaluate*/ true);
 }
 
 void FCurveEditor::JumpToStart()
@@ -878,7 +878,7 @@ void FCurveEditor::JumpToStart()
 		return;
 	}
 
-	WeakTimeSliderController.Pin()->SetScrubPosition(WeakTimeSliderController.Pin()->GetPlayRange().GetLowerBoundValue());
+	WeakTimeSliderController.Pin()->SetScrubPosition(WeakTimeSliderController.Pin()->GetPlayRange().GetLowerBoundValue(), /*bEvaluate*/ true);
 }
 
 void FCurveEditor::JumpToEnd()
@@ -898,7 +898,7 @@ void FCurveEditor::JumpToEnd()
 	FFrameTime OneFrame = bInsetDisplayFrame ? FFrameRate::TransformTime(FFrameTime(1), DisplayRate, TickResolution) : FFrameTime(1);
 	FFrameTime NewTime = WeakTimeSliderController.Pin()->GetPlayRange().GetUpperBoundValue() - OneFrame;
 
-	WeakTimeSliderController.Pin()->SetScrubPosition(NewTime);
+	WeakTimeSliderController.Pin()->SetScrubPosition(NewTime, /*bEvaluate*/ true);
 }
 
 void FCurveEditor::SetSelectionRangeStart()
