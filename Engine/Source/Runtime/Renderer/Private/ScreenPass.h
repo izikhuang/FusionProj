@@ -535,7 +535,7 @@ void RENDERER_API AddDrawTexturePass(
 	FRDGBuilder& GraphBuilder,
 	const FViewInfo& View,
 	FScreenPassTexture Input,
-	FScreenPassRenderTarget Output);
+	FScreenPassRenderTarget Output, bool bRGBA = false);
 
 /** Helper function render a canvas to an output texture. Must be called within a render pass with Output as the render target. */
 template <typename TFunction>

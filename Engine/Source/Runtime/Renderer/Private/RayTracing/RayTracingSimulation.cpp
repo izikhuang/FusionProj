@@ -29,6 +29,34 @@ static TAutoConsoleVariable<int32> CVarRayTracingRenderSim(
 	ECVF_RenderThreadSafe
 );
 
+static TAutoConsoleVariable<float> CVarRayTracingSimColorR(
+	TEXT("r.RayTracing.SimColorR"),
+	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<int32> CVarRayTracingSimColorG(
+	TEXT("r.RayTracing.SimColorG"),
+	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<int32> CVarRayTracingSimColorB(
+	TEXT("r.RayTracing.SimColorB"),
+	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<int32> CVarRayTracingSimColorA(
+	TEXT("r.RayTracing.SimColorA"),
+	1.0f,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
 class FRetchWorldPosCS : public FGlobalShader
 {
 	DECLARE_GLOBAL_SHADER(FRetchWorldPosCS)
@@ -61,6 +89,7 @@ IMPLEMENT_GLOBAL_SHADER(FRetchWorldPosCS, "/Engine/Private/RayTracing/RayTracing
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderSimulationParameters, )
 	SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
 	RDG_TEXTURE_ACCESS(WorldPos, ERHIAccess::SRVGraphics)
+	RDG_TEXTURE_ACCESS(SimOutput, ERHIAccess::SRVGraphics)
 	//RDG_TEXTURE_ACCESS(ShadowMaskTexture, ERHIAccess::SRVGraphics)
 	//RDG_TEXTURE_ACCESS(LightingChannelsTexture, ERHIAccess::SRVGraphics)
 	RENDER_TARGET_BINDING_SLOTS()
@@ -81,6 +110,7 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 	TRDGUniformBufferRef<FSceneTextureUniformParameters> SceneTextureBuffers = CreateSceneTextureUniformBuffer(GraphBuilder, FeatureLevel, SceneTexturesSetupMode);
 
 	FRDGTextureRef WorldPosTexture = nullptr;
+	FRDGTextureRef SimOutput = nullptr;
 	{
 		FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(
 			SceneTextures.SceneDepthTexture->Desc.Extent,
@@ -89,6 +119,14 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 			TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV);
 
 		WorldPosTexture = GraphBuilder.CreateTexture(Desc, TEXT("WorldPosTexture"));
+
+		Desc = FRDGTextureDesc::Create2D(
+			SceneTextures.SceneDepthTexture->Desc.Extent,
+			PF_A32B32G32R32F,
+			FClearValueBinding::None,
+			TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV);
+		SimOutput = GraphBuilder.CreateTexture(Desc, TEXT("SimOutput"));
+		AddClearUAVPass(GraphBuilder, GraphBuilder.CreateUAV(SimOutput), FLinearColor(0.0f, 0.0f, 0.0f, 0.0f));
 	}
 
 	for (int viewIndex = 0; viewIndex < Views.Num(); viewIndex++)
@@ -142,13 +180,14 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 		FRenderSimulationParameters* SimParameters = GraphBuilder.AllocParameters<FRenderSimulationParameters>();
 		SimParameters->SceneTextures = SceneTextureBuffers;
 		SimParameters->WorldPos = WorldPosTexture;
+		SimParameters->SimOutput = SimOutput;
 		ERDGPassFlags PassFlags = ERDGPassFlags::Raster;
 
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("SimParameters"),
 			SimParameters,
 			PassFlags,
-			[this, WorldPosTexture, &View, DirectionalLightSceneInfo](FRHICommandListImmediate& RHICmdList)
+			[this, WorldPosTexture, SimOutput, &View, DirectionalLightSceneInfo](FRHICommandListImmediate& RHICmdList)
 		{
 			FRHITexture* WorldPosTex = TryGetRHI(WorldPosTexture);
 
@@ -167,11 +206,29 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 			UE_LOG(LogRenderer, Log, TEXT("camera forword: %s"), *ViewVoxelizeParameters.ViewForward.ToString());
 
 			if (DirectionalLightSceneInfo)
-			{
+			{ 
 				const FVector LightDirection = DirectionalLightSceneInfo->Proxy->GetDirection().GetSafeNormal();
 				UE_LOG(LogRenderer, Log, TEXT("DirectionLight LightDirection: %s"), *LightDirection.ToString());
 			}
+
+			TArray<FLinearColor> OutputData;
+			OutputData.AddDefaulted(ImageWidth * ImageHeight);
+			FLinearColor TempColor = FLinearColor(CVarRayTracingSimColorR.GetValueOnAnyThread(), CVarRayTracingSimColorG.GetValueOnAnyThread(),
+				CVarRayTracingSimColorB.GetValueOnAnyThread(), CVarRayTracingSimColorA.GetValueOnAnyThread());
+			for (int i = 0; i < OutputData.Num(); i++)
+			{
+				OutputData[i] = TempColor;
+			}
+			FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
+			FUpdateTextureRegion2D TempRegion(0, 0, 0, 0, ImageWidth, ImageHeight);
+
+			RHIUpdateTexture2D(SimOutputTex->GetTexture2D(), 0, TempRegion, ImageWidth * 4 * sizeof(float), (uint8*)OutputData.GetData());
 		});
+
+		const FScreenPassRenderTarget Output(SceneColorTexture, View.ViewRect, ERenderTargetLoadAction::ELoad);
+
+		const FScreenPassTexture SceneColor(SimOutput, View.ViewRect);
+		AddDrawTexturePass(GraphBuilder, View, SceneColor, Output, true);
 	}
 }
 #else
