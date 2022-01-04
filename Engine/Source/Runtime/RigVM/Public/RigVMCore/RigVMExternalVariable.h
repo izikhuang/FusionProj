@@ -79,7 +79,9 @@ struct RIGVM_API FRigVMExternalVariable
 		}
 		else if (const FObjectProperty* ObjectProperty = CastField<FObjectProperty>(InProperty))
 		{
-			OutTypeName = *ObjectProperty->PropertyClass->GetName();
+			OutTypeName = *FString::Printf(TEXT("TObjectPtr<%s%s>"),
+				ObjectProperty->PropertyClass->GetPrefixCPP(),
+				*ObjectProperty->PropertyClass->GetName());
 			OutTypeObject = ObjectProperty->PropertyClass;
 		}
 	}
