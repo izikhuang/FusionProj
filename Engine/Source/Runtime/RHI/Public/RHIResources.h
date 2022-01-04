@@ -3510,7 +3510,10 @@ struct RHI_API FRHITextureCreateInfo
 	}
 
 	/** Returns whether this descriptor conforms to requirements. */
-	bool IsValid() const;
+	inline bool IsValid() const
+	{
+		return FRHITextureCreateInfo::Validate(*this, /* Name = */ TEXT(""), /* bFatal = */ false);
+	}
 
 	/** Clear value to use when fast-clearing the texture. */
 	FClearValueBinding ClearValue;
@@ -3541,6 +3544,15 @@ struct RHI_API FRHITextureCreateInfo
 
 	/** Number of samples in the texture. >1 for MSAA. */
 	uint8 NumSamples = 1;
+
+	/** Check the validity. */
+	static bool CheckValidity(const FRHITextureCreateInfo& Desc, const TCHAR* Name)
+	{
+		return FRHITextureCreateInfo::Validate(Desc, Name, /* bFatal = */ true);
+	}
+
+private:
+	static bool Validate(const FRHITextureCreateInfo& Desc, const TCHAR* Name, bool bFatal);
 };
 
 /** Used to specify a texture metadata plane when creating a view. */
