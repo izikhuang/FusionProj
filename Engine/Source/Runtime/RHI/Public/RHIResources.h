@@ -3656,9 +3656,11 @@ struct FRHITextureUAVCreateInfo
 public:
 	FRHITextureUAVCreateInfo() = default;
 
-	explicit FRHITextureUAVCreateInfo(uint8 InMipLevel, EPixelFormat InFormat = PF_Unknown)
+	explicit FRHITextureUAVCreateInfo(uint8 InMipLevel, EPixelFormat InFormat = PF_Unknown, uint16 InFirstArraySlice = 0, uint16 InNumArraySlices = 0)
 		: Format(InFormat)
 		, MipLevel(InMipLevel)
+		, FirstArraySlice(InFirstArraySlice)
+		, NumArraySlices(InNumArraySlices)
 	{}
 
 	explicit FRHITextureUAVCreateInfo(ERHITextureMetaDataAccess InMetaData)
@@ -3667,7 +3669,7 @@ public:
 
 	FORCEINLINE bool operator==(const FRHITextureUAVCreateInfo& Other)const
 	{
-		return Format == Other.Format && MipLevel == Other.MipLevel && MetaData == Other.MetaData;
+		return Format == Other.Format && MipLevel == Other.MipLevel && MetaData == Other.MetaData && FirstArraySlice == Other.FirstArraySlice && NumArraySlices == Other.NumArraySlices;
 	}
 
 	FORCEINLINE bool operator!=(const FRHITextureUAVCreateInfo& Other)const
@@ -3677,6 +3679,8 @@ public:
 
 	EPixelFormat Format = PF_Unknown;
 	uint8 MipLevel = 0;
+	uint16 FirstArraySlice = 0;
+	uint16 NumArraySlices = 0;	// When 0, the default behavior will be used, e.g. all slices mapped.
 	ERHITextureMetaDataAccess MetaData = ERHITextureMetaDataAccess::None;
 };
 
