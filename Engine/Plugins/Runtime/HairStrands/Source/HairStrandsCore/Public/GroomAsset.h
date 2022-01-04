@@ -375,7 +375,7 @@ struct FHairDescriptionGroup
 struct FHairDescriptionGroups
 {
 	TArray<FHairDescriptionGroup> HairGroups;
-	float BoundRadius = 0;
+	FBoxSphereBounds3f Bounds;
 	bool  IsValid() const;
 };
 

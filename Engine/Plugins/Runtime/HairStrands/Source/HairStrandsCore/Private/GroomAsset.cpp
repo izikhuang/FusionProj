@@ -383,7 +383,8 @@ enum class EHairAtlasTextureType
 	Tangent,
 	Attribute,
 	Coverage,
-	AuxilaryData
+	AuxilaryData,
+	GroupIndex
 };
 
 template<typename ResourceType>
@@ -424,6 +425,11 @@ static void InitAtlasTexture(ResourceType* InResource, UTexture2D* InTexture, EH
 		{
 			InResource->AuxilaryDataTexture = InTexture->TextureReference.TextureReferenceRHI;
 			InResource->AuxilaryDataSampler = DefaultSampler;
+		} break;
+		case EHairAtlasTextureType::GroupIndex:
+		{
+			InResource->GroupIndexTexture = InTexture->TextureReference.TextureReferenceRHI;
+			InResource->GroupIndexSampler = DefaultSampler;
 		} break;
 		}
 	});
@@ -508,7 +514,7 @@ static bool BuildHairGroup(
 			OutHairGroupsData[GroupIndex].Strands.InterpolationBulkData.Reset();
 		}
 
-		FGroomBuilder::BuildClusterBulkData(StrandsData, HairDescriptionGroups.BoundRadius, HairGroupsLOD[GroupIndex], OutHairGroupsData[GroupIndex].Strands.ClusterCullingBulkData);
+		FGroomBuilder::BuildClusterBulkData(StrandsData, HairDescriptionGroups.Bounds.SphereRadius, HairGroupsLOD[GroupIndex], OutHairGroupsData[GroupIndex].Strands.ClusterCullingBulkData);
 	}
 	return bIsValid;
 }
@@ -535,7 +541,7 @@ static bool BuildHairGroupCluster(
 		FHairStrandsDatas StrandsData;
 		FHairStrandsDatas GuidesData;
 		FGroomBuilder::BuildData(HairGroup, HairGroupsInterpolation[GroupIndex], OutHairGroupsInfo[GroupIndex], StrandsData, GuidesData);
-		FGroomBuilder::BuildClusterBulkData(StrandsData, HairDescriptionGroups.BoundRadius, HairGroupsLOD[GroupIndex], OutHairGroupsData[GroupIndex].Strands.ClusterCullingBulkData);
+		FGroomBuilder::BuildClusterBulkData(StrandsData, HairDescriptionGroups.Bounds.SphereRadius, HairGroupsLOD[GroupIndex], OutHairGroupsData[GroupIndex].Strands.ClusterCullingBulkData);
 	}
 	return bIsValid;
 }
@@ -1293,7 +1299,8 @@ static bool IsCardsTextureResources(const FName PropertyName)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, CoverageTexture)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, TangentTexture)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, AttributeTexture)
-		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, AuxilaryDataTexture);
+		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, AuxilaryDataTexture)
+		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, GroupIndexTexture);
 }
 static void InitCardsTextureResources(UGroomAsset* GroomAsset);
 
@@ -2463,6 +2470,7 @@ bool UGroomAsset::BuildCardsGeometry(uint32 GroupIndex)
 					if (Textures.AttributeTexture != nullptr)	Textures.AttributeTexture->UpdateResource();
 					if (Textures.CoverageTexture != nullptr)	Textures.CoverageTexture->UpdateResource();
 					if (Textures.AuxilaryDataTexture != nullptr)Textures.AuxilaryDataTexture->UpdateResource();
+					if (Textures.GroupIndexTexture != nullptr)	Textures.GroupIndexTexture->UpdateResource();
 				}
 			}
 		}
@@ -2523,16 +2531,20 @@ bool UGroomAsset::BuildCardsGeometry(uint32 GroupIndex)
 			{
 				CardsMesh->ConditionalPostLoad();
 
-				// Create a transient FHairStrandsData in order to extract RootUV and transfer them to cards data
+				// * Create a transient FHairStrandsData in order to extract RootUV and transfer them to cards data
+				// * Voxelize hair strands data (all group), to transfer group index from strands to cards
 				FHairStrandsDatas TempHairStrandsData;
+				FHairStrandsVoxelData TempHairStrandsVoxelData;
 				{
 					const FHairDescriptionGroups& LocalHairDescriptionGroups = GetHairDescriptionGroups();
 					FHairGroupInfo DummyInfo;
 					check(LocalHairDescriptionGroups.IsValid());
 					TempHairStrandsData = LocalHairDescriptionGroups.HairGroups[GroupIndex].Strands;
 					FGroomBuilder::BuildData(TempHairStrandsData);
+					FGroomBuilder::VoxelizeGroupIndex(LocalHairDescriptionGroups, TempHairStrandsVoxelData);
 				}
-				bInitResources = FHairCardsBuilder::ImportGeometry(CardsMesh, TempHairStrandsData, LOD.BulkData, LODGuidesData, LOD.InterpolationBulkData);
+				
+				bInitResources = FHairCardsBuilder::ImportGeometry(CardsMesh, TempHairStrandsData, TempHairStrandsVoxelData, LOD.BulkData, LODGuidesData, LOD.InterpolationBulkData);
 				if (!bInitResources)
 				{
 					UE_LOG(LogHairStrands, Warning, TEXT("Failed to import cards from %s for Group %d LOD %d."), *CardsMesh->GetName(), GroupIndex, LODIt);
@@ -2560,7 +2572,7 @@ bool UGroomAsset::BuildCardsGeometry(uint32 GroupIndex)
 				InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 				InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 				InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
-				InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
+				InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
 				LOD.RestResource->bInvertUV = Desc->SourceType == EHairCardsSourceType::Procedural;
 				
 				// 2.2 Load interoplatino resources
@@ -2722,6 +2734,7 @@ bool UGroomAsset::BuildMeshesGeometry(uint32 GroupIndex)
 					if (Textures.AttributeTexture != nullptr)	Textures.AttributeTexture->UpdateResource();
 					if (Textures.CoverageTexture != nullptr)	Textures.CoverageTexture->UpdateResource();
 					if (Textures.AuxilaryDataTexture != nullptr)Textures.AuxilaryDataTexture->UpdateResource();
+					if (Textures.GroupIndexTexture != nullptr)	Textures.GroupIndexTexture->UpdateResource();
 				}
 			}
 		}
@@ -2982,6 +2995,7 @@ static void InitCardsTextureResources(UGroomAsset* GroomAsset)
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
 					if (LOD.RestResource)
 					{
 						LOD.RestResource->bInvertUV = Desc->SourceType == EHairCardsSourceType::Procedural; // Should fix procedural texture so that this does not happen
@@ -3039,7 +3053,8 @@ void UGroomAsset::InitCardsResources()
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.TangentTexture, EHairAtlasTextureType::Tangent);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
-					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);					
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
 					LOD.RestResource->bInvertUV = Desc->SourceType == EHairCardsSourceType::Procedural; // Should fix procedural texture so that this does not happen
 				}
 			}
@@ -3092,6 +3107,7 @@ void UGroomAsset::InitMeshesResources()
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
 				}
 			}
 		}
@@ -3455,7 +3471,7 @@ void UGroomAsset::SaveProceduralCards(uint32 DescIndex)
 
 	const int32 GroupIndex = Desc->GroupIndex;
 	const int32 LODIndex = Desc->LODIndex;
-	if (GroupIndex >= HairGroupsData.Num() || LODIndex >= HairGroupsData[GroupIndex].Cards.LODs.Num())
+	if (GroupIndex >= HairGroupsData.Num())
 		return;
 
 	// 1. Convert old parameters (ClusterDecimation, bUseCards) to new parameters (GenerationType & CardsCount)
@@ -3554,6 +3570,7 @@ void UGroomAsset::SavePendingProceduralAssets()
 					if (Q->Textures->AuxilaryDataTexture)	FHairStrandsCore::SaveAsset(Q->Textures->AuxilaryDataTexture);
 					if (Q->Textures->CoverageTexture)		FHairStrandsCore::SaveAsset(Q->Textures->CoverageTexture);
 					if (Q->Textures->TangentTexture)		FHairStrandsCore::SaveAsset(Q->Textures->TangentTexture);
+					if (Q->Textures->GroupIndexTexture)		FHairStrandsCore::SaveAsset(Q->Textures->GroupIndexTexture);
 					Q->Textures->bNeedToBeSaved = false;
 
 					InternalReleaseResource(Q->Resources);
@@ -3623,10 +3640,11 @@ bool UGroomAsset::GetHairCardsGuidesDatas(
 		{
 			CardsMesh->ConditionalPostLoad();
 
+			FHairStrandsVoxelData				DummyVoxelData;
 			FHairCardsBulkData					DummyBulkData;
 			FHairCardsInterpolationBulkData		DummyInterpolationBulkData;
 			FHairStrandsDatas					DummyHairStrandsData;
-			FHairCardsBuilder::ImportGeometry(CardsMesh, DummyHairStrandsData, DummyBulkData, OutCardsGuidesData, DummyInterpolationBulkData);
+			FHairCardsBuilder::ImportGeometry(CardsMesh, DummyHairStrandsData, DummyVoxelData, DummyBulkData, OutCardsGuidesData, DummyInterpolationBulkData);
 			return true;
 		}
 	}
