@@ -123,7 +123,15 @@ void UMaterialInterface::Serialize(FArchive& Ar)
 	bool bSavedCachedExpressionData = false;
 	if (Ar.CustomVer(FUE5ReleaseStreamObjectVersion::GUID) >= FUE5ReleaseStreamObjectVersion::MaterialInterfaceSavedCachedData)
 	{
-		if (Ar.IsCooking() && (bool)CachedExpressionData)
+		// If we have editor data, up-to-date cached data can be regenerated on load
+		// In that case, we only need to save cached data when cooking (since the target may not have editor data)
+		// If we *don't* have editor data, then we always save our cached data...otherwise there won't be any way to regenerate it
+#if WITH_EDITORONLY_DATA
+		const bool bWantToSaveCachedData = Ar.IsCooking();
+#else
+		const bool bWantToSaveCachedData = Ar.IsSaving();
+#endif
+		if (bWantToSaveCachedData && (bool)CachedExpressionData)
 		{
 			bSavedCachedExpressionData = true;
 		}

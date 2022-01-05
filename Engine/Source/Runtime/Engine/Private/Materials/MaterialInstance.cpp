@@ -2313,7 +2313,13 @@ void UMaterialInstance::Serialize(FArchive& Ar)
 	bool bSavedCachedData = false;
 	if (Ar.CustomVer(FUE5MainStreamObjectVersion::GUID) >= FUE5MainStreamObjectVersion::MaterialSavedCachedData)
 	{
-		if (Ar.IsCooking())
+		// If we have editor data, up-to-date cached data can be regenerated on load
+#if WITH_EDITORONLY_DATA
+		const bool bWantToSaveCachedData = Ar.IsCooking();
+#else
+		const bool bWantToSaveCachedData = Ar.IsSaving();
+#endif
+		if (bWantToSaveCachedData)
 		{
 			if (CachedData)
 			{
