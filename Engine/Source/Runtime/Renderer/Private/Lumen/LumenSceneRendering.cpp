@@ -267,6 +267,14 @@ LLM_DEFINE_TAG(Lumen, NAME_None, NAME_None, GET_STATFNAME(STAT_LumenLLM), GET_ST
 extern int32 GAllowLumenDiffuseIndirect;
 extern int32 GAllowLumenReflections;
 
+namespace LumenSurfaceCache
+{
+	int32 GetMinCardResolution()
+	{
+		 return FMath::Clamp(GLumenSceneCardMinResolution, 1, 1024);
+	}
+};
+
 namespace LumenLandscape
 {
 	constexpr int32 CardCaptureLOD = 0;
@@ -1127,6 +1135,7 @@ public:
 
 	void AnyThreadTask()
 	{
+		const int32 MinCardResolution = LumenSurfaceCache::GetMinCardResolution();
 		const int32 LastPrimitiveGroupIndex = FMath::Min(FirstPrimitiveGroupIndex + NumPrimitiveGroupsPerPacket, PrimitiveGroups.Num());
 
 		for (int32 PrimitiveGroupIndex = FirstPrimitiveGroupIndex; PrimitiveGroupIndex < LastPrimitiveGroupIndex; ++PrimitiveGroupIndex)
@@ -1148,7 +1157,7 @@ public:
 					MaxCardResolution = MaxCardExtent * GLumenSceneFarFieldTexelDensity;
 				}
 
-				if (DistanceSquared <= CardMaxDistanceSq && MaxCardResolution >= 2.0f)
+				if (DistanceSquared <= CardMaxDistanceSq && MaxCardResolution >= MinCardResolution)
 				{
 					if (PrimitiveGroup.MeshCardsIndex == -1 && PrimitiveGroup.bValidMeshCards)
 					{
@@ -1216,7 +1225,7 @@ public:
 	void AnyThreadTask()
 	{
 		const int32 LastLumenMeshCardsIndex = FMath::Min(FirstMeshCardsIndex + NumMeshCardsPerPacket, LumenMeshCards.Num());
-		const int32 MinCardResolution = FMath::Clamp(GLumenSceneCardMinResolution, 1, 1024);
+		const int32 MinCardResolution = LumenSurfaceCache::GetMinCardResolution();
 
 		for (int32 MeshCardsIndex = FirstMeshCardsIndex; MeshCardsIndex < LastLumenMeshCardsIndex; ++MeshCardsIndex)
 		{
