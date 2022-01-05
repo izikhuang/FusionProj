@@ -133,12 +133,12 @@ namespace Chaos
 			{
 				const FPBDCollisionSolverManifoldPoint& SolverManifoldPoint = Solver.GetManifoldPoint(PointIndex);
 
-				const FVec3LP NetPushOut = 
+				const FSolverVec3 NetPushOut = 
 					SolverManifoldPoint.NetPushOutNormal * SolverManifoldPoint.WorldContactNormal +
 					SolverManifoldPoint.NetPushOutTangentU * SolverManifoldPoint.WorldContactTangentU +
 					SolverManifoldPoint.NetPushOutTangentV * SolverManifoldPoint.WorldContactTangentV;
 
-				const FVec3LP NetImpulse =
+				const FSolverVec3 NetImpulse =
 					SolverManifoldPoint.NetImpulseNormal * SolverManifoldPoint.WorldContactNormal +
 					SolverManifoldPoint.NetImpulseTangentU * SolverManifoldPoint.WorldContactTangentU +
 					SolverManifoldPoint.NetImpulseTangentV * SolverManifoldPoint.WorldContactTangentV;
@@ -288,8 +288,8 @@ namespace Chaos
 	// Solve position including support for incremental collision detection
 	bool FPBDCollisionSolverContainer::SolvePositionIncrementalImpl(const FReal InDt, const int32 BeginIndex, const int32 EndIndex, const FReal InMaxPushOut, const bool bApplyStaticFriction)
 	{
-		const FRealLP Dt = FRealLP(InDt);
-		const FRealLP MaxPushOut = FRealLP(InMaxPushOut);
+		const FSolverReal Dt = FSolverReal(InDt);
+		const FSolverReal MaxPushOut = FSolverReal(InMaxPushOut);
 
 		bool bNeedsAnotherIteration = false;
 		for (int32 SolverIndex = BeginIndex; SolverIndex < EndIndex; ++SolverIndex)
@@ -316,8 +316,8 @@ namespace Chaos
 	// Solve position with friction (last few iterations each tick)
 	bool FPBDCollisionSolverContainer::SolvePositionWithFrictionImpl(const FReal InDt, const int32 BeginIndex, const int32 EndIndex, const FReal InMaxPushOut)
 	{
-		const FRealLP Dt = FRealLP(InDt);
-		const FRealLP MaxPushOut = FRealLP(InMaxPushOut);
+		const FSolverReal Dt = FSolverReal(InDt);
+		const FSolverReal MaxPushOut = FSolverReal(InMaxPushOut);
 
 		bool bNeedsAnotherIteration = false;
 		for (int32 SolverIndex = BeginIndex; SolverIndex < EndIndex; ++SolverIndex)
@@ -330,8 +330,8 @@ namespace Chaos
 	// Solve position without friction (first few iterations each tick)
 	bool FPBDCollisionSolverContainer::SolvePositionNoFrictionImpl(const FReal InDt, const int32 BeginIndex, const int32 EndIndex, const FReal InMaxPushOut)
 	{
-		const FRealLP Dt = FRealLP(InDt);
-		const FRealLP MaxPushOut = FRealLP(InMaxPushOut);
+		const FSolverReal Dt = FSolverReal(InDt);
+		const FSolverReal MaxPushOut = FSolverReal(InMaxPushOut);
 
 		bool bNeedsAnotherIteration = false;
 		for (int32 SolverIndex = BeginIndex; SolverIndex < EndIndex; ++SolverIndex)
@@ -348,7 +348,7 @@ namespace Chaos
 		{
 			return false;
 		}
-		const FRealLP Dt = FRealLP(InDt);
+		const FSolverReal Dt = FSolverReal(InDt);
 
 		UpdateVelocityShockPropagation(Dt, It, NumIts, BeginIndex, EndIndex);
 
