@@ -80,7 +80,7 @@ void UE::HLSLTree::FCodeWriter::WriteIndent()
 {
 	for (int32 i = 0; i < IndentLevel; ++i)
 	{
-		StringBuilder->Append(TCHAR('\t'));
+		StringBuilder->AppendChar(TEXT('\t'));
 	}
 }
 
@@ -841,7 +841,7 @@ static void WriteIndent(int32 IndentLevel, FStringBuilderBase& InOutString)
 {
 	for (int32 i = 0; i < IndentLevel; ++i)
 	{
-		InOutString.Append(TCHAR('\t'));
+		InOutString.AppendChar(TEXT('\t'));
 	}
 }
 
@@ -873,7 +873,7 @@ static void WriteScope(const UE::HLSLTree::FEmitScope& EmitScope, int32 IndentLe
 			const UE::HLSLTree::FEmitStatement& EmitStatement = *It;
 			WriteIndent(IndentLevel, InOutString);
 			InOutString.Append(EmitStatement.Code);
-			InOutString.Append(TCHAR('\n'));
+			InOutString.AppendChar(TEXT('\n'));
 			It.Next();
 		}
 	}
@@ -887,7 +887,7 @@ static void WriteScope(const UE::HLSLTree::FEmitScope& EmitScope, int32 IndentLe
 			{
 				WriteIndent(IndentLevel, InOutString);
 				InOutString.Append(EmitLink.Code);
-				InOutString.Append(TCHAR('\n'));
+				InOutString.AppendChar(TEXT('\n'));
 			}
 
 			if (EmitLink.NextScope)

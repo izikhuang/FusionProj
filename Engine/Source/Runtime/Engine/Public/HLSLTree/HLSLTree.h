@@ -64,7 +64,7 @@ public:
 	{
 		WriteIndent();
 		StringBuilder->Append(Text);
-		StringBuilder->Append('\n');
+		StringBuilder->AppendChar('\n');
 	}
 
 	template <typename FormatType, typename... ArgTypes>
@@ -72,7 +72,7 @@ public:
 	{
 		WriteIndent();
 		StringBuilder->Appendf(Format, Args...);
-		StringBuilder->Append('\n');
+		StringBuilder->AppendChar('\n');
 	}
 
 	void WriteConstant(const Shader::FValue& Value);
