@@ -251,7 +251,7 @@ void FChannel::EnumerateChannels(ChannelIterFunc Func, void* User)
 bool FChannel::Toggle(bool bEnabled)
 {
 	using namespace Private;
-	int64 OldRefCnt = AtomicAddRelaxed(&Enabled, bEnabled ? 1 : -1);
+	AtomicStoreRelaxed(&Enabled, bEnabled ? 1 : -1);
 
 	UE_TRACE_LOG(Trace, ChannelToggle, TraceLogChannel)
 		<< ChannelToggle.Id(Name.Hash)
