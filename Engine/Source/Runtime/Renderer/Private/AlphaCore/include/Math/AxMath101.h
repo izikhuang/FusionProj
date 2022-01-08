@@ -13,7 +13,7 @@ namespace AlphaCore
 			return a * (1.0f - t) + b * t;
 		}
 
-		ALPHA_KERNEL_FUNC float ClampF32(float val, float max, float min)
+		ALPHA_KERNEL_FUNC float ClampF32(float val, float min, float max)
 		{
 			return val > max ? max : (val < min ? min : val);
 		}
@@ -21,6 +21,14 @@ namespace AlphaCore
 		ALPHA_KERNEL_FUNC float DegreesToRadians(float degree)
 		{
 			return degree * ALPHA_DEGREE_TO_RADIUS;
+		}
+
+		ALPHA_KERNEL_FUNC bool NearVal(float val, float dst) {
+			return  val - dst > -1e-6 && val - dst < 1e-6;
+		}
+
+		ALPHA_KERNEL_FUNC bool NearZero(float val) {
+			return NearVal(val, 0.f);
 		}
 	}
 }

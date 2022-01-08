@@ -201,6 +201,7 @@ private:
 typedef AxField2DBase<float>		 AxScalarField2DF32;
 typedef AxField2DBase<double>		 AxScalarField2DF64;
 typedef AxField2DBase<AxColorRGBA8>	 AxImageRGBA8;
+typedef AxField2DBase<AxColorRGBA>   AxImageRGBA;
 
 
 #endif
