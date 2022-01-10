@@ -673,7 +673,7 @@ namespace UnrealBuildTool
 			{
 				GameName = "EpicGamesLauncher";
 			}
-			else if (GameName == "UE4" && ProjectFile != null)
+			else if (GameName == "UE5" && ProjectFile != null)
 			{
 				GameName = ProjectFile.GetFileNameWithoutAnyExtensions();
 			}
