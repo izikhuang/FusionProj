@@ -107,7 +107,7 @@ namespace UnrealBuildTool
 		/// <summary>
 		/// Whether to compile with ASan enabled
 		/// </summary>
-		MacToolChainOptions Options;
+		readonly MacToolChainOptions Options;
 
 		public MacToolChain(FileReference? InProjectFile, MacToolChainOptions InOptions)
 			: base(InProjectFile)
@@ -147,7 +147,7 @@ namespace UnrealBuildTool
 		/// </summary>
 		private bool bHasWipedFixDylibScript = false;
 
-		private static List<FileItem> BundleDependencies = new List<FileItem>();
+		private static readonly List<FileItem> BundleDependencies = new List<FileItem>();
 
 		private static void SetupXcodePaths(bool bVerbose)
 		{
@@ -339,8 +339,7 @@ namespace UnrealBuildTool
 		// Note that exception handling uses the same information, but it will generate it as needed. 
 		static string GetRTTIFlag(CppCompileEnvironment CompileEnvironment)
 		{
-			string Result = "";
-
+			string Result;
 			if (CompileEnvironment.bUseRTTI)
 			{
 				Result = " -frtti";
@@ -621,8 +620,7 @@ namespace UnrealBuildTool
 
 		private int LoadEngineCL()
 		{
-			BuildVersion? Version;
-			if (BuildVersion.TryRead(BuildVersion.GetDefaultFileName(), out Version))
+			if (BuildVersion.TryRead(BuildVersion.GetDefaultFileName(), out BuildVersion? Version))
 			{
 				return Version.Changelist;
 			}
@@ -634,10 +632,9 @@ namespace UnrealBuildTool
 
 		public static string LoadEngineDisplayVersion(bool bIgnorePatchVersion = false)
 		{
-			BuildVersion? Version;
-			if (BuildVersion.TryRead(BuildVersion.GetDefaultFileName(), out Version))
+			if (BuildVersion.TryRead(BuildVersion.GetDefaultFileName(), out BuildVersion? Version))
 			{
-				return String.Format("{0}.{1}.{2}", Version.MajorVersion, Version.MinorVersion, bIgnorePatchVersion? 0 : Version.PatchVersion);
+				return String.Format("{0}.{1}.{2}", Version.MajorVersion, Version.MinorVersion, bIgnorePatchVersion ? 0 : Version.PatchVersion);
 			}
 			else
 			{
@@ -654,8 +651,7 @@ namespace UnrealBuildTool
 		{
 			int CL = 0;
 
-			BuildVersion? Version;
-			if (BuildVersion.TryRead(BuildVersion.GetDefaultFileName(), out Version))
+			if (BuildVersion.TryRead(BuildVersion.GetDefaultFileName(), out BuildVersion? Version))
 			{
 				CL = Version.EffectiveCompatibleChangelist;
 			}
@@ -1045,7 +1041,7 @@ namespace UnrealBuildTool
 
                     // bundle identifier
                     // plist replacements
-                    DirectoryReference? DirRef = (!string.IsNullOrEmpty(UnrealBuildTool.GetRemoteIniPath()) ? new DirectoryReference(UnrealBuildTool.GetRemoteIniPath()!) : (ProjectFile != null ? ProjectFile.Directory : null));
+                    DirectoryReference? DirRef = !string.IsNullOrEmpty(UnrealBuildTool.GetRemoteIniPath()) ? new DirectoryReference(UnrealBuildTool.GetRemoteIniPath()!) : ProjectFile?.Directory;
                     ConfigHierarchy Ini = ConfigCache.ReadHierarchy(ConfigHierarchyType.Engine, DirRef, UnrealTargetPlatform.IOS);
 
                     string BundleIdentifier;
@@ -1230,8 +1226,7 @@ namespace UnrealBuildTool
 			// Deletes ay existing file on the building machine. Also, waits 30 seconds, if needed, for the input file to be created in an attempt to work around
 			// a problem where dsymutil would exit with an error saying the input file did not exist.
 			// Note that the source and dest are switched from a copy command
-			string ExtraOptions;
-			string DsymutilPath = GetDsymutilPath(out ExtraOptions, bIsForLTOBuild: false);
+			string DsymutilPath = GetDsymutilPath(out string ExtraOptions, bIsForLTOBuild: false);
 
 			string ArgumentString = "-c \"";
 			ArgumentString += string.Format("for i in {{1..30}}; ");
@@ -1434,7 +1429,7 @@ namespace UnrealBuildTool
 			}
 		}
 
-		private List<FileItem> DebugInfoFiles = new List<FileItem>();
+		private readonly List<FileItem> DebugInfoFiles = new List<FileItem>();
 
 		public override void FinalizeOutput(ReadOnlyTargetRules Target, TargetMakefile Makefile)
 		{
@@ -1505,7 +1500,7 @@ namespace UnrealBuildTool
 		}
 
 		private FileItem? FixDylibOutputFile = null;
-		private List<FileItem> ExecutablesThatNeedDsyms = new List<FileItem>();
+		private readonly List<FileItem> ExecutablesThatNeedDsyms = new List<FileItem>();
 
 		public void StripSymbols(FileReference SourceFile, FileReference TargetFile)
 		{
