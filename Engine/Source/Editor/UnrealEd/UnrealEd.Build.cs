@@ -262,7 +262,6 @@ public class UnrealEd : ModuleRules
 				"Media",
 				"VirtualTexturingEditor",
 				"WorldPartitionEditor",
-				"WorldPartitionHLODUtilities",
 				"CSVtoSVG",
 			}
 		);
