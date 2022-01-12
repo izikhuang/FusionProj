@@ -1027,6 +1027,7 @@ void FD3D12GlobalHeap::Init(D3D12_DESCRIPTOR_HEAP_TYPE InType, uint32 InTotalSiz
 		INC_DWORD_STAT(STAT_NumSamplerOnlineDescriptorHeaps);
 		INC_MEMORY_STAT_BY(STAT_SamplerOnlineDescriptorHeapMemory, Desc.NumDescriptors * DescriptorSize);
 	}
+	INC_MEMORY_STAT_BY(STAT_D3D12MemoryCurrentTotal, Desc.NumDescriptors * DescriptorSize);
 
 	INC_DWORD_STAT_BY(STAT_GlobalViewHeapFreeDescriptors, TotalSize);
 	
@@ -1248,6 +1249,7 @@ void FD3D12LocalOnlineHeap::Init(uint32 NumDescriptors, D3D12_DESCRIPTOR_HEAP_TY
 		INC_DWORD_STAT(STAT_NumSamplerOnlineDescriptorHeaps);
 		INC_MEMORY_STAT_BY(STAT_SamplerOnlineDescriptorHeapMemory, Desc.NumDescriptors * GetDescriptorSize());
 	}
+	INC_MEMORY_STAT_BY(STAT_D3D12MemoryCurrentTotal, Desc.NumDescriptors * GetDescriptorSize());
 }
 
 
@@ -1286,6 +1288,7 @@ bool FD3D12LocalOnlineHeap::RollOver()
 			INC_DWORD_STAT(STAT_NumSamplerOnlineDescriptorHeaps);
 			INC_MEMORY_STAT_BY(STAT_SamplerOnlineDescriptorHeapMemory, Desc.NumDescriptors * GetDescriptorSize());
 		}
+		INC_MEMORY_STAT_BY(STAT_D3D12MemoryCurrentTotal, Desc.NumDescriptors * GetDescriptorSize());
 
 		Entry.Heap = Heap;
 	}
