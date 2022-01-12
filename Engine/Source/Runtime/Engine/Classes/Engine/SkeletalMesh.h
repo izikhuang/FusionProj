@@ -125,19 +125,6 @@ enum class ESkeletalMeshAsyncProperties : uint64
 
 ENUM_CLASS_FLAGS(ESkeletalMeshAsyncProperties);
 
-struct FFinishBuildInternalData
-{
-public:
-	/** Editor MorphTargets data to set. */
-	bool bApplyMorphTargetsData = false;
-	TMap<FName, TArray<FMorphTargetLODModel> > MorphLODModelsPerTargetName;
-
-	void ApplyEditorData(USkeletalMesh* SkeletalMesh) const;
-
-private:
-	void ApplyMorphTargetsEditorData(USkeletalMesh* SkeletalMesh) const;
-};
-
 class FSkeletalMeshCompilationContext
 {
 public:
@@ -148,7 +135,6 @@ public:
 	// Movable
 	FSkeletalMeshCompilationContext(FSkeletalMeshCompilationContext&&) = default;
 	FSkeletalMeshCompilationContext& operator=(FSkeletalMeshCompilationContext&&) = default;
-	FFinishBuildInternalData FinishBuildInternalData;
 };
 
 class FSkeletalMeshPostLoadContext : public FSkeletalMeshCompilationContext
