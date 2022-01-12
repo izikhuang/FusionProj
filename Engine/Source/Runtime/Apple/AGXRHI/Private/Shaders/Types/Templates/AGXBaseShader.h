@@ -76,12 +76,6 @@ public:
 	// List of memory copies from RHIUniformBuffer to packed uniforms
 	TArray<CrossCompiler::FUniformBufferCopyInfo> UniformBuffersCopyInfo;
 
-	/* Argument encoders for shader IABs */
-	TMap<uint32, mtlpp::ArgumentEncoder> ArgumentEncoders;
-
-	/* Tier1 Argument buffer bitmasks */
-	TMap<uint32, TBitArray<>> ArgumentBitmasks;
-
 	/* Uniform buffer static slots */
 	TArray<FUniformBufferStaticSlot> StaticSlots;
 
@@ -469,30 +463,6 @@ mtlpp::Function TAGXBaseShader<BaseResourceType, ShaderType>::GetCompiledFunctio
 
 				return nil;
 			}
-		}
-	}
-
-	if (FAGXCommandQueue::SupportsFeature(EAGXFeaturesIABs) && Bindings.ArgumentBuffers && ArgumentEncoders.Num() == 0)
-	{
-		uint32 ArgumentBuffers = Bindings.ArgumentBuffers;
-		while(ArgumentBuffers)
-		{
-			uint32 Index = __builtin_ctz(ArgumentBuffers);
-			ArgumentBuffers &= ~(1 << Index);
-
-			mtlpp::ArgumentEncoder ArgumentEncoder = Function.NewArgumentEncoderWithBufferIndex(Index);
-			ArgumentEncoders.Add(Index, ArgumentEncoder);
-
-			TBitArray<> Resources;
-			for (uint8 Id : Bindings.ArgumentBufferMasks[Index])
-			{
-				if (Id >= Resources.Num())
-				{
-					Resources.Add(false, (Id + 1) - Resources.Num());
-				}
-				Resources[Id] = true;
-			}
-			ArgumentBitmasks.Add(Index, Resources);
 		}
 	}
 
