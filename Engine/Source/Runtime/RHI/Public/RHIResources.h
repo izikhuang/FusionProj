@@ -1922,6 +1922,7 @@ public:
 	FRHIRayTracingAccelerationStructure() : FRHIResource(RRT_RayTracingAccelerationStructure) {}
 };
 
+struct FRayTracingGeometryInitializer;
 using FRayTracingAccelerationStructureAddress = uint64;
 
 /** Bottom level ray tracing acceleration structure (contains triangles). */
@@ -1931,6 +1932,7 @@ public:
 	virtual FRayTracingAccelerationStructureAddress GetAccelerationStructureAddress(uint64 GPUIndex) const = 0;
 	virtual uint32 GetNumSegments() const = 0;
 	virtual FRayTracingAccelerationStructureSize GetSizeInfo() const = 0;
+	virtual void SetInitializer(const FRayTracingGeometryInitializer& Initializer) = 0;
 };
 
 typedef TRefCountPtr<FRHIRayTracingGeometry>     FRayTracingGeometryRHIRef;
