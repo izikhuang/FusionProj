@@ -751,7 +751,10 @@ private:
 
 	void ResolveFunctionsIfRequired();
 	void RefreshInstructionsIfRequired();
+public:
 	void InvalidateCachedMemory();
+	
+private:
 #if UE_RIGVM_UCLASS_BASED_STORAGE_DISABLED
 	void CacheMemoryHandlesIfRequired(FRigVMMemoryContainerPtrArray InMemory);
 #else
