@@ -1773,44 +1773,36 @@ RHI_API const TCHAR* RHIVendorIdToString(EGpuVendorId VendorId)
 	return TEXT("Unknown");
 }
 
-RHI_API uint32 RHIGetShaderLanguageVersion(const FStaticShaderPlatform Platform)
+RHI_API uint32 RHIGetMetalShaderLanguageVersion(const FStaticShaderPlatform Platform)
 {
-	uint32 Version = 0;
-	if (IsMetalPlatform(Platform))
+    if (IsMetalPlatform(Platform))
 	{
 		if (IsPCPlatform(Platform))
 		{
-			static int32 MaxShaderVersion = -1;
-			if (MaxShaderVersion < 0)
-			{
-				MaxShaderVersion = 7; // MSL v2.4
-				int32 MinShaderVersion = 5; // MSL v2.2
-				if(!GConfig->GetInt(TEXT("/Script/MacTargetPlatform.MacTargetSettings"), TEXT("MaxShaderLanguageVersion"), MaxShaderVersion, GEngineIni))
-				{
-					MaxShaderVersion = 0;
-				}
-				MaxShaderVersion = FMath::Max(MinShaderVersion, MaxShaderVersion);
-			}
-			Version = (uint32)MaxShaderVersion;
+            static int32 MacMetalShaderLanguageVersion = -1;
+            if (MacMetalShaderLanguageVersion == -1)
+            {
+                if (!GConfig->GetInt(TEXT("/Script/MacTargetPlatform.MacTargetSettings"), TEXT("MetalLanguageVersion"), MacMetalShaderLanguageVersion, GEngineIni))
+                {
+                    MacMetalShaderLanguageVersion = 0; // 0 means default EMacMetalShaderStandard::MacMetalSLStandard_Minimum
+                }
+            }
+            return MacMetalShaderLanguageVersion;
 		}
 		else
 		{
-			static int32 MaxShaderVersion = -1;
-			if (MaxShaderVersion < 0)
-			{
-				MaxShaderVersion = 7;
-				int32 MinShaderVersion = 5;
-				if(!GConfig->GetInt(TEXT("/Script/IOSRuntimeSettings.IOSRuntimeSettings"), TEXT("MaxShaderLanguageVersion"), MaxShaderVersion, GEngineIni))
-				{
-					MaxShaderVersion = 0;
-				}
-                
-				MaxShaderVersion = FMath::Max(MinShaderVersion, MaxShaderVersion);
-			}
-			Version = (uint32)MaxShaderVersion;
-		}
+            static int32 IOSMetalShaderLanguageVersion = -1;
+            if (IOSMetalShaderLanguageVersion == -1)
+            {
+                if (!GConfig->GetInt(TEXT("/Script/IOSRuntimeSettings.IOSRuntimeSettings"), TEXT("MetalLanguageVersion"), IOSMetalShaderLanguageVersion, GEngineIni))
+                {
+                	IOSMetalShaderLanguageVersion = 0;  // 0 means default EIOSMetalShaderStandard::IOSMetalSLStandard_Minimum
+                }
+            }
+            return IOSMetalShaderLanguageVersion;
+        }
 	}
-	return Version;
+	return 0;
 }
 
 static ERHIFeatureLevel::Type GRHIMobilePreviewFeatureLevel = ERHIFeatureLevel::Num;
@@ -1854,7 +1846,7 @@ RHI_API int32 RHIGetPreferredClearUAVRectPSResourceType(const FStaticShaderPlatf
 	if (IsMetalPlatform(Platform))
 	{
 		static constexpr uint32 METAL_TEXTUREBUFFER_SHADER_LANGUAGE_VERSION = 4;
-		if (METAL_TEXTUREBUFFER_SHADER_LANGUAGE_VERSION <= RHIGetShaderLanguageVersion(Platform))
+		if (METAL_TEXTUREBUFFER_SHADER_LANGUAGE_VERSION <= RHIGetMetalShaderLanguageVersion(Platform))
 		{
 			return 0; // BUFFER
 		}
@@ -2072,9 +2064,9 @@ bool FRHITextureCreateInfo::Validate(const FRHITextureCreateInfo& Desc, const TC
 		ValidateTextureDesc(Desc.ArraySize <= GMaxTextureArrayLayers, TEXT("Texture %s's Extent.ArraySize=%d is too large."), Name, int32(Desc.ArraySize));
 	}
 	else
-	{
+		{
 		ValidateTextureDesc(Desc.ArraySize == 1, TEXT("Texture %s's ArraySize=%d is invalid for Dimension=%s."), Name, Desc.ArraySize,  GetTextureDimensionString(Desc.Dimension));
-	}
+		}
 
 	// Validate texture's samples count.
 	if (Desc.Dimension == ETextureDimension::Texture2D || Desc.Dimension == ETextureDimension::Texture2DArray)
@@ -2555,12 +2547,12 @@ FPixelFormatInfo    GPixelFormats[PF_MAX] =
 	FPixelFormatInfo(PF_ASTC_10x10_HDR,         TEXT("ASTC_10x10_HDR"),    10,         10,         1,          16,         4,              0),
 	FPixelFormatInfo(PF_ASTC_12x12_HDR,         TEXT("ASTC_12x12_HDR"),    12,         12,         1,          16,         4,              0),
 
-	FPixelFormatInfo(PF_G16R16_SNORM,       TEXT("G16R16_SNORM"),          1,          1,          1,          4,          2,              1),
-	FPixelFormatInfo(PF_R8G8_UINT,          TEXT("R8G8_UINT"),             1,          1,          1,          2,          2,              1),
-	FPixelFormatInfo(PF_R32G32B32_UINT,     TEXT("R32G32B32_UINT"),        1,          1,          1,          12,         3,              1),
-	FPixelFormatInfo(PF_R32G32B32_SINT,     TEXT("R32G32B32_SINT"),        1,          1,          1,          12,         3,              1),
-	FPixelFormatInfo(PF_R32G32B32F,         TEXT("R32G32B32F"),            1,          1,          1,          12,         3,              1),
-	FPixelFormatInfo(PF_R8_SINT,            TEXT("R8_SINT"),               1,          1,          1,          1,          1,              1),
+	FPixelFormatInfo(PF_G16R16_SNORM,       TEXT("G16R16_SNORM"),       1,          1,          1,          4,          2,              1),
+	FPixelFormatInfo(PF_R8G8_UINT,          TEXT("R8G8_UINT"),          1,          1,          1,          2,          2,              1),
+	FPixelFormatInfo(PF_R32G32B32_UINT,     TEXT("R32G32B32_UINT"),     1,          1,          1,          12,         3,              1),
+	FPixelFormatInfo(PF_R32G32B32_SINT,     TEXT("R32G32B32_SINT"),     1,          1,          1,          12,         3,              1),
+	FPixelFormatInfo(PF_R32G32B32F,         TEXT("R32G32B32F"),         1,          1,          1,          12,         3,              1),
+	FPixelFormatInfo(PF_R8_SINT,            TEXT("R8_SINT"),            1,          1,          1,          1,          1,              1),
 	FPixelFormatInfo(PF_R64_UINT,			TEXT("R64_UINT"),              1,          1,          1,          8,          1,              0),
 };
 

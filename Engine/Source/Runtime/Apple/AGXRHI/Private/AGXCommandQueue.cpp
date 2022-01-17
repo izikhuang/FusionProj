@@ -23,21 +23,15 @@ FAGXCommandQueue::FAGXCommandQueue(uint32 const MaxNumCommandBuffers /* = 0 */)
 : ParallelCommandLists(0)
 , RuntimeDebuggingLevel(EAGXDebugLevelOff)
 {
-	int32 MaxShaderVersion = 0;
-	int32 DefaultMaxShaderVersion = 5; // MSL v2.2
-	int32 MinShaderVersion = 5; // MSL v2.2
-
+    int32 MetalShaderVersion = 0;
+    
 #if PLATFORM_MAC
 	const TCHAR* const Settings = TEXT("/Script/MacTargetPlatform.MacTargetSettings");
 #else
 	const TCHAR* const Settings = TEXT("/Script/IOSRuntimeSettings.IOSRuntimeSettings");
 #endif
-    if(!GConfig->GetInt(Settings, TEXT("MaxShaderLanguageVersion"), MaxShaderVersion, GEngineIni))
-	{
-		MaxShaderVersion = DefaultMaxShaderVersion;
-	}
-	MaxShaderVersion = FMath::Max(MinShaderVersion, MaxShaderVersion);
-	AGXValidateVersion(MaxShaderVersion);
+    GConfig->GetInt(Settings, TEXT("MetalLanguageVersion"), MetalShaderVersion, GEngineIni);
+	AGXValidateVersion(MetalShaderVersion);
 
 	if(MaxNumCommandBuffers == 0)
 	{
@@ -64,12 +58,12 @@ FAGXCommandQueue::FAGXCommandQueue(uint32 const MaxNumCommandBuffers /* = 0 */)
 	GAGXFColorVertexFormat = mtlpp::VertexFormat::UChar4Normalized_BGRA;
 
 #else
-	if ([GMtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1])
+		if ([GMtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1])
 	{
 		Features |= EAGXFeaturesCountingQueries | EAGXFeaturesBaseVertexInstance | EAGXFeaturesIndirectBuffer | EAGXFeaturesMSAADepthResolve;
 	}
 		
-	if ([GMtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v2])
+		if ([GMtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v2])
 	{
 		Features |= EAGXFeaturesMSAAStoreAndResolve;
 	}
@@ -97,7 +91,7 @@ FAGXCommandQueue::FAGXCommandQueue(uint32 const MaxNumCommandBuffers /* = 0 */)
                         
 	}
                     
-	if ([GMtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily5_v1])
+					if ([GMtlDevice supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily5_v1])
 	{
 		Features |= EAGXFeaturesLayeredRendering;
 	}
@@ -157,12 +151,12 @@ FAGXCommandQueue::FAGXCommandQueue(uint32 const MaxNumCommandBuffers /* = 0 */)
 	PermittedOptions = 0;
 	PermittedOptions |= mtlpp::ResourceOptions::CpuCacheModeDefaultCache;
 	PermittedOptions |= mtlpp::ResourceOptions::CpuCacheModeWriteCombined;
-	PermittedOptions |= mtlpp::ResourceOptions::StorageModeShared;
-	PermittedOptions |= mtlpp::ResourceOptions::StorageModePrivate;
+		PermittedOptions |= mtlpp::ResourceOptions::StorageModeShared;
+		PermittedOptions |= mtlpp::ResourceOptions::StorageModePrivate;
 #if PLATFORM_MAC
-	PermittedOptions |= mtlpp::ResourceOptions::StorageModeManaged;
+		PermittedOptions |= mtlpp::ResourceOptions::StorageModeManaged;
 #else
-	PermittedOptions |= mtlpp::ResourceOptions::StorageModeMemoryless;
+		PermittedOptions |= mtlpp::ResourceOptions::StorageModeMemoryless;
 #endif
 }
 
