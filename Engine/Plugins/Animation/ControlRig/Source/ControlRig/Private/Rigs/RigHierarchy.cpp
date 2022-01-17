@@ -2560,6 +2560,11 @@ void URigHierarchy::SetControlSettings(FRigControlElement* InControlElement, FRi
 		return;
 	}
 
+	if(bSetupUndo && !HasAnyFlags(RF_Transient))
+	{
+		Modify();
+	}
+
 	InControlElement->Settings = InSettings;
 	Notify(ERigHierarchyNotification::ControlSettingChanged, InControlElement);
 	
