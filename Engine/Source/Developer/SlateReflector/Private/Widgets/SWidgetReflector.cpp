@@ -2013,6 +2013,9 @@ void SWidgetReflector::HandleReflectorTreeSelectionChanged( TSharedPtr<FWidgetRe
 
 TSharedRef<SWidget> SWidgetReflector::HandleReflectorTreeContextMenu()
 {
+	// We spawn a large tooltip, close it immediately to prevent context menu from hiding.
+	FSlateApplication::Get().CloseToolTip();
+
 	const bool bShouldCloseWindowAfterMenuSelection = true;
 	FMenuBuilder MenuBuilder(bShouldCloseWindowAfterMenuSelection, nullptr);
 
