@@ -11,7 +11,7 @@
 #include "VRayLights.h"
 
 #include "GenericPlatform/GenericPlatformFile.h"
-#include "HAL/PlatformFileManager.h"
+#include "HAL/PlatformFilemanager.h"
 #include "Misc/Paths.h"
 
 #include "Windows/AllowWindowsPlatformTypes.h"

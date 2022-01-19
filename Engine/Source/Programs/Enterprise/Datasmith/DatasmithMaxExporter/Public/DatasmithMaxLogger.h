@@ -39,8 +39,6 @@ public:
 	void Show(HWND hDlg);
 	bool CopyToClipBoard();
 
-	FString GetLightDescription(INode* LightNode);
-
 private:
 	void AddItem(const TCHAR* Msg, HWND Handle, FString& FullMsg);
 	void AddObjectList(TArray< INode* > ObjectList, HWND Handle, const TCHAR* Header, const TCHAR* Description = nullptr);

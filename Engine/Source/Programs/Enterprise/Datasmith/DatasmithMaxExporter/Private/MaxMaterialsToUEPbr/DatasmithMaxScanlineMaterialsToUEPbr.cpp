@@ -84,7 +84,7 @@ namespace DatasmithMaxScanlineMaterialsToUEPbrImpl
 		{
 			IParamBlock2* ParamBlock2 = Material.GetParamBlockByID((short)j);
 			ParamBlockDesc2* ParamBlockDesc = ParamBlock2->GetDesc();
-
+			
 			for (int i = 0; i < ParamBlockDesc->count; i++)
 			{
 				const ParamDef& ParamDefinition = ParamBlockDesc->paramdefs[i];
@@ -194,7 +194,7 @@ void FDatasmithMaxScanlineMaterialsToUEPbr::Convert( TSharedRef< IDatasmithScene
 	if ( SpecularColorExpression )
 	{
 		SpecularColorExpression->SetName( TEXT("Specular") );
-
+		
 		IDatasmithMaterialExpressionScalar* SpecularLevelExpression = PbrMaterialElement->AddMaterialExpression< IDatasmithMaterialExpressionScalar >();
 		SpecularLevelExpression->SetName( TEXT("Specular Level") );
 		SpecularLevelExpression->GetScalar() = ScanlineMaterialProperties.SpecularLevel;
@@ -247,7 +247,7 @@ void FDatasmithMaxScanlineMaterialsToUEPbr::Convert( TSharedRef< IDatasmithScene
 
 		ConvertState.bCanBake = true;
 	}
-
+	
 	// ConvertFromDiffSpec
 	{
 		IDatasmithMaterialExpressionFunctionCall* ConvertFromDiffSpecExpression = PbrMaterialElement->AddMaterialExpression< IDatasmithMaterialExpressionFunctionCall >();
@@ -390,7 +390,7 @@ void FDatasmithMaxBlendMaterialsToUEPbr::Convert( TSharedRef< IDatasmithScene > 
 		}
 
 		//AlphaExpression is nullptr only when there is no mask and the mask weight is ~100% so we add scalar 0 instead.
-		if ( !AlphaExpression )
+		if ( !AlphaExpression ) 
 		{
 			IDatasmithMaterialExpressionScalar* WeightExpression = PbrMaterialElement->AddMaterialExpression< IDatasmithMaterialExpressionScalar >();
 			WeightExpression->GetScalar() = 0.f;

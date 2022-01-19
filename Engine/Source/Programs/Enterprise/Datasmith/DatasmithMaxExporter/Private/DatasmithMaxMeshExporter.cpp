@@ -191,7 +191,7 @@ bool FDatasmithMaxMeshExporter::DeleteTemporalNode() const
 	return GetCOREInterface()->DeleteNode(TemporalNode, FALSE) != 0;
 }
 
-INode* FDatasmithMaxMeshExporter::GetCollisionNode(INode* OriginalNode, const FDatasmithMaxStaticMeshAttributes* DatasmithAttributes, bool& bOutFromDatasmithAttributes) 
+INode* FDatasmithMaxMeshExporter::GetCollisionNode(INode* OriginalNode, const FDatasmithMaxStaticMeshAttributes* DatasmithAttributes, bool& bOutFromDatasmithAttributes) const
 {
 	if (DatasmithAttributes)
 	{

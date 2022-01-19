@@ -49,6 +49,7 @@ namespace DatasmithMaxCoronaMaterialsToUEPbrImpl
 
 		// Bump
 		DatasmithMaxTexmapParser::FMapParameter BumpMap;
+
 	};
 
 	FMaxCoronaMaterial ParseCoronaMaterialProperties( Mtl& Material )
@@ -63,7 +64,7 @@ namespace DatasmithMaxCoronaMaterialsToUEPbrImpl
 		{
 			IParamBlock2* ParamBlock2 = Material.GetParamBlockByID((short)j);
 			ParamBlockDesc2* ParamBlockDesc = ParamBlock2->GetDesc();
-
+			
 			for (int i = 0; i < ParamBlockDesc->count; i++)
 			{
 				const ParamDef& ParamDefinition = ParamBlockDesc->paramdefs[i];
@@ -205,6 +206,7 @@ namespace DatasmithMaxCoronaMaterialsToUEPbrImpl
 				{
 					CoronaMaterialProperties.BumpMap.bEnabled = ( ParamBlock2->GetInt( ParamDefinition.ID, CurrentTime ) != 0 );
 				}
+
 			}
 			ParamBlock2->ReleaseDesc();
 		}
@@ -221,7 +223,7 @@ namespace DatasmithMaxCoronaMaterialsToUEPbrImpl
 
 			DatasmithMaxTexmapParser::FMapParameter Mask;
 		};
-
+		
 		Mtl* BaseMaterial = nullptr;
 		static const int32 MaximumNumberOfCoat = 10;
 		FCoronaCoatMaterialProperties CoatedMaterials[MaximumNumberOfCoat];
@@ -404,7 +406,7 @@ void FDatasmithMaxCoronaMaterialsToUEPbr::Convert( TSharedRef< IDatasmithScene >
 
 		ConvertState.bCanBake = true;
 	}
-
+	
 	ConvertState.DefaultTextureMode = EDatasmithTextureMode::Specular; // At this point, all maps are considered specular maps
 
 	// Opacity
@@ -474,7 +476,7 @@ void FDatasmithMaxCoronaMaterialsToUEPbr::Convert( TSharedRef< IDatasmithScene >
 		DiffuseLerpExpression->ConnectExpression( PbrMaterialElement->GetBaseColor() );
 
 		IDatasmithMaterialExpression* ReflectionIOR = nullptr;
-
+		
 		{
 			TGuardValue< bool > SetIsMonoChannel( ConvertState.bIsMonoChannel, true );
 			ReflectionIOR = FDatasmithMaxTexmapToUEPbrUtils::MapOrValue( this, CoronaMaterialProperties.ReflectionIORMap, TEXT("Fresnel IOR"), TOptional< FLinearColor >(), CoronaMaterialProperties.ReflectionIOR );
@@ -546,7 +548,7 @@ void FDatasmithMaxCoronaMaterialsToUEPbr::Convert( TSharedRef< IDatasmithScene >
 	{
 		MetallicExpression->ConnectExpression( PbrMaterialElement->GetMetallic() );
 	}
-
+	
 	// UE Specular
 	if ( MetallicExpression )
 	{
@@ -695,12 +697,12 @@ void FDatasmithMaxCoronaBlendMaterialToUEPbr::Convert( TSharedRef<IDatasmithScen
 
 			IDatasmithMaterialExpression* MaskExpression = FDatasmithMaxTexmapToUEPbrUtils::MapOrValue(this, CoatedMaterial.Mask, TEXT("MixAmount"),
 				FLinearColor::White, TOptional< float >());
-
+			
 			IDatasmithMaterialExpressionGeneric* AlphaExpression = PbrMaterialElement->AddMaterialExpression<IDatasmithMaterialExpressionGeneric>();
 			AlphaExpression->SetExpressionName(TEXT("Multiply"));
 
 			//AlphaExpression is nullptr only when there is no mask and the mask weight is ~100% so we add scalar 0 instead.
-			if (!MaskExpression)
+			if (!MaskExpression) 
 			{
 				IDatasmithMaterialExpressionScalar* WeightExpression = PbrMaterialElement->AddMaterialExpression< IDatasmithMaterialExpressionScalar >();
 				WeightExpression->GetScalar() = 0.f;

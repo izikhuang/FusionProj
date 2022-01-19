@@ -87,8 +87,8 @@ void FDatasmithMaxMatWriter::ExportPhysicalMaterialCoat(TSharedRef< IDatasmithSc
 		// Loop through all the defined parameters therein
 		for (int i = 0; i < ParamBlockDesc->count; i++)
 		{
-			const ParamDef& ParamDefinition = ParamBlockDesc->paramdefs[i];
-
+			const ParamDef& ParamDefinition = ParamBlockDesc->paramdefs[i];			
+			
 			if (FCString::Stricmp(ParamDefinition.int_name, TEXT("coat_map_on")) == 0)
 			{
 				if (ParamBlock2->GetInt(ParamDefinition.ID, GetCOREInterface()->GetTime()) == 0)
@@ -331,6 +331,7 @@ void FDatasmithMaxMatWriter::ExportPhysicalMaterial(TSharedRef< IDatasmithScene 
 				}
 			}
 
+
 			// float values
 			else if (FCString::Stricmp(ParamDefinition.int_name, TEXT("base_weight")) == 0)
 			{
@@ -448,12 +449,12 @@ void FDatasmithMaxMatWriter::ExportPhysicalMaterial(TSharedRef< IDatasmithScene 
 
 		ParamBlock2->ReleaseDesc();
 	}
-
+	
 	ExportPhysicalMaterialProperty(DatasmithScene, DiffuseColorMap, bDiffuseColorMapOn, DiffuseWeightMap, bDiffuseWeightMapOn, DiffuseColor, DiffuseWeight, MaterialShader->GetDiffuseComp(), DATASMITH_DIFFUSETEXNAME, DATASMITH_DIFFUSECOLNAME, false, false);
 	ExportPhysicalMaterialProperty(DatasmithScene, TransparencyColorMap, bTransparencyColorMapOn, TransparencyMap, bTransparencyMapOn, TransparencyColor, Transparency, MaterialShader->GetTransComp(), DATASMITH_TRANSPTEXNAME, DATASMITH_TRANSPCOLNAME, false, false);
 	ExportPhysicalMaterialProperty(DatasmithScene, EmittanceColorMap, bEmittanceColorMapOn, EmittanceMap, bEmittanceMapOn, EmittanceColor, EmittanceMultiplier, MaterialShader->GetEmitComp(), DATASMITH_EMITTEXNAME, DATASMITH_EMITCOLNAME, false, false);
 	ExportPhysicalMaterialProperty(DatasmithScene, CutoutMap, bCutoutMapOn, NULL, NULL, BMM_Color_fl(0.0, 0.0, 0.0, 0.0), 1.0, MaterialShader->GetMaskComp(), DATASMITH_CLIPTEXNAME, DATASMITH_CLIPTEXNAME, false, true);
-
+	
 	if (MetalnessMap != NULL && bMetalnessMapOn)
 	{
 		ExportPhysicalMaterialProperty(DatasmithScene, MetalnessMap, bMetalnessMapOn, NULL, false, BMM_Color_fl(0.0, 0.0, 0.0, 0.0), Metalness, MaterialShader->GetMetalComp(), DATASMITH_METALTEXNAME, DATASMITH_METALTEXNAME, false, true);

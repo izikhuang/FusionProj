@@ -147,7 +147,7 @@ void FDatasmithMaxMatWriter::GetVrayHdri(TSharedRef< IDatasmithScene > Datasmith
 		ParamBlock2->ReleaseDesc();
 	}
 
-
+	
 
 	if (Path.IsEmpty())
 	{

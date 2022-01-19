@@ -8,17 +8,16 @@ namespace UnrealBuildTool.Rules
 		public DatasmithMaxBase(ReadOnlyTargetRules Target)
 			: base(Target)
 		{
-
 			bUseRTTI = true;
-
 
 			PrivateDependencyModuleNames.AddRange(
 				new string[]
 				{
+					"Core",
 					"DatasmithExporter",
+					"Projects",
 				}
 			);
-
 
 			PrivateIncludePaths.AddRange( new string[] { "Runtime/Launch/Public", "Runtime/Launch/Private", ModuleDirectory } );
 

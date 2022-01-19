@@ -481,8 +481,6 @@ bool FDatasmithMaxMatHelper::IsSRGB(Bitmap& InBitmap)
 	return true;
 }
 
-bool FDatasmithMaxMatExport::bForceReexport = false;
-
 void FDatasmithMaxMatExport::GetXMLTexture(TSharedRef< IDatasmithScene > DatasmithScene, Texmap* InTexMap, const TCHAR* AssetsPath)
 {
 	switch (FDatasmithMaxMatHelper::GetTextureClass(InTexMap))
@@ -561,29 +559,13 @@ bool FDatasmithMaxMatExport::UseFirstSubMapOnly(EDSMaterialType MaterialType, Mt
 
 TSharedPtr< IDatasmithBaseMaterialElement > FDatasmithMaxMatExport::ExportUniqueMaterial(TSharedRef< IDatasmithScene > DatasmithScene, Mtl* Material, const TCHAR* AssetsPath)
 {
-	if (!bForceReexport)
+	// Names should be unique prior to this
+	FString MaterialName(FDatasmithUtils::SanitizeObjectName(Material->GetName().data()));
+	for (int i = 0; i < DatasmithScene->GetMaterialsCount(); i++)
 	{
-		// Names should be unique prior to this
-		FString MaterialName(FDatasmithUtils::SanitizeObjectName(Material->GetName().data()));
-		for (int i = 0; i < DatasmithScene->GetMaterialsCount(); i++)
+		if (FString(DatasmithScene->GetMaterial(i)->GetName()) == MaterialName)
 		{
-			if (FString(DatasmithScene->GetMaterial(i)->GetName()) == MaterialName)
-			{
-				return DatasmithScene->GetMaterial(i);
-			}
-		}
-	}
-	else
-	{
-		// Names should be unique prior to this
-		FString MaterialName(FDatasmithUtils::SanitizeObjectName(Material->GetName().data()));
-		for (int i = 0; i < DatasmithScene->GetMaterialsCount(); i++)
-		{
-			if (FString(DatasmithScene->GetMaterial(i)->GetName()) == MaterialName)
-			{
-				DatasmithScene->RemoveMaterial(DatasmithScene->GetMaterial(i));
-				break;
-			}
+			return DatasmithScene->GetMaterial(i);
 		}
 	}
 

@@ -13,7 +13,7 @@
 #include "VRayLights.h"
 
 #include "GenericPlatform/GenericPlatformFile.h"
-#include "HAL/PlatformFileManager.h"
+#include "HAL/PlatformFilemanager.h"
 #include "Misc/Paths.h"
 
 #include "Windows/AllowWindowsPlatformTypes.h"
@@ -726,7 +726,7 @@ TSharedPtr< IDatasmithLightActorElement > FDatasmithMaxSceneExporter::CreateLigh
 	return TSharedPtr< IDatasmithLightActorElement >();
 }
 
-TSharedPtr<IDatasmithMetaDataElement> FDatasmithMaxSceneExporter::ParseUserProperties(INode* Node, TSharedRef< IDatasmithActorElement > ActorElement, TSharedRef< IDatasmithScene > DatasmithScene)
+void FDatasmithMaxSceneExporter::ParseUserProperties(INode* Node, TSharedRef< IDatasmithActorElement > ActorElement, TSharedRef< IDatasmithScene > DatasmithScene)
 {
 	// Check if the node has some metadata associated as custom user properties (User Defined Properties in Object Properties)
 	MSTR Buffer;
@@ -773,9 +773,7 @@ TSharedPtr<IDatasmithMetaDataElement> FDatasmithMaxSceneExporter::ParseUserPrope
 		}
 
 		DatasmithScene->AddMetaData(MetaDataElement);
-		return MetaDataElement;
 	}
-	return TSharedPtr<IDatasmithMetaDataElement>();
 }
 
 bool FDatasmithMaxSceneExporter::ParseActor(INode* Node, TSharedRef< IDatasmithActorElement > ActorElement, float UnitMultiplier, TSharedRef< IDatasmithScene > DatasmithScene)

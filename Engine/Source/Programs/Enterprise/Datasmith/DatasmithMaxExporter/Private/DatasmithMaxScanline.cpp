@@ -635,6 +635,7 @@ void FDatasmithMaxMatWriter::ExportStandardMaterial(TSharedRef< IDatasmithScene 
 				{
 					bBumpTexEnable = false;
 				}
+
 			}
 
 			if (FCString::Stricmp(ParamDefinition.int_name, TEXT("mapAmounts")) == 0)
