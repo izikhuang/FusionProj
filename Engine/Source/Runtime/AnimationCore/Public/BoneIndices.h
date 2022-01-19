@@ -17,6 +17,8 @@ struct FBoneIndexBase
 
 	FORCEINLINE bool IsValid() const { return BoneIndex != INDEX_NONE; }
 
+	friend FORCEINLINE uint32 GetTypeHash(const FBoneIndexBase& Index) { return GetTypeHash(Index.BoneIndex); }
+
 protected:
 	int32 BoneIndex;
 };
