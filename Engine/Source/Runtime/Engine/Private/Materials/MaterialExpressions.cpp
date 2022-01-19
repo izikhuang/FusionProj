@@ -12466,7 +12466,7 @@ void UMaterialFunctionInterface::ForceRecompileForRendering(FMaterialUpdateConte
 	}
 }
 
-bool UMaterialFunctionInterface::GetParameterOverrideValue(EMaterialParameterType Type, const FName& ParameterName, FMaterialParameterMetadata& OutValue) const
+bool UMaterialFunctionInterface::GetParameterOverrideValue(EMaterialParameterType Type, const FName& ParameterName, FMaterialParameterMetadata& OutValue, FMFRecursionGuard RecursionGuard) const
 {
 	return false;
 }
@@ -13560,7 +13560,7 @@ bool UMaterialFunctionInstance::HasFlippedCoordinates() const
 	return Parent ? Parent->HasFlippedCoordinates() : false;
 }
 
-bool UMaterialFunctionInstance::GetParameterOverrideValue(EMaterialParameterType Type, const FName& ParameterName, FMaterialParameterMetadata& OutResult) const
+bool UMaterialFunctionInstance::GetParameterOverrideValue(EMaterialParameterType Type, const FName& ParameterName, FMaterialParameterMetadata& OutResult, FMFRecursionGuard RecursionGuard) const
 {
 	const FMemoryImageMaterialParameterInfo ParameterInfo(ParameterName);
 
@@ -13576,6 +13576,13 @@ bool UMaterialFunctionInstance::GetParameterOverrideValue(EMaterialParameterType
 	case EMaterialParameterType::StaticComponentMask: bResult = GameThread_GetParameterValue(StaticComponentMaskParameterValues, ParameterInfo, OutResult); break;
 	default: checkNoEntry(); break;
 	}
+
+	if (!bResult && Parent && !RecursionGuard.Contains(this))
+	{
+		RecursionGuard.Set(this);
+		bResult = Parent->GetParameterOverrideValue(Type, ParameterName, OutResult, RecursionGuard);
+	}
+
 	return bResult;
 }
 
