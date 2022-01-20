@@ -3910,6 +3910,7 @@ private:
 		InActor->ActorGuid = InActorGuid;
 	}
 	friend class UWorld;
+	friend class UEngine;
 	friend class UWorldPartitionConvertCommandlet;
 };
 #endif
