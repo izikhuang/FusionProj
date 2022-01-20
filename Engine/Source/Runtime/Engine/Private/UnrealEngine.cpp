@@ -15650,7 +15650,9 @@ void UEngine::CopyPropertiesForUnrelatedObjects(UObject* OldObject, UObject* New
 
 	check(OldObject && NewObject);
 
+#if WITH_EDITOR
 	FGuid NewActorGuid;
+#endif
 
 	// Bad idea to write data to an actor while its components are registered
 	AActor* NewActor = Cast<AActor>(NewObject);
@@ -15661,7 +15663,9 @@ void UEngine::CopyPropertiesForUnrelatedObjects(UObject* OldObject, UObject* New
 			ensure(Component == nullptr || !Component->IsRegistered());
 		}
 
+#if WITH_EDITOR
 		NewActorGuid = NewActor->GetActorGuid();
+#endif
 	}
 
 	// If the new object is an Actor, save the root component reference, to be restored later
@@ -15821,10 +15825,12 @@ void UEngine::CopyPropertiesForUnrelatedObjects(UObject* OldObject, UObject* New
 
 		NewActor->ResetOwnedComponents();
 
+#if WITH_EDITOR
 		if (NewActorGuid.IsValid())
 		{
 			FSetActorGuid SetActorGuid(NewActor, NewActorGuid);
 		}
+#endif
 	}
 
 	bool bDumpProperties = CVarDumpCopyPropertiesForUnrelatedObjects.GetValueOnAnyThread() != 0;
