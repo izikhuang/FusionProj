@@ -384,7 +384,7 @@ enum class EHairAtlasTextureType
 	Attribute,
 	Coverage,
 	AuxilaryData,
-	GroupIndex
+	Material
 };
 
 template<typename ResourceType>
@@ -426,10 +426,10 @@ static void InitAtlasTexture(ResourceType* InResource, UTexture2D* InTexture, EH
 			InResource->AuxilaryDataTexture = InTexture->TextureReference.TextureReferenceRHI;
 			InResource->AuxilaryDataSampler = DefaultSampler;
 		} break;
-		case EHairAtlasTextureType::GroupIndex:
+		case EHairAtlasTextureType::Material:
 		{
-			InResource->GroupIndexTexture = InTexture->TextureReference.TextureReferenceRHI;
-			InResource->GroupIndexSampler = DefaultSampler;
+			InResource->MaterialTexture = InTexture->TextureReference.TextureReferenceRHI;
+			InResource->MaterialSampler = DefaultSampler;
 		} break;
 		}
 	});
@@ -1304,7 +1304,7 @@ static bool IsCardsTextureResources(const FName PropertyName)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, TangentTexture)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, AttributeTexture)
 		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, AuxilaryDataTexture)
-		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, GroupIndexTexture);
+		|| PropertyName == GET_MEMBER_NAME_CHECKED(FHairGroupCardsTextures, MaterialTexture);
 }
 static void InitCardsTextureResources(UGroomAsset* GroomAsset);
 
@@ -2474,7 +2474,7 @@ bool UGroomAsset::BuildCardsGeometry(uint32 GroupIndex)
 					if (Textures.AttributeTexture != nullptr)	Textures.AttributeTexture->UpdateResource();
 					if (Textures.CoverageTexture != nullptr)	Textures.CoverageTexture->UpdateResource();
 					if (Textures.AuxilaryDataTexture != nullptr)Textures.AuxilaryDataTexture->UpdateResource();
-					if (Textures.GroupIndexTexture != nullptr)	Textures.GroupIndexTexture->UpdateResource();
+					if (Textures.MaterialTexture != nullptr)	Textures.MaterialTexture->UpdateResource();
 				}
 			}
 		}
@@ -2576,7 +2576,7 @@ bool UGroomAsset::BuildCardsGeometry(uint32 GroupIndex)
 				InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 				InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 				InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
-				InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
+				InitAtlasTexture(LOD.RestResource, Desc->Textures.MaterialTexture, EHairAtlasTextureType::Material);
 				LOD.RestResource->bInvertUV = Desc->SourceType == EHairCardsSourceType::Procedural;
 				
 				// 2.2 Load interoplatino resources
@@ -2738,7 +2738,7 @@ bool UGroomAsset::BuildMeshesGeometry(uint32 GroupIndex)
 					if (Textures.AttributeTexture != nullptr)	Textures.AttributeTexture->UpdateResource();
 					if (Textures.CoverageTexture != nullptr)	Textures.CoverageTexture->UpdateResource();
 					if (Textures.AuxilaryDataTexture != nullptr)Textures.AuxilaryDataTexture->UpdateResource();
-					if (Textures.GroupIndexTexture != nullptr)	Textures.GroupIndexTexture->UpdateResource();
+					if (Textures.MaterialTexture != nullptr)	Textures.MaterialTexture->UpdateResource();
 				}
 			}
 		}
@@ -2999,7 +2999,7 @@ static void InitCardsTextureResources(UGroomAsset* GroomAsset)
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
-					InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.MaterialTexture, EHairAtlasTextureType::Material);
 					if (LOD.RestResource)
 					{
 						LOD.RestResource->bInvertUV = Desc->SourceType == EHairCardsSourceType::Procedural; // Should fix procedural texture so that this does not happen
@@ -3058,7 +3058,7 @@ void UGroomAsset::InitCardsResources()
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
-					InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.MaterialTexture, EHairAtlasTextureType::Material);
 					LOD.RestResource->bInvertUV = Desc->SourceType == EHairCardsSourceType::Procedural; // Should fix procedural texture so that this does not happen
 				}
 			}
@@ -3111,7 +3111,7 @@ void UGroomAsset::InitMeshesResources()
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AttributeTexture, EHairAtlasTextureType::Attribute);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.CoverageTexture, EHairAtlasTextureType::Coverage);
 					InitAtlasTexture(LOD.RestResource, Desc->Textures.AuxilaryDataTexture, EHairAtlasTextureType::AuxilaryData);
-					InitAtlasTexture(LOD.RestResource, Desc->Textures.GroupIndexTexture, EHairAtlasTextureType::GroupIndex);
+					InitAtlasTexture(LOD.RestResource, Desc->Textures.MaterialTexture, EHairAtlasTextureType::Material);
 				}
 			}
 		}
@@ -3574,7 +3574,7 @@ void UGroomAsset::SavePendingProceduralAssets()
 					if (Q->Textures->AuxilaryDataTexture)	FHairStrandsCore::SaveAsset(Q->Textures->AuxilaryDataTexture);
 					if (Q->Textures->CoverageTexture)		FHairStrandsCore::SaveAsset(Q->Textures->CoverageTexture);
 					if (Q->Textures->TangentTexture)		FHairStrandsCore::SaveAsset(Q->Textures->TangentTexture);
-					if (Q->Textures->GroupIndexTexture)		FHairStrandsCore::SaveAsset(Q->Textures->GroupIndexTexture);
+					if (Q->Textures->MaterialTexture)		FHairStrandsCore::SaveAsset(Q->Textures->MaterialTexture);
 					Q->Textures->bNeedToBeSaved = false;
 
 					InternalReleaseResource(Q->Resources);
