@@ -3517,6 +3517,14 @@ FString URigVM::GetOperandLabel(const FRigVMOperand& InOperand, TFunction<FStrin
 
 #else
 
+	if(InOperand.GetMemoryType() == ERigVMMemoryType::External)
+	{
+		if(ExternalVariables.IsValidIndex(InOperand.GetRegisterIndex()))
+		{
+			return ExternalVariables[InOperand.GetRegisterIndex()].Name.ToString();
+		}
+	}
+	
 	URigVMMemoryStorage* Memory = GetMemoryByType(InOperand.GetMemoryType());
 	if(Memory == nullptr)
 	{
