@@ -1908,6 +1908,18 @@ inline constexpr bool IsValidAccess(ERHIAccess Access)
 	return !IsInvalidAccess(Access);
 }
 
+enum class ERHITransitionAccessMode
+{
+	// All upcoming rhi transitions can still have Unkown before state - rhi might need to do internal tracking if needed
+	AllowUnknown = 0,
+
+	// All upcoming rhi transitions are fully defined - no internal RHI tracking required anymore
+	DisallowUnknown,
+
+	Default = AllowUnknown
+};
+ENUM_CLASS_FLAGS(ERHITransitionAccessMode);
+
 enum class ERHITransitionCreateFlags
 {
 	None = 0,
@@ -2637,7 +2649,7 @@ inline void RHIValidation::FTracker::AddOp(const RHIValidation::FOperation& Op)
 	if (GRHICommandList.Bypass() && CurrentList.Operations.Num() == 0)
 	{
 		auto& OpQueue = OpQueues[GetOpQueueIndex(Pipeline)];
-		if (!EnumHasAllFlags(Op.Replay(Pipeline, OpQueue.bAllowAllUAVsOverlap), EReplayStatus::Waiting))
+		if (!EnumHasAllFlags(Op.Replay(Pipeline, OpQueue.bAllowAllUAVsOverlap, OpQueue.TransitionAccessMode), EReplayStatus::Waiting))
 		{
 			return;
 		}
