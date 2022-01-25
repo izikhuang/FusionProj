@@ -2775,6 +2775,16 @@ void UControlRig::PostInitInstance(UControlRig* InCDO)
 		VM->CopyFrom(InCDO->GetVM());
 		DynamicHierarchy->CopyHierarchy(InCDO->GetHierarchy());
 	}
+	else // we are the CDO
+	{
+		// for default objects we need to check if the CDO is rooted. specialized Control Rigs
+		// such as the FK control rig may not have a root since they are part of a C++ package.
+		if(!IsRooted() && GetClass()->IsNative())
+		{
+			VM->AddToRoot();
+			DynamicHierarchy->AddToRoot();
+		}
+	}
 }
 
 void UControlRig::OnHierarchyTransformUndoRedo(URigHierarchy* InHierarchy, const FRigElementKey& InKey, ERigTransformType::Type InTransformType, const FTransform& InTransform, bool bIsUndo)
