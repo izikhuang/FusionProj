@@ -1432,8 +1432,8 @@ void FPhysicsAssetEditor::BuildMenuWidgetConstraint(FMenuBuilder& InMenuBuilder)
 			FNewMenuDelegate::CreateStatic( &FLocal::FillAxesAndLimitsMenu ) );	
 		InMenuBuilder.AddSubMenu( LOCTEXT("ConvertMenu", "Convert"), LOCTEXT("ConvertMenu_ToolTip", "Convert constraint to various presets"),
 			FNewMenuDelegate::CreateStatic( &FLocal::FillConvertMenu ) );
-		InMenuBuilder.AddMenuEntry(Commands.CopyProperties);
-		InMenuBuilder.AddMenuEntry(Commands.PasteProperties);
+		InMenuBuilder.AddMenuEntry(Commands.CopyBodies);
+		InMenuBuilder.AddMenuEntry(Commands.PasteBodies);
 		InMenuBuilder.AddMenuEntry(Commands.CopyProperties);
 		InMenuBuilder.AddMenuEntry(Commands.PasteProperties);
 		InMenuBuilder.AddMenuEntry(Commands.DeleteConstraint);
@@ -2084,7 +2084,7 @@ bool FPhysicsAssetEditor::CanCopyBodies() const
 {
 	if (IsSelectedEditMode())
 	{
-		return (SharedData->SelectedBodies.Num() > 0);
+		return ((SharedData->SelectedBodies.Num() > 0) || (SharedData->SelectedConstraints.Num() > 0));
 	}
 	return false;
 }
