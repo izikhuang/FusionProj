@@ -162,6 +162,8 @@ namespace TraceServices
 
 	void FTasksProvider::TaskScheduled(TaskTrace::FId TaskId, double Timestamp, uint32 ThreadId)
 	{
+		InitTaskIdToIndexConversion(TaskId);
+
 		if (!TryRegisterEvent(TEXT("TaskScheduled"), TaskId, &FTaskInfo::ScheduledTimestamp, Timestamp, &FTaskInfo::ScheduledThreadId, ThreadId))
 		{
 			return;
@@ -185,6 +187,8 @@ namespace TraceServices
 
 	void FTasksProvider::SubsequentAdded(TaskTrace::FId TaskId, TaskTrace::FId SubsequentId, double Timestamp, uint32 ThreadId)
 	{
+		InitTaskIdToIndexConversion(TaskId);
+
 		// when FGraphEvent is used to wait for a notification, it doesn't have an associated task and so is not created or launched. 
 		// In this case we need to create it and initialise it before registering the completion event
 		FTaskInfo* Task = TryGetOrCreateTask(TaskId);
@@ -204,6 +208,8 @@ namespace TraceServices
 
 	void FTasksProvider::TaskStarted(TaskTrace::FId TaskId, double Timestamp, uint32 ThreadId)
 	{
+		InitTaskIdToIndexConversion(TaskId);
+
 		if (!TryRegisterEvent(TEXT("TaskStarted"), TaskId, &FTaskInfo::StartedTimestamp, Timestamp, &FTaskInfo::StartedThreadId, ThreadId))
 		{
 			return;
@@ -234,6 +240,8 @@ namespace TraceServices
 
 	void FTasksProvider::NestedAdded(TaskTrace::FId TaskId, TaskTrace::FId NestedId, double Timestamp, uint32 ThreadId)
 	{
+		InitTaskIdToIndexConversion(TaskId);
+
 		AddRelative(TEXT("Nested"), TaskId, &FTaskInfo::NestedTasks, NestedId, Timestamp, ThreadId);
 
 		FTaskInfo* Task = TryGetTask(NestedId);
@@ -245,6 +253,8 @@ namespace TraceServices
 
 	void FTasksProvider::TaskFinished(TaskTrace::FId TaskId, double Timestamp)
 	{
+		InitTaskIdToIndexConversion(TaskId);
+
 		if (!TryRegisterEvent(TEXT("TaskFinished"), TaskId, &FTaskInfo::FinishedTimestamp, Timestamp))
 		{
 			return;
@@ -264,6 +274,8 @@ namespace TraceServices
 
 	void FTasksProvider::TaskCompleted(TaskTrace::FId TaskId, double Timestamp, uint32 ThreadId)
 	{
+		InitTaskIdToIndexConversion(TaskId);
+
 		// when FGraphEvent is used to wait for a notification, it doesn't have an associated task and so is not created or launched. 
 		// In this case we need to create it and initialise it before registering the completion event
 		FTaskInfo* Task = TryGetOrCreateTask(TaskId);
@@ -373,6 +385,8 @@ namespace TraceServices
 	void FTasksProvider::AddRelative(const TCHAR* RelationType, TaskTrace::FId TaskId, TArray<FTaskInfo::FRelationInfo> FTaskInfo::* RelationsPtr, TaskTrace::FId RelativeId, double Timestamp, uint32 ThreadId)
 	{
 		UE_LOG(LogTraceServices, Verbose, TEXT("%s (%d) added to TaskId: %d, Timestamp %.6f)"), RelationType, RelativeId, TaskId, Timestamp);
+
+		InitTaskIdToIndexConversion(TaskId);
 
 		FTaskInfo* Task = TryGetTask(TaskId);
 		if (Task == nullptr)
