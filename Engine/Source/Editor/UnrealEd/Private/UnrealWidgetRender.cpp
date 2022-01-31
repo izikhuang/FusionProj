@@ -371,10 +371,10 @@ void DrawCornerHelper( FPrimitiveDrawInterface* PDI, const FMatrix& LocalToWorld
 	// Top
 	{
 		int32 VertexIndices[4];
-		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX, -TY, +TZ), FVector2D::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
-		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX, +TY, +TZ), FVector2D::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
-		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX, +TY, +TZ), FVector2D::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
-		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX, -TY, +TZ), FVector2D::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
+		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX, -TY, +TZ), FVector2f::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
+		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX, +TY, +TZ), FVector2f::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
+		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX, +TY, +TZ), FVector2f::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
+		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX, -TY, +TZ), FVector2f::ZeroVector, FVector(1,0,0), FVector(0,1,0), FVector(0,0,1), FColor::White );
 
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[1],VertexIndices[2]);
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[2],VertexIndices[3]);
@@ -383,10 +383,10 @@ void DrawCornerHelper( FPrimitiveDrawInterface* PDI, const FMatrix& LocalToWorld
 	//Left
 	{
 		int32 VertexIndices[4];
-		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX,  -TY, TZ-TH),	FVector2D::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
-		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX, -TY, TZ),		FVector2D::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
-		VertexIndices[2] = MeshBuilder.AddVertex( FVector(-TX, +TY, TZ),		FVector2D::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
-		VertexIndices[3] = MeshBuilder.AddVertex( FVector(-TX, +TY, TZ-TH),		FVector2D::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
+		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX,  -TY, TZ-TH),	FVector2f::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
+		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX, -TY, TZ),		FVector2f::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
+		VertexIndices[2] = MeshBuilder.AddVertex( FVector(-TX, +TY, TZ),		FVector2f::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
+		VertexIndices[3] = MeshBuilder.AddVertex( FVector(-TX, +TY, TZ-TH),		FVector2f::ZeroVector, FVector(0,0,1), FVector(0,1,0), FVector(-1,0,0), FColor::White );
 
 
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[1],VertexIndices[2]);
@@ -396,11 +396,11 @@ void DrawCornerHelper( FPrimitiveDrawInterface* PDI, const FMatrix& LocalToWorld
 	// Front
 	{
 		int32 VertexIndices[5];
-		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX,	+TY, TZ-TH),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
-		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX,	+TY, +TZ  ),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
-		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX-TH, +TY, +TX  ),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
-		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX,	+TY, +TZ  ),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
-		VertexIndices[4] = MeshBuilder.AddVertex( FVector(+TX-TH, +TY, TZ-TH),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
+		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX,	+TY, TZ-TH),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
+		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX,	+TY, +TZ  ),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
+		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX-TH, +TY, +TX  ),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
+		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX,	+TY, +TZ  ),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
+		VertexIndices[4] = MeshBuilder.AddVertex( FVector(+TX-TH, +TY, TZ-TH),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,1,0), FColor::White );
 
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[1],VertexIndices[2]);
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[2],VertexIndices[4]);
@@ -410,11 +410,11 @@ void DrawCornerHelper( FPrimitiveDrawInterface* PDI, const FMatrix& LocalToWorld
 	// Back
 	{
 		int32 VertexIndices[5];
-		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX,	-TY, TZ-TH),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
-		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX,	-TY, +TZ),		FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
-		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX-TH, -TY, +TX),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
-		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX,	-TY, +TZ),		FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
-		VertexIndices[4] = MeshBuilder.AddVertex( FVector(+TX-TH, -TY, TZ-TH),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
+		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX,	-TY, TZ-TH),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
+		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX,	-TY, +TZ),		FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
+		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX-TH, -TY, +TX),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
+		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX,	-TY, +TZ),		FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
+		VertexIndices[4] = MeshBuilder.AddVertex( FVector(+TX-TH, -TY, TZ-TH),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,1), FVector(0,-1,0), FColor::White );
 
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[1],VertexIndices[2]);
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[2],VertexIndices[4]);
@@ -423,10 +423,10 @@ void DrawCornerHelper( FPrimitiveDrawInterface* PDI, const FMatrix& LocalToWorld
 	// Bottom
 	{
 		int32 VertexIndices[4];
-		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX, -TY, TZ-TH),		FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
-		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX, +TY, TZ-TH),		FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
-		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX-TH, +TY, TZ-TH),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
-		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX-TH, -TY, TZ-TH),	FVector2D::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
+		VertexIndices[0] = MeshBuilder.AddVertex( FVector(-TX, -TY, TZ-TH),		FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
+		VertexIndices[1] = MeshBuilder.AddVertex( FVector(-TX, +TY, TZ-TH),		FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
+		VertexIndices[2] = MeshBuilder.AddVertex( FVector(+TX-TH, +TY, TZ-TH),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
+		VertexIndices[3] = MeshBuilder.AddVertex( FVector(+TX-TH, -TY, TZ-TH),	FVector2f::ZeroVector, FVector(1,0,0), FVector(0,0,-1), FVector(0,0,1), FColor::White );
 
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[1],VertexIndices[2]);
 		MeshBuilder.AddTriangle(VertexIndices[0],VertexIndices[2],VertexIndices[3]);
@@ -1289,7 +1289,7 @@ void FWidget::DrawThickArc (const FThickArcParams& InParams, const FVector& Axis
 			VertexDir.Normalize();
 
 			float TCAngle = Percent*(PI/2);
-			FVector2D TC(TCRadius*FMath::Cos(Angle), TCRadius*FMath::Sin(Angle));
+			FVector2f TC(TCRadius*FMath::Cos(Angle), TCRadius*FMath::Sin(Angle));
 
 			// Keep the vertices in local space so that we don't lose precision when dealing with LWC
 			// The local-to-world transform is handled in the MeshBuilder.Draw() call at the end of this function
@@ -1379,7 +1379,7 @@ void FWidget::DrawSnapMarker(FPrimitiveDrawInterface* PDI, const FVector& InLoca
 			FDynamicMeshVertex MeshVertex;
 			MeshVertex.Position = LocalVertices[VertexIndex];
 			MeshVertex.Color = InColor;
-			MeshVertex.TextureCoordinate[0] = FVector2D(0.0f, 0.0f);
+			MeshVertex.TextureCoordinate[0] = FVector2f(0.0f, 0.0f);
 			MeshVertex.SetTangents(
 				Axis0,
 				Axis1,
@@ -1438,7 +1438,7 @@ void FWidget::DrawStartStopMarker(FPrimitiveDrawInterface* PDI, const FVector& I
 			FDynamicMeshVertex MeshVertex;
 			MeshVertex.Position = LocalVertices[VertexIndex];
 			MeshVertex.Color = InColor;
-			MeshVertex.TextureCoordinate[0] = FVector2D(0.0f, 0.0f);
+			MeshVertex.TextureCoordinate[0] = FVector2f(0.0f, 0.0f);
 			MeshVertex.SetTangents(
 				RotatedAxis0,
 				RotatedAxis1,
