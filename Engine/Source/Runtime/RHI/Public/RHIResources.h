@@ -2165,6 +2165,7 @@ public:
 	FRHIRayTracingGeometry() = default;
 	FRHIRayTracingGeometry(const FRayTracingGeometryInitializer& InInitializer)
 		: Initializer(InInitializer)
+		, InitializedType(InInitializer.Type)
 	{}
 
 	virtual FRayTracingAccelerationStructureAddress GetAccelerationStructureAddress(uint64 GPUIndex) const = 0;
@@ -2187,6 +2188,7 @@ public:
 protected:
 	FRayTracingAccelerationStructureSize SizeInfo = {};
 	FRayTracingGeometryInitializer Initializer = {};
+	ERayTracingGeometryInitializerType InitializedType = ERayTracingGeometryInitializerType::Rendering;
 };
 
 typedef TRefCountPtr<FRHIRayTracingGeometry>     FRayTracingGeometryRHIRef;
