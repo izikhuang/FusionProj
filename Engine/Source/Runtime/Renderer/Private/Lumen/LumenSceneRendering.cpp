@@ -833,7 +833,14 @@ const static FVector LumenMeshCardRotationFrame[6][3] =
 	}
 };
 
-void FLumenCard::Initialize(float InResolutionScale, const FMatrix& LocalToWorld, const FLumenCardBuildData& CardBuildData, int32 InIndexInMeshCards, int32 InMeshCardsIndex, uint8 InIndexInBuildData)
+void FLumenCard::Initialize(
+	float InResolutionScale,
+	const FMatrix& LocalToWorld,
+	const FLumenMeshCards& InMeshCardsInstance,
+	const FLumenCardBuildData& CardBuildData,
+	int32 InIndexInMeshCards,
+	int32 InMeshCardsIndex,
+	uint8 InIndexInBuildData)
 {
 	check(CardBuildData.AxisAlignedDirectionIndex < Lumen::NumAxisAlignedDirections);
 
@@ -842,6 +849,7 @@ void FLumenCard::Initialize(float InResolutionScale, const FMatrix& LocalToWorld
 	IndexInBuildData = InIndexInBuildData;
 	ResolutionScale = InResolutionScale;
 	AxisAlignedDirectionIndex = CardBuildData.AxisAlignedDirectionIndex;
+	bHeightfield = InMeshCardsInstance.bHeightfield;
 
 	SetTransform(FMatrix44f(LocalToWorld), CardBuildData.OBB);		// LWC_TODO: Precision loss?
 }
@@ -1008,7 +1016,7 @@ void AddCardCaptureDraws(const FScene* Scene,
 			{
 				FLODMask LODToRender;
 
-				if (PrimitiveGroup.bLandscape)
+				if (PrimitiveGroup.bHeightfield)
 				{
 					// Landscape can't use last LOD, as it's a single quad with only 4 distinct heightfield values
 					// Also selected LOD needs to to match FLandscapeSectionLODUniformParameters uniform buffers
@@ -1169,7 +1177,7 @@ public:
 						MeshCardsAdds.Add(Add);
 					}
 
-					if (PrimitiveGroup.bLandscape)
+					if (PrimitiveGroup.bHeightfield)
 					{
 						LandscapePrimitivesInRange.Append(PrimitiveGroup.Primitives);
 					}
@@ -1420,7 +1428,7 @@ void ProcessLumenSurfaceCacheRequests(
 				if (bCanAlloc && UpdateStaticMeshes(LumenSceneData.PrimitiveGroups[MeshCardsElement.PrimitiveGroupIndex]))
 				{
 					// Landscape traces card representation, so need to invalidate voxel vis buffer when it's ready for the first time
-					if (MeshCardsElement.bLandscape && Card.DesiredLockedResLevel == 0)
+					if (MeshCardsElement.bHeightfield && Card.DesiredLockedResLevel == 0)
 					{
 						LumenSceneData.PrimitiveModifiedBounds.Add(MeshCardsElement.GetWorldSpaceBounds());
 					}
@@ -2083,7 +2091,7 @@ void FDeferredShadingSceneRenderer::BeginUpdateLumenSceneTasks(FRDGBuilder& Grap
 					const FLumenCard& Card = LumenSceneData.Cards[CardPageRenderData.CardIndex];
 					ensure(Card.bVisible);
 
-					if (PrimitiveGroup.bLandscape)
+					if (PrimitiveGroup.bHeightfield)
 					{
 						AddCardCaptureDraws(
 							Scene,
