@@ -84,6 +84,10 @@ struct RIGVM_API FRigVMExternalVariable
 				*ObjectProperty->PropertyClass->GetName());
 			OutTypeObject = ObjectProperty->PropertyClass;
 		}
+		else
+		{
+			checkNoEntry();
+		}
 	}
 
 	FORCEINLINE static FRigVMExternalVariable Make(const FProperty* InProperty, void* InContainer, const FName& InOptionalName = NAME_None)
