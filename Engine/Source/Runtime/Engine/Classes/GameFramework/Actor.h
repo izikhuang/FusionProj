@@ -39,8 +39,6 @@ struct FAttachedActorInfo;
 struct FNetViewer;
 struct FNetworkObjectInfo;
 class UDataLayer;
-class UDataLayerAsset;
-class UDataLayerInstance;
 class AWorldDataLayers;
 class UActorFolder;
 
@@ -829,10 +827,6 @@ protected:
 	UPROPERTY(EditAnywhere, AdvancedDisplay, Category = DataLayers)
 	TArray<FActorDataLayer> DataLayers;
 
-	/** DataLayers the actor belongs to.*/
-	UPROPERTY()
-	TArray<TObjectPtr<const UDataLayerAsset>> DataLayerAssets;
-
 	TArray<FActorDataLayer> PreEditChangeDataLayers;
 
 public:
@@ -1166,13 +1160,6 @@ public:
 	bool IsValidForDataLayer() const;
 	void FixupDataLayers(bool bRevertChangesOnLockedDataLayer = false);
 	static const FName GetDataLayersPropertyName() { return GET_MEMBER_NAME_CHECKED(AActor, DataLayers); }
-
-	bool AddDataLayer(const UDataLayerAsset* DataLayerAsset);
-	bool RemoveDataLayer(const UDataLayerAsset* DataLayerAsset);
-	bool ContainsDataLayer(const UDataLayerAsset* DataLayerAsset) const;
-	const TArray<TObjectPtr<const UDataLayerAsset>>& GetDataLayerAssets() const { return DataLayerAssets; }
-
-	TArray<FActorDataLayer> const& GetActorDataLayers() const { return DataLayers; };
 #endif
 
 	//~=============================================================================
