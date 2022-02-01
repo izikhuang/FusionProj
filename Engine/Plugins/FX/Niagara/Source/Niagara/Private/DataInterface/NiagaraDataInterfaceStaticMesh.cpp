@@ -3354,7 +3354,7 @@ void UNiagaraDataInterfaceStaticMesh::VMGetSocketTransform(FVectorVMExternalFunc
 	{
 		const FVector3f DefaultTranslate = StaticMeshHelper.TransformPosition(FVector3f::ZeroVector);
 		const FQuat4f DefaultRotation = StaticMeshHelper.TransformRotation(FQuat4f::Identity);
-		const FVector3f DefaultScale = StaticMeshHelper.TransformVector(FVector::OneVector);
+		const FVector3f DefaultScale = StaticMeshHelper.TransformVector(FVector3f::OneVector);
 		for (int32 i = 0; i < Context.GetNumInstances(); ++i)
 		{
 			OutTranslateParam.SetAndAdvance(DefaultTranslate);
@@ -3390,7 +3390,7 @@ void UNiagaraDataInterfaceStaticMesh::VMGetFilteredSocketTransform(FVectorVMExte
 	{
 		const FVector3f DefaultTranslate = StaticMeshHelper.TransformPosition(FVector3f::ZeroVector);
 		const FQuat4f DefaultRotation = StaticMeshHelper.TransformRotation(FQuat4f::Identity);
-		const FVector3f DefaultScale = StaticMeshHelper.TransformVector(FVector::OneVector);
+		const FVector3f DefaultScale = StaticMeshHelper.TransformVector(FVector3f::OneVector);
 		for (int32 i = 0; i < Context.GetNumInstances(); ++i)
 		{
 			OutTranslateParam.SetAndAdvance(DefaultTranslate);
@@ -3427,7 +3427,7 @@ void UNiagaraDataInterfaceStaticMesh::VMGetUnfilteredSocketTransform(FVectorVMEx
 	{
 		const FVector3f DefaultTranslate = StaticMeshHelper.TransformPosition(FVector3f::ZeroVector);
 		const FQuat4f DefaultRotation = StaticMeshHelper.TransformRotation(FQuat4f::Identity);
-		const FVector3f DefaultScale = StaticMeshHelper.TransformVector(FVector::OneVector);
+		const FVector3f DefaultScale = StaticMeshHelper.TransformVector(FVector3f::OneVector);
 		for (int32 i = 0; i < Context.GetNumInstances(); ++i)
 		{
 			OutTranslateParam.SetAndAdvance(DefaultTranslate);
@@ -3774,7 +3774,7 @@ void UNiagaraDataInterfaceStaticMesh::VMGetWorldVelocity(FVectorVMExternalFuncti
 
 	for (int32 i = 0; i < Context.GetNumInstances(); ++i)
 	{
-		OutVelocity.SetAndAdvance(InstanceData->PhysicsVelocity);
+		OutVelocity.SetAndAdvance((FVector3f)InstanceData->PhysicsVelocity);
 	}
 }
 

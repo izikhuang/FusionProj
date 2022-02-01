@@ -1552,7 +1552,7 @@ static void EvaluateThisControl(UMovieSceneControlRigParameterSection* Section, 
 				TOptional <FVector> Value = Section->EvaluateVectorParameter(FrameTime, ControlName);
 				if (Value.IsSet())
 				{
-					FVector3f FloatVal = Value.GetValue();
+					FVector3f FloatVal = (FVector3f)Value.GetValue();
 					ControlRig->SetControlValue<FVector3f>(ControlName, FloatVal, true, EControlRigSetKey::Never, bSetupUndo);
 				}
 				break;
@@ -2517,7 +2517,7 @@ void FControlRigParameterTrackEditor::GetControlRigKeys(UControlRig* InControlRi
 					Rotation = Val.GetRotation().Rotator();
 					Scale = Val.GetScale3D();
 				}
-				FVector3f CurrentVector = Translation;
+				FVector3f CurrentVector = (FVector3f)Translation;
 				bool bKeyX = bSetKey && EnumHasAnyFlags(ChannelsToKey, EControlRigContextChannelToKey::TranslationX);
 				bool bKeyY = bSetKey && EnumHasAnyFlags(ChannelsToKey, EControlRigContextChannelToKey::TranslationY);
 				bool bKeyZ = bSetKey && EnumHasAnyFlags(ChannelsToKey, EControlRigContextChannelToKey::TranslationZ);
@@ -2594,7 +2594,7 @@ void FControlRigParameterTrackEditor::GetControlRigKeys(UControlRig* InControlRi
 
 				if (ControlElement->Settings.ControlType == ERigControlType::Transform || ControlElement->Settings.ControlType == ERigControlType::EulerTransform)
 				{
-					CurrentVector = Scale;
+					CurrentVector = (FVector3f)Scale;
 					bKeyX = bSetKey && EnumHasAnyFlags(ChannelsToKey, EControlRigContextChannelToKey::ScaleX);
 					bKeyY = bSetKey && EnumHasAnyFlags(ChannelsToKey, EControlRigContextChannelToKey::ScaleY);
 					bKeyZ = bSetKey && EnumHasAnyFlags(ChannelsToKey, EControlRigContextChannelToKey::ScaleZ);
@@ -2895,7 +2895,7 @@ bool FControlRigParameterTrackEditor::ModifyOurGeneratedKeysByCurrentAndWeight(U
 							++ChannelIndex;
 						}
 						
-						FVector3f CurrentPos = Val.Val.GetTranslation();
+						FVector3f CurrentPos = (FVector3f)Val.Val.GetTranslation();
 						FRotator3f CurrentRot = FRotator3f(Val.Val.GetRotation().Rotator());
 						GeneratedTotalKeys[ChannelIndex]->ModifyByCurrentAndWeight(Proxy, KeyTime, (void*)&CurrentPos.X, Weight);
 						GeneratedTotalKeys[ChannelIndex + 1]->ModifyByCurrentAndWeight(Proxy, KeyTime, (void*)&CurrentPos.Y, Weight);
@@ -2907,7 +2907,7 @@ bool FControlRigParameterTrackEditor::ModifyOurGeneratedKeysByCurrentAndWeight(U
 
 						if (ControlElement->Settings.ControlType == ERigControlType::Transform || ControlElement->Settings.ControlType == ERigControlType::EulerTransform)
 						{
-							FVector3f CurrentScale = Val.Val.GetScale3D();
+							FVector3f CurrentScale = (FVector3f)Val.Val.GetScale3D();
 							GeneratedTotalKeys[ChannelIndex + 6]->ModifyByCurrentAndWeight(Proxy, KeyTime, (void*)&CurrentScale.X, Weight);
 							GeneratedTotalKeys[ChannelIndex + 7]->ModifyByCurrentAndWeight(Proxy, KeyTime, (void*)&CurrentScale.Y, Weight);
 							GeneratedTotalKeys[ChannelIndex + 8]->ModifyByCurrentAndWeight(Proxy, KeyTime, (void*)&CurrentScale.Z, Weight);
