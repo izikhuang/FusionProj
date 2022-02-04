@@ -5199,6 +5199,11 @@ void FEngineLoop::Tick()
                 SlateApp.FinishedInputThisFrame();
             }
 		}
+		
+		// init for RDG resource dump
+		#if WITH_ENGINE && WITH_DUMPGPU
+			FRDGBuilder::InitResourceDump();
+		#endif
 
 		// main game engine tick (world, game objects, etc.)
 		GEngine->Tick(FApp::GetDeltaTime(), bIdleMode);
