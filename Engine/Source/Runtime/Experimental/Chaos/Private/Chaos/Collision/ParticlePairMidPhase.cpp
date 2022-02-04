@@ -63,9 +63,9 @@ namespace Chaos
 		const FImplicitObject* Implicit1 = InShape1->GetLeafGeometry();
 		const FBVHParticles* BVHParticles1 = FConstGenericParticleHandle(Particle1)->CollisionParticles().Get();
 		const FRigidTransform3& ShapeRelativeTransform1 = InShape1->GetLeafRelativeTransform();
-		const bool bUseManifolds = true;
+		const bool bUseManifold = true;
 
-		return FPBDCollisionConstraint::Make(Particle0, Implicit0, BVHParticles0, ShapeRelativeTransform0, Particle1, Implicit1, BVHParticles1, ShapeRelativeTransform1, CullDistance, bUseManifolds, ShapePairType);
+		return FPBDCollisionConstraint::Make(Particle0, Implicit0, BVHParticles0, ShapeRelativeTransform0, Particle1, Implicit1, BVHParticles1, ShapeRelativeTransform1, CullDistance, bUseManifold, ShapePairType);
 	}
 
 	TUniquePtr<FPBDCollisionConstraint> CreateImplicitPairConstraint(
@@ -81,8 +81,8 @@ namespace Chaos
 		const EContactShapesType ShapePairType,
 		const bool bInUseManifold)
 	{
-		const bool bUseManifolds = true;
-		return FPBDCollisionConstraint::Make(Particle0, Implicit0, BVHParticles0, ShapeRelativeTransform0, Particle1, Implicit1, BVHParticles1, ShapeRelativeTransform1, CullDistance, bUseManifolds, ShapePairType);
+		const bool bUseManifold = true;
+		return FPBDCollisionConstraint::Make(Particle0, Implicit0, BVHParticles0, ShapeRelativeTransform0, Particle1, Implicit1, BVHParticles1, ShapeRelativeTransform1, CullDistance, bUseManifold, ShapePairType);
 	}
 
 
