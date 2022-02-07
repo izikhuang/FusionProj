@@ -327,10 +327,17 @@ namespace ShaderDrawDebug
 			}
 
 			// Invalid to call begin twice for the same view.
-			check(GDefaultView != &View);
-			if (GDefaultView == nullptr)
+			if (!View.Family->EngineShowFlags.Rendering)
 			{
-				GDefaultView = &View;
+				GDefaultView = nullptr;
+			}
+			else 
+			{
+				check(GDefaultView != &View);
+				if (GDefaultView == nullptr)
+				{
+					GDefaultView = &View;
+				}
 			}
 		}
 		else
