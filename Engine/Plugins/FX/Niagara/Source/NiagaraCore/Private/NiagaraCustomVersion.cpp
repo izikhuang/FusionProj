@@ -9,4 +9,4 @@ const FGuid FNiagaraCustomVersion::GUID(0xFCF57AFA, 0x50764283, 0xB9A9E658, 0xFF
 FCustomVersionRegistration GRegisterNiagaraCustomVersion(FNiagaraCustomVersion::GUID, FNiagaraCustomVersion::LatestVersion, TEXT("NiagaraVer"));
 
 // Note: When encountering a conflict on this file please generate a new GUID
-const FGuid FNiagaraCustomVersion::LatestScriptCompileVersion(0x3800E1E6, 0x0A9A41D8, 0x80A8EED4, 0x03F676EC);
+const FGuid FNiagaraCustomVersion::LatestScriptCompileVersion(0xF199CA91, 0x010A974B, 0xAE155D7D, 0xCF917B1E);
