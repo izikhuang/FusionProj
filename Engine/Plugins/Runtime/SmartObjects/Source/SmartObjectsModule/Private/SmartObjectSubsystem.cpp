@@ -140,7 +140,7 @@ void USmartObjectSubsystem::AddToSimulation(const FSmartObjectHandle ID, const U
 	{
 		// This is the temporary way to force our commands to be processed until MassEntitySubsystem
 		// offers a threadsafe solution to push and flush commands in our own execution context.
-		EntitySubsystem->Defer().ReplayBufferAgainstSystem(EntitySubsystem);
+		EntitySubsystem->FlushCommands();
 	}
 
 	// Transfer spatial information to the runtime instance
@@ -945,7 +945,7 @@ void USmartObjectSubsystem::OnWorldBeginPlay(UWorld& World)
 	// Flush all entity subsystem commands pushed while adding collection entries to the simulation
 	// This is the temporary way to force our commands to be processed until MassEntitySubsystem
 	// offers a threadsafe solution to push and flush commands in our own execution context.
-	EntitySubsystem->Defer().ReplayBufferAgainstSystem(EntitySubsystem);
+	EntitySubsystem->FlushCommands();
 }
 
 #if WITH_EDITOR
