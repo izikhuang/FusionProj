@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "EngineUtils.h"
-#include "Editor.h"
 #include "FileHelpers.h"
 #include "StaticMeshCompiler.h"
 #include "ActorPartition/ActorPartitionSubsystem.h"
@@ -117,7 +116,7 @@ bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FCel
 		UE_LOG(LogWorldPartitionNavigationDataBuilder, Verbose, TEXT("   Number of packages to clear: %i"), PackagesToClean.Num());
 		
 		// Just delete all ANavigationDataChunkActor packages
-		if (!PackageHelper.Delete(PackagesToClean.Array()))
+		if (!DeletePackages(PackageHelper, PackagesToClean.Array()))
 		{
 			UE_LOG(LogWorldPartitionNavigationDataBuilder, Error, TEXT("Error deleting packages."));
 		}
@@ -184,19 +183,10 @@ bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FCel
 	}
 
 	// Delete packages
-	if (!PackagesToDelete.IsEmpty())
+	if (!DeletePackages(PackageHelper, PackagesToDelete))
 	{
-		UE_LOG(LogWorldPartitionNavigationDataBuilder, Log, TEXT("Deleting %d packages."), PackagesToDelete.Num());
-		for (const UPackage* Package : PackagesToDelete)
-		{
-			UE_LOG(LogWorldPartitionNavigationDataBuilder, Verbose, TEXT("   Deleting package  %s."), *Package->GetName());	
-		}
-		
-		if (!PackageHelper.Delete(PackagesToDelete))
-		{
-			UE_LOG(LogWorldPartitionNavigationDataBuilder, Error, TEXT("Error deleting packages."));
-			return 1;
-		}
+		UE_LOG(LogWorldPartitionNavigationDataBuilder, Error, TEXT("Error deleting packages."));
+		return 1;
 	}
 
 	// Save packages
@@ -246,13 +236,17 @@ bool UWorldPartitionNavigationDataBuilder::RunInternal(UWorld* World, const FCel
 			TRACE_CPUPROFILER_EVENT_SCOPE(AddingToSourceControl);
 			UE_LOG(LogWorldPartitionNavigationDataBuilder, Log, TEXT("Adding packages to source control."));
 
-			for (UPackage* Package : PackagesToAdd)
+			TArray<FString> PackageNamesToAdd;
+			PackageNamesToAdd.Reserve(PackagesToAdd.Num());
+			for (const UPackage* Package : PackagesToAdd)
 			{
-				if (!PackageHelper.AddToSourceControl(Package))
-				{
-					UE_LOG(LogWorldPartitionNavigationDataBuilder, Error, TEXT("Error adding package %s to source control."), *Package->GetName());
-					return 1;
-				}
+				PackageNamesToAdd.Add(Package->GetName());
+			}
+			
+			if (!PackageHelper.AddToSourceControl(PackageNamesToAdd))
+			{
+				UE_LOG(LogWorldPartitionNavigationDataBuilder, Error, TEXT("Error adding packages."));
+				return 1;
 			}
 		}
 
@@ -399,3 +393,23 @@ bool UWorldPartitionNavigationDataBuilder::SavePackages(const TArray<UPackage*>&
 	return true;
 }
 
+bool UWorldPartitionNavigationDataBuilder::DeletePackages(FPackageSourceControlHelper& PackageHelper, const TArray<UPackage*>& PackagesToDelete) const
+{
+	if (!PackagesToDelete.IsEmpty())
+	{
+		TRACE_CPUPROFILER_EVENT_SCOPE(DeletePackages);
+		
+		UE_LOG(LogWorldPartitionNavigationDataBuilder, Log, TEXT("Deleting %d packages."), PackagesToDelete.Num());
+		for (const UPackage* Package : PackagesToDelete)
+		{
+			UE_LOG(LogWorldPartitionNavigationDataBuilder, Verbose, TEXT("   Deleting package  %s."), *Package->GetName());
+		}
+		
+		if (!PackageHelper.Delete(PackagesToDelete))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
