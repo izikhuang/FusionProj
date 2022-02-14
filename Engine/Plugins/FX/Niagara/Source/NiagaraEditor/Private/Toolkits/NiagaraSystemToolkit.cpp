@@ -1834,10 +1834,7 @@ bool FNiagaraSystemToolkit::OnRequestClose()
 		switch (YesNoCancelReply)
 		{
 		case EAppReturnType::Yes:
-			for (TSharedRef<FNiagaraScratchPadScriptViewModel> ScratchPadViewModel : SystemViewModel->GetScriptScratchPadViewModel()->GetScriptViewModels())
-			{
-				ScratchPadViewModel->ApplyChanges();
-			}
+			SystemViewModel->GetScriptScratchPadViewModel()->ApplyScratchPadChanges();
 			break;
 		case EAppReturnType::No:
 			bScratchPadChangesDiscarded = true;
@@ -1921,13 +1918,7 @@ void FNiagaraSystemToolkit::OnApplyScratchPadChanges()
 {
 	if (SystemViewModel.IsValid() && SystemViewModel->GetScriptScratchPadViewModel() != nullptr)
 	{
-		for (TSharedRef<FNiagaraScratchPadScriptViewModel> ScratchPadScriptViewModel : SystemViewModel->GetScriptScratchPadViewModel()->GetScriptViewModels())
-		{
-			if(ScratchPadScriptViewModel->HasUnappliedChanges())
-			{
-				ScratchPadScriptViewModel->ApplyChanges();
-			}
-		}
+		SystemViewModel->GetScriptScratchPadViewModel()->ApplyScratchPadChanges();
 	}
 }
 
