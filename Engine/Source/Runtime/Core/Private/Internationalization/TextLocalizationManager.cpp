@@ -12,6 +12,7 @@
 #include "HAL/LowLevelMemTracker.h"
 #include "Misc/Parse.h"
 #include "Misc/ScopeLock.h"
+#include "Misc/ScopeRWLock.h"
 #include "Misc/CommandLine.h"
 #include "Misc/LazySingleton.h"
 #include "Internationalization/Culture.h"
@@ -483,11 +484,14 @@ FTextLocalizationManager::FTextLocalizationManager()
 
 void FTextLocalizationManager::DumpMemoryInfo() const
 {
-	FScopeLock ScopeLock(&SynchronizationObject);
-
-	UE_LOG(LogTextLocalizationManager, Log, TEXT("DisplayStringLookupTable.GetAllocatedSize()=%d elems=%d"), DisplayStringLookupTable.GetAllocatedSize(), DisplayStringLookupTable.Num());
-
-	UE_LOG(LogTextLocalizationManager, Log, TEXT("LocalTextRevisions.GetAllocatedSize()=%d elems=%d"), LocalTextRevisions.GetAllocatedSize(), LocalTextRevisions.Num());
+	{
+		FScopeLock ScopeLock(&DisplayStringLookupTableCS);
+		UE_LOG(LogTextLocalizationManager, Log, TEXT("DisplayStringLookupTable.GetAllocatedSize()=%d elems=%d"), DisplayStringLookupTable.GetAllocatedSize(), DisplayStringLookupTable.Num());
+	}
+	{
+		FReadScopeLock ScopeLock(TextRevisionRW);
+		UE_LOG(LogTextLocalizationManager, Log, TEXT("LocalTextRevisions.GetAllocatedSize()=%d elems=%d"), LocalTextRevisions.GetAllocatedSize(), LocalTextRevisions.Num());
+	}
 }
 
 void FTextLocalizationManager::CompactDataStructures()
@@ -495,10 +499,15 @@ void FTextLocalizationManager::CompactDataStructures()
 	TRACE_CPUPROFILER_EVENT_SCOPE(FTextLocalizationManager::CompactDataStructures);
 	LLM_SCOPE(ELLMTag::Localization);
 
-	FScopeLock ScopeLock(&SynchronizationObject);
 	double StartTime = FPlatformTime::Seconds();
-	DisplayStringLookupTable.Shrink();
-	LocalTextRevisions.Shrink();
+	{
+		FScopeLock ScopeLock(&DisplayStringLookupTableCS);
+		DisplayStringLookupTable.Shrink();
+	}
+	{
+		FWriteScopeLock ScopeLock(TextRevisionRW);
+		LocalTextRevisions.Shrink();
+	}
 	FTextKey::CompactDataStructures();
 	UE_LOG(LogTextLocalizationManager, Log, TEXT("Compacting localization data took %6.2fms"), 1000.0 * (FPlatformTime::Seconds() - StartTime));
 }
@@ -650,7 +659,7 @@ void FTextLocalizationManager::RegisterPolyglotTextData(TArrayView<const FPolygl
 
 FTextConstDisplayStringPtr FTextLocalizationManager::FindDisplayString(const FTextKey& Namespace, const FTextKey& Key, const FString* const SourceString) const
 {
-	FScopeLock ScopeLock( &SynchronizationObject );
+	FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 	const FTextId TextId(Namespace, Key);
 
@@ -669,7 +678,7 @@ FTextConstDisplayStringRef FTextLocalizationManager::GetDisplayString(const FTex
 	TRACE_CPUPROFILER_EVENT_SCOPE(FTextLocalizationManager::GetDisplayString);
 	LLM_SCOPE(ELLMTag::Localization);
 
-	FScopeLock ScopeLock( &SynchronizationObject );
+	FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 	// Hack fix for old assets that don't have namespace/key info.
 	if (Namespace.IsEmpty() && Key.IsEmpty())
@@ -806,7 +815,7 @@ FTextConstDisplayStringRef FTextLocalizationManager::GetDisplayString(const FTex
 #if WITH_EDITORONLY_DATA
 bool FTextLocalizationManager::GetLocResID(const FTextKey& Namespace, const FTextKey& Key, FString& OutLocResId) const
 {
-	FScopeLock ScopeLock(&SynchronizationObject);
+	FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 	const FTextId TextId(Namespace, Key);
 
@@ -822,11 +831,17 @@ bool FTextLocalizationManager::GetLocResID(const FTextKey& Namespace, const FTex
 }
 #endif
 
+uint16 FTextLocalizationManager::GetTextRevision() const
+{
+	FReadScopeLock ScopeLock(TextRevisionRW);
+	return TextRevisionCounter;
+}
+
 uint16 FTextLocalizationManager::GetLocalRevisionForTextId(const FTextId& InTextId) const
 {
 	if (!InTextId.IsEmpty())
 	{
-		FScopeLock ScopeLock(&SynchronizationObject);
+		FReadScopeLock ScopeLock(TextRevisionRW);
 		if (const uint16* FoundLocalRevision = LocalTextRevisions.Find(InTextId))
 		{
 			return *FoundLocalRevision;
@@ -835,12 +850,27 @@ uint16 FTextLocalizationManager::GetLocalRevisionForTextId(const FTextId& InText
 	return 0;
 }
 
+void FTextLocalizationManager::GetTextRevisions(const FTextId& InTextId, uint16& OutGlobalTextRevision, uint16& OutLocalTextRevision) const
+{
+	FReadScopeLock ScopeLock(TextRevisionRW);
+
+	OutGlobalTextRevision = TextRevisionCounter;
+	if (const uint16* FoundLocalRevision = InTextId.IsEmpty() ? nullptr : LocalTextRevisions.Find(InTextId))
+	{
+		OutLocalTextRevision = *FoundLocalRevision;
+	}
+	else
+	{
+		OutLocalTextRevision = 0;
+	}
+}
+
 bool FTextLocalizationManager::AddDisplayString(const FTextDisplayStringRef& DisplayString, const FTextKey& Namespace, const FTextKey& Key)
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(FTextLocalizationManager::AddDisplayString);
 	LLM_SCOPE(ELLMTag::Localization);
 
-	FScopeLock ScopeLock( &SynchronizationObject );
+	FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 	const FTextId TextId(Namespace, Key);
 
@@ -1109,7 +1139,7 @@ void FTextLocalizationManager::LoadLocalizationResourcesForPrioritizedCultures(T
 	{
 		// Lock while updating the tables
 		{
-			FScopeLock ScopeLock(&SynchronizationObject);
+			FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 			for (auto& DisplayStringPair : DisplayStringLookupTable)
 			{
@@ -1145,7 +1175,7 @@ void FTextLocalizationManager::UpdateFromNative(FTextLocalizationResource&& Text
 
 	// Lock while updating the tables
 	{
-		FScopeLock ScopeLock(&SynchronizationObject);
+		FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 		DisplayStringLookupTable.Reserve(TextLocalizationResource.Entries.Num());
 
@@ -1255,7 +1285,7 @@ void FTextLocalizationManager::UpdateFromLocalizations(FTextLocalizationResource
 
 	// Lock while updating the tables
 	{
-		FScopeLock ScopeLock(&SynchronizationObject);
+		FScopeLock ScopeLock(&DisplayStringLookupTableCS);
 
 		DisplayStringLookupTable.Reserve(TextLocalizationResource.Entries.Num());
 
@@ -1367,7 +1397,7 @@ void FTextLocalizationManager::DirtyLocalRevisionForTextId(const FTextId& InText
 	TRACE_CPUPROFILER_EVENT_SCOPE(FTextLocalizationManager::DirtyLocalRevisionForTextId);
 	LLM_SCOPE(ELLMTag::Localization);
 
-	FScopeLock ScopeLock(&SynchronizationObject);
+	FWriteScopeLock ScopeLock(TextRevisionRW);
 
 	uint16* FoundLocalRevision = LocalTextRevisions.Find(InTextId);
 	if (FoundLocalRevision)
@@ -1387,7 +1417,7 @@ void FTextLocalizationManager::DirtyTextRevision()
 
 	// Lock while updating the data
 	{
-		FScopeLock ScopeLock(&SynchronizationObject);
+		FWriteScopeLock ScopeLock(TextRevisionRW);
 
 		while (++TextRevisionCounter == 0) {} // Zero is special, don't allow an overflow to stay at zero
 		LocalTextRevisions.Empty();
