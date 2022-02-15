@@ -73,6 +73,7 @@ private:
 
 	TMap<FName, FCellData> CellsData;
 	TSet<FCellData*> CellsToWarmup;
+	TSet<FString> GridNames;
 
 	void OnWorldPartitionInitialized(UWorldPartition* InWorldPartition);
 	void OnWorldPartitionUninitialized(UWorldPartition* InWorldPartition);

@@ -56,6 +56,24 @@ static TAutoConsoleVariable<int32> CVarHLODWarmupVTSizeClamp(
 	ECVF_Default
 );
 
+namespace FHLODSubsystem
+{
+	// @todo_ow: remove cell prefix to avoid this mapping
+	FName GetHLODCellName(UWorld* InWorld, const TSet<FString>& InGridNames, AWorldPartitionHLOD* InWorldPartitionHLOD)
+	{
+		FString CellName = InWorldPartitionHLOD->GetSourceCellName().ToString();
+		for (const FString& GridName : InGridNames)
+		{
+			if (int32 Index = CellName.Find(GridName); Index != INDEX_NONE)
+			{
+				return *FString::Format(TEXT("{0}_{1}"), { *InWorld->GetName(), *CellName.Mid(Index) });
+			}
+		}
+
+		return *CellName;
+	}
+};
+
 UHLODSubsystem::UHLODSubsystem()
 	: UWorldSubsystem()
 {
@@ -144,6 +162,7 @@ void UHLODSubsystem::OnWorldPartitionInitialized(UWorldPartition* InWorldPartiti
 	// Build cell to HLOD mapping
 	for (const UWorldPartitionRuntimeCell* Cell : StreamingCells)
 	{
+		GridNames.Add(Cell->GetGridName().ToString());
 		CellsData.Emplace(Cell->GetFName());
 	}
 }
@@ -158,7 +177,7 @@ void UHLODSubsystem::RegisterHLODActor(AWorldPartitionHLOD* InWorldPartitionHLOD
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(UHLODSubsystem::RegisterHLODActor);
 
-	const FName CellName = InWorldPartitionHLOD->GetSourceCellName();
+	FName CellName = FHLODSubsystem::GetHLODCellName(GetWorld(), GridNames, InWorldPartitionHLOD);
 	FCellData* CellData = CellsData.Find(CellName);
 
 #if WITH_EDITOR
@@ -181,7 +200,7 @@ void UHLODSubsystem::UnregisterHLODActor(AWorldPartitionHLOD* InWorldPartitionHL
 {
 	TRACE_CPUPROFILER_EVENT_SCOPE(UHLODSubsystem::UnregisterHLODActor);
 
-	const FName CellName = InWorldPartitionHLOD->GetSourceCellName();
+	FName CellName = FHLODSubsystem::GetHLODCellName(GetWorld(), GridNames, InWorldPartitionHLOD);
 	FCellData* CellData = CellsData.Find(CellName);
 
 #if WITH_EDITOR
