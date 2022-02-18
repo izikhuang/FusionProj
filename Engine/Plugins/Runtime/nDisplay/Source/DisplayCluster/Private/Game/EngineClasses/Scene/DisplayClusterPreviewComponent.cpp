@@ -441,4 +441,14 @@ UTexture2D* UDisplayClusterPreviewComponent::GetOrCreateViewportPreviewTexture2D
 	return nullptr;
 }
 
+UTexture2D* UDisplayClusterPreviewComponent::GetViewportPreviewTexture2D() const
+{
+	if (IsPreviewAvailable())
+	{
+		return PreviewTexture;
+	}
+
+	return nullptr;
+}
+
 #endif
