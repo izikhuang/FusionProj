@@ -203,12 +203,13 @@ void FSuspensionConstraintPhysicsProxy::DestroyOnPhysicsThread(Chaos::FPBDRigids
 	}
 }
 
-void FSuspensionConstraintPhysicsProxy::UpdateTargetOnPhysicsThread(Chaos::FPBDRigidsSolver* RBDSolver, const FVector& TargetPos, bool Enabled)
+void FSuspensionConstraintPhysicsProxy::UpdateTargetOnPhysicsThread(Chaos::FPBDRigidsSolver* RBDSolver, const FVector& TargetPos, const FVector& Normal, bool Enabled)
 {
 	if (Handle)
 	{
 		auto& SuspensionConstraints = RBDSolver->GetSuspensionConstraints();
 		SuspensionConstraints.GetSettings(Handle->GetConstraintIndex()).Target = TargetPos;
+		SuspensionConstraints.GetSettings(Handle->GetConstraintIndex()).Normal = Normal;
 		SuspensionConstraints.GetSettings(Handle->GetConstraintIndex()).Enabled = Enabled;
 	}
 }
