@@ -382,7 +382,7 @@ void ULevelSnapshot::ClearCache()
 void ULevelSnapshot::ClearCachedDiffFlag(UObject* ModifiedObject)
 {
 	AActor* AsActor = ModifiedObject->IsA<AActor>() ? Cast<AActor>(ModifiedObject) : ModifiedObject->GetTypedOuter<AActor>(); 
-	if (AsActor && SerializedData.HasMatchingSavedActor(ModifiedObject))
+	if (AsActor && SerializedData.HasMatchingSavedActor(AsActor))
 	{
 		CachedDiffedActors.FindOrAdd(AsActor) = ECachedDiffResult::NotInitialised;
 	}
