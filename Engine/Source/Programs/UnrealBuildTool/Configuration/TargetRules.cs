@@ -189,38 +189,26 @@ namespace UnrealBuildTool
 		{
 			get
 			{
-				if (IsNameOverriden())
+				if (!String.IsNullOrEmpty(NameOverride))
 				{
-					return $"{DefaultName}-{NameSuffix}";
+					return NameOverride;
 				}
 
 				return DefaultName;
+			}
+			set
+			{
+				NameOverride = value;
 			}
 		}
 
 		/// <summary>
 		/// If the Name of this target has been overriden
 		/// </summary>
-		public bool IsNameOverriden() { return NameSuffixes.Count > 0; }
+		public bool IsNameOverriden() { return !String.IsNullOrEmpty(NameOverride); }
 
-		/// <summary>
-		/// Add an optional suffix to append to Name
-		/// </summary>
-		/// <param name="Suffix">The string to append</param>
-		public void AddNameSuffix(string Suffix) { NameSuffixes.Add(Suffix); }
+		private string? NameOverride;
 
-		/// <summary>
-		/// Optional suffix to append to Name
-		/// </summary>
-		public string? NameSuffix
-		{
-			get
-			{
-				return IsNameOverriden() ? string.Join("-", NameSuffixes) : null;
-			}
-		}
-
-		private HashSet<string> NameSuffixes = new HashSet<string>();
 		private readonly string DefaultName;
 
 		/// <summary>
@@ -1961,11 +1949,6 @@ namespace UnrealBuildTool
 		public string Name
 		{
 			get { return Inner.Name; }
-		}
-
-		public string? NameSuffix
-		{
-			get { return Inner.NameSuffix; }
 		}
 
 		internal FileReference File
