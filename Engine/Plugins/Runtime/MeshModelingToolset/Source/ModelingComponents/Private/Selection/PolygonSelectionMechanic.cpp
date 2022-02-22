@@ -151,7 +151,7 @@ void UPolygonSelectionMechanic::Initialize(
 		DrawnTriangleSetComponent->RegisterComponent();
 	}
 
-	PreviewGeometryActor->SetActorTransform(TargetTransformIn);
+	PreviewGeometryActor->SetActorTransform((FTransform)TargetTransformIn);
 
 	DrawnTriangleSetComponent->Clear();
 	CurrentlyHighlightedGroups.Empty();
@@ -164,7 +164,7 @@ void UPolygonSelectionMechanic::Initialize(
 {
 
 	Initialize(MeshComponentIn->GetMesh(),
-		MeshComponentIn->GetComponentTransform(),
+		(FTransform3d)MeshComponentIn->GetComponentTransform(),
 		MeshComponentIn->GetWorld(),
 		TopologyIn,
 		GetSpatialSourceFuncIn);
