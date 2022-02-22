@@ -2029,7 +2029,7 @@ void URigVMCompiler::InitializeLocalVariables(const FRigVMExprAST* InExpr, FRigV
 	}
 }
 
-FString URigVMCompiler::GetPinHash(const URigVMPin* InPin, const FRigVMVarExprAST* InVarExpr, bool bIsDebugValue)
+FString URigVMCompiler::GetPinHash(const URigVMPin* InPin, const FRigVMVarExprAST* InVarExpr, bool bIsDebugValue, const FRigVMASTProxy& InPinProxy)
 {
 	FString Prefix = bIsDebugValue ? TEXT("DebugWatch:") : TEXT("");
 	FString Suffix;
@@ -2132,6 +2132,20 @@ FString URigVMCompiler::GetPinHash(const URigVMPin* InPin, const FRigVMVarExprAS
 					}
 				}
 			}
+			else if(VariableNode->IsInputArgument())
+			{
+				FString FullPath;
+				if (InPinProxy.IsValid())
+				{
+					FullPath = InPinProxy.GetCallstack().GetCallPath(true);
+				}
+				else
+				{						
+					const FRigVMASTProxy NodeProxy = InVarExpr->GetProxy().GetSibling(Node);
+					FullPath = InPinProxy.GetCallstack().GetCallPath(true);
+				}
+				return FString::Printf(TEXT("%s%s%s"), *Prefix, *FullPath, *Suffix);
+			}
 
 			if (!bIsLiteral)
 			{		
@@ -2177,10 +2191,29 @@ FString URigVMCompiler::GetPinHash(const URigVMPin* InPin, const FRigVMVarExprAS
 					bUseFullNodePath = false;
 				}
 			}
+			else if(Node->IsA<URigVMFunctionEntryNode>() || Node->IsA<URigVMFunctionReturnNode>())
+			{
+				const FString FullPath = InPinProxy.GetCallstack().GetCallPath(true);
+				return FString::Printf(TEXT("%s%s%s"), *Prefix, *FullPath, *Suffix);
+			}
 		}
 	}
 
-	return FString::Printf(TEXT("%s%s%s"), *Prefix, *InPin->GetPinPath(bUseFullNodePath), *Suffix);
+	if (InPinProxy.IsValid())
+	{
+		const FString FullPath = InPinProxy.GetCallstack().GetCallPath(true);
+		return FString::Printf(TEXT("%s%s%s"), *Prefix, *FullPath, *Suffix);
+	}
+
+	if (InVarExpr)
+	{
+		FString FullPath = InVarExpr->GetProxy().GetCallstack().GetCallPath(true);
+		return FString::Printf(TEXT("%s%s%s"), *Prefix, *FullPath, *Suffix);
+	}
+	
+	FString PinPath = InPin->GetPinPath(bUseFullNodePath);
+	ensureMsgf(!PinPath.StartsWith(TEXT("FunctionLibrary::")), TEXT("A library path should never be part of a pin hash %s."), *PinPath);
+	return FString::Printf(TEXT("%s%s%s"), *Prefix, *PinPath, *Suffix);
 }
 
 const FRigVMVarExprAST* URigVMCompiler::GetSourceVarExpr(const FRigVMExprAST* InExpr)
@@ -2971,7 +3004,7 @@ FRigVMOperand URigVMCompiler::FindOrAddRegister(const FRigVMVarExprAST* InVarExp
 			{
 				if (URigVMPin* VirtualPin = Cast<URigVMPin>(Proxy.GetSubject()))
 				{
-					FString VirtualPinHash = GetPinHash(VirtualPin, InVarExpr, bIsDebugValue);
+					FString VirtualPinHash = GetPinHash(VirtualPin, InVarExpr, bIsDebugValue, Proxy);
 					WorkData.PinPathToOperand->Add(VirtualPinHash, Operand);
 				}	
 			}
