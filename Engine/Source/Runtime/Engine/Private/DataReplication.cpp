@@ -2249,6 +2249,7 @@ void FObjectReplicator::UpdateUnmappedObjects(bool & bOutHasMoreUnmapped)
 			const FFieldNetCache* FieldCache = ClassCache->GetFromIndex(Pending.RPCFieldIndex);
 
 			FNetBitReader Reader(Connection->PackageMap, Pending.Buffer.GetData(), Pending.NumBits);
+			Connection->SetNetVersionsOnArchive(Reader);
 
 			bool bIsGuidPending = false;
 

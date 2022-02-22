@@ -4156,7 +4156,7 @@ void FRepLayout::UpdateUnmappedObjects_r(
 	FReceivingRepState* RESTRICT RepState,
 	FGuidReferencesMap* GuidReferencesMap,
 	UObject* OriginalObject,
-	UPackageMap* PackageMap,
+	UNetConnection* Connection,
 	FRepShadowDataBuffer ShadowData,
 	FRepObjectDataBuffer Data,
 	const int32 MaxAbsOffset,
@@ -4200,7 +4200,7 @@ void FRepLayout::UpdateUnmappedObjects_r(
 
 				const int32 NewMaxOffset = FMath::Min(ShadowArray->Num() * Cmd.ElementSize, Array->Num() * Cmd.ElementSize);
 
-				UpdateUnmappedObjects_r(RepState, GuidReferences.Array, OriginalObject, PackageMap, ShadowArrayData, ArrayData, NewMaxOffset, bCalledPreNetReceive, bOutSomeObjectsWereMapped, bOutHasMoreUnmapped);
+				UpdateUnmappedObjects_r(RepState, GuidReferences.Array, OriginalObject, Connection, ShadowArrayData, ArrayData, NewMaxOffset, bCalledPreNetReceive, bOutSomeObjectsWereMapped, bOutHasMoreUnmapped);
 			}
 			else
 			{
@@ -4208,7 +4208,7 @@ void FRepLayout::UpdateUnmappedObjects_r(
 				FRepObjectDataBuffer ArrayData(Array->GetData());
 				const int32 NewMaxOffset = Array->Num() * Cmd.ElementSize;
 
-				UpdateUnmappedObjects_r(RepState, GuidReferences.Array, OriginalObject, PackageMap, nullptr, ArrayData, NewMaxOffset, bCalledPreNetReceive, bOutSomeObjectsWereMapped, bOutHasMoreUnmapped);
+				UpdateUnmappedObjects_r(RepState, GuidReferences.Array, OriginalObject, Connection, nullptr, ArrayData, NewMaxOffset, bCalledPreNetReceive, bOutSomeObjectsWereMapped, bOutHasMoreUnmapped);
 			}
 			continue;
 		}
@@ -4219,14 +4219,14 @@ void FRepLayout::UpdateUnmappedObjects_r(
 		{
 			const FNetworkGUID& GUID = *UnmappedIt;
 
-			if (PackageMap->IsGUIDBroken(GUID, false))
+			if (Connection->PackageMap->IsGUIDBroken(GUID, false))
 			{
 				UE_LOG(LogRep, Warning, TEXT("UpdateUnmappedObjects_r: Broken GUID. NetGuid: %s"), *GUID.ToString());
 				UnmappedIt.RemoveCurrent();
 				continue;
 			}
 
-			UObject* Object = PackageMap->GetObjectFromNetGUID(GUID, false);
+			UObject* Object = Connection->PackageMap->GetObjectFromNetGUID(GUID, false);
 
 			if (Object != nullptr)
 			{
@@ -4267,10 +4267,11 @@ void FRepLayout::UpdateUnmappedObjects_r(
 			}
 
 			// Initialize the reader with the stored buffer that we need to read from
-			FNetBitReader Reader(PackageMap, GuidReferences.Buffer.GetData(), GuidReferences.NumBufferBits);
+			FNetBitReader Reader(Connection->PackageMap, GuidReferences.Buffer.GetData(), GuidReferences.NumBufferBits);
+			Connection->SetNetVersionsOnArchive(Reader);
 
 			// Read the property
-			Cmd.Property->NetSerializeItem(Reader, PackageMap, Data + AbsOffset);
+			Cmd.Property->NetSerializeItem(Reader, Connection->PackageMap, Data + AbsOffset);
 
 			// Check to see if this property changed
 			if (bUpdateShadowState)
@@ -4324,7 +4325,7 @@ void FRepLayout::UpdateUnmappedObjects(
 			RepState,
 			&RepState->GuidReferencesMap,
 			OriginalObject,
-			PackageMap,
+			Params.Connection,
 			(uint8*)RepState->StaticBuffer.GetData(),
 			(uint8*)OriginalObject,
 			Owner->GetPropertiesSize(),
@@ -8049,7 +8050,7 @@ void FRepLayout::UpdateUnmappedGuidsForFastArray(FFastArrayDeltaSerializeParams&
 			const int32 ArrayElementOffset = ItemIndex * ElementSize;
 			FRepObjectDataBuffer ElementData(ArrayData + ArrayElementOffset);
 
-			UpdateUnmappedObjects_r(nullptr, &It.Value(), Object, PackageMap, nullptr, ElementData, ElementSize, Params.DeltaSerializeInfo.bCalledPreNetReceive, bOutSomeObjectsWereMapped, bOutHasMoreUnmapped);
+			UpdateUnmappedObjects_r(nullptr, &It.Value(), Object, DeltaSerializeInfo.Connection, nullptr, ElementData, ElementSize, Params.DeltaSerializeInfo.bCalledPreNetReceive, bOutSomeObjectsWereMapped, bOutHasMoreUnmapped);
 
 			if (bOutSomeObjectsWereMapped)
 			{
