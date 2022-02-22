@@ -85,8 +85,8 @@ public:
 
 	struct FMaterialSection
 	{
-		TWeakObjectPtr<const UMaterialInterface> RasterMaterial = nullptr;
-		TWeakObjectPtr<const UMaterialInterface> ShadingMaterial = nullptr;
+		FMaterialRenderProxy* RasterMaterialProxy = nullptr;
+		FMaterialRenderProxy* ShadingMaterialProxy = nullptr;
 
 	#if WITH_EDITOR
 		HHitProxy* HitProxy = nullptr;
@@ -157,7 +157,7 @@ public:
 		{
 			bHasPerInstanceCustomData	|= MaterialSection.bHasPerInstanceCustomData;
 			bHasPerInstanceRandom		|= MaterialSection.bHasPerInstanceRandomID;
-			bHasProgrammableRaster		|= MaterialSection.RasterMaterial.IsValid();
+			bHasProgrammableRaster		|= (MaterialSection.RasterMaterialProxy != nullptr);
 		}
 	}
 
