@@ -3293,6 +3293,7 @@ struct FReadOnlyCVARCache
 	int32 MobileSkyLightPermutation;
 	bool bMobileEnableMovableSpotlights;
 	bool bMobileEnableMovableSpotlightsShadow;
+	bool bMobileEnableNoPrecomputedLightingCSMShader;
 	
 	bool bInitialized;
 	void Init();
