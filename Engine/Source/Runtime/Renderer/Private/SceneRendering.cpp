@@ -4438,6 +4438,7 @@ void FRendererModule::RenderPostOpaqueExtensions(
 			RenderParameters.GraphBuilder = &GraphBuilder;
 
 			RenderParameters.Uid = (void*)(&View);
+			RenderParameters.View = &View;
 			PostOpaqueRenderDelegate.Broadcast(RenderParameters);
 		}
 	}
@@ -4469,6 +4470,7 @@ void FRendererModule::RenderOverlayExtensions(
 			RenderParameters.GraphBuilder = &GraphBuilder;
 
 			RenderParameters.Uid = (void*)(&View);
+			RenderParameters.View = &View;
 			OverlayRenderDelegate.Broadcast(RenderParameters);
 		}
 	}
