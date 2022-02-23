@@ -51,7 +51,7 @@ public class Renderer : ModuleRules
 		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private", alphacore_inc_dir));
 		PublicAdditionalLibraries.Add(Path.Combine("Runtime/Renderer/Private", alphacore_lib_dir, "AlphaCore.lib"));
 		Definitions.Add("ALPHA_CUDA");
-		var cuda_path = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.0";
+		var cuda_path = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.6";
 		var cuda_include = "include";
 		var cuda_lib = "lib/x64";
 		PublicIncludePaths.Add(Path.Combine(cuda_path, cuda_include));

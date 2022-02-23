@@ -18,8 +18,8 @@
 #include "RendererModule.h"
 #include "PostProcess/PostProcessing.h"
 #include "PostProcess/SceneFilterRendering.h"
-#include "AlphaCore/include/AlphaCore.h"
-#include "AlphaCore/include/Visualization/copy_kernel.h"
+#include "../AlphaCore/include/AlphaCore.h"
+#include "../AlphaCore/include/Visualization/copy_kernel.h"
 #endif // RHI_RAYTRACING
 
 static TAutoConsoleVariable<int32> CVarRayTracingRenderSim(
@@ -181,7 +181,7 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 		SimParameters->WorldPos = WorldPosTexture;
 		SimParameters->SimOutput = SimOutput;
 		ERDGPassFlags PassFlags = ERDGPassFlags::Raster;
-
+		//UE_LOG(LogRenderer, Warning, TEXT("--------------------------------------------------------"));
 		GraphBuilder.AddPass(
 			RDG_EVENT_NAME("SimParameters"),
 			SimParameters,
@@ -200,10 +200,16 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 
 			FViewUniformShaderParameters ViewVoxelizeParameters = *View.CachedViewUniformShaderParameters;
 			FLinearColor TempWorldPos = FLinearColor(WorldPosData[100]);
-			UE_LOG(LogRenderer, Log, TEXT("WorldPosData %s"), *TempWorldPos.ToString());
-			UE_LOG(LogRenderer, Log, TEXT("camera pos: %s"), *ViewVoxelizeParameters.WorldCameraOrigin.ToString());
-			UE_LOG(LogRenderer, Log, TEXT("camera forword: %s"), *ViewVoxelizeParameters.ViewForward.ToString());
-			UE_LOG(LogRenderer, Log, TEXT("camera up: %s"), *ViewVoxelizeParameters.ViewUp.ToString());
+			//UE_LOG(LogRenderer, Log, TEXT("WorldPosData %s"), *TempWorldPos.ToString());
+			//UE_LOG(LogRenderer, Log, TEXT("camera pos: %s"), *ViewVoxelizeParameters.WorldCameraOrigin.ToString());
+			//UE_LOG(LogRenderer, Log, TEXT("camera forword: %s"), *ViewVoxelizeParameters.ViewForward.ToString());
+			//UE_LOG(LogRenderer, Log, TEXT("camera up: %s"), *ViewVoxelizeParameters.ViewUp.ToString());
+
+			auto size = WorldPosTex->GetSizeXYZ();
+			auto tex3D = WorldPosTex->GetTexture3D();
+			tex3D->GetSizeZ();
+			size.Num();
+
 
 			if (DirectionalLightSceneInfo)
 			{ 
@@ -212,87 +218,87 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 			}
 
 			AlphaCore::Desc::AxPointLightInfo lightInfo;
-			lightInfo.Pivot = MakeVector3(900.f, 900.f, 1200.f);
-			lightInfo.Intensity = 1;
+			// lightInfo.Pivot = MakeVector3(900.f, 900.f, 1200.f);
+			lightInfo.Pivot = AxVector3{ 0.f, 150.f, 0.f };
+			lightInfo.Intensity = 30;
 			lightInfo.LightColor = { 1.f, 1.f, 1.f, 1.f };
 			AlphaCore::Desc::AxCameraInfo camInfo;
 
-			//FLookAtMatrix lookAtLH(ViewVoxelizeParameters.WorldCameraOrigin, ViewVoxelizeParameters.WorldCameraOrigin + ViewVoxelizeParameters.ViewForward, ViewVoxelizeParameters.ViewUp);
-			//FQuat lookAtLHQ(lookAtLH);
-			//auto lookAtRHQ = lookAtLHQ;
-			//lookAtRHQ.Y = lookAtLHQ.Z;
-			//lookAtRHQ.Z = lookAtLHQ.Y;
-			//lookAtRHQ.W *= -1;
-			//FVector4 forward(1, 0, 0, 0);
-			//forward = lookAtLHQ * forward;
-			//FVector4 up(0, 0, -1, 0);
-			//up = lookAtLHQ * up;
 
-			//camInfo.Pivot = AxVector3{ ViewVoxelizeParameters.WorldCameraOrigin.X, ViewVoxelizeParameters.WorldCameraOrigin.Z, ViewVoxelizeParameters.WorldCameraOrigin.Y };
-			//camInfo.Forward = AxVector3{ forward.X, forward.Y, forward.Z };
-			//camInfo.UpVector = AxVector3{ up.X, up.Y, up.Z };
-			//camInfo.Near = ViewVoxelizeParameters.NearPlane;
-			//camInfo.Fov = ViewVoxelizeParameters.FieldOfViewWideAngles.X * 180.f / 3.1415926f;
-			camInfo.Pivot = AxVector3{ 0.f, 2.f, 5.f };
-			camInfo.Forward = AxVector3{ 0.f,-0.34202f,-0.939693f };
-			camInfo.UpVector = AxVector3{ 0.f,0.939693f,-0.34202f };
-			camInfo.Near = 1;
-			camInfo.Fov = 90;
+			camInfo.Pivot = AxVector3{ ViewVoxelizeParameters.WorldCameraOrigin.X, ViewVoxelizeParameters.WorldCameraOrigin.Y, ViewVoxelizeParameters.WorldCameraOrigin.Z };
+			camInfo.Forward = AxVector3{ ViewVoxelizeParameters.ViewForward.X, ViewVoxelizeParameters.ViewForward.Y, ViewVoxelizeParameters.ViewForward.Z };
+			camInfo.UpVector = AxVector3{ ViewVoxelizeParameters.ViewUp.X, ViewVoxelizeParameters.ViewUp.Y, ViewVoxelizeParameters.ViewUp.Z };
+			camInfo.Near = ViewVoxelizeParameters.NearPlane;
+			camInfo.Fov = ViewVoxelizeParameters.FieldOfViewWideAngles.X * 180.f / 3.1415926f;
 
-			UE_LOG(LogRenderer, Log, TEXT("alphacore cam fov: %f"), camInfo.Fov);
-			UE_LOG(LogRenderer, Log, TEXT("alphacore cam near: %f"), camInfo.Near);
-			UE_LOG(LogRenderer, Log, TEXT("alphacore cam forward: %f, %f, %f"), camInfo.Forward.x, camInfo.Forward.y, camInfo.Forward.z);
-			UE_LOG(LogRenderer, Log, TEXT("alphacore cam up: %f, %f, %f"), camInfo.UpVector.x, camInfo.UpVector.y, camInfo.UpVector.z);
-			constexpr float densityFactor = 0.1f;
-			std::string smokeFieldsPath = "c:/Users/xdestiny/Desktop/toy.axc";
+			//UE_LOG(LogRenderer, Log, TEXT("AlphaCore Cam Fov: %f"), camInfo.Fov);
+			//UE_LOG(LogRenderer, Log, TEXT("AlphaCore Cam Near: %f"), camInfo.Near);
+			//UE_LOG(LogRenderer, Log, TEXT("AlphaCore Cam Pos: %f, %f, %f"), camInfo.Pivot.x, camInfo.Pivot.y, camInfo.Pivot.z);
+			//UE_LOG(LogRenderer, Log, TEXT("AlphaCore Cam Forward: %f, %f, %f"), camInfo.Forward.x, camInfo.Forward.y, camInfo.Forward.z);
+			//UE_LOG(LogRenderer, Log, TEXT("AlphaCore Cam Up: %f, %f, %f"), camInfo.UpVector.x, camInfo.UpVector.y, camInfo.UpVector.z);
+			constexpr float densityFactor = 0.05f;
+			std::string smokeFieldsPath = "C:/Users/hao.chen/Desktop/output_t.axc";
 			std::vector<AxScalarFieldF32*> houdiniVolumes;
 			AlphaCore::GridDense::ReadFields(smokeFieldsPath, houdiniVolumes);
 
-			float stepSize = 1.f;
+			float stepSize = 5.f;
+
 			AxImageRGBA worldPosImg(ImageWidth, ImageHeight);
 			auto worldPosImgData = (float*)worldPosImg.GetRawData();
 			for (int r = 0; r < ImageHeight; ++r)
 			{
 				for (int c = 0; c < ImageWidth; ++c)
 				{
-					// worldPosImgData[r * SCREEN_WIDTH * 4 + c * 4] = buffer[r * SCREEN_WIDTH + c];
-					// worldPosImgData[r * SCREEN_WIDTH * 4 + c * 4 + 1] = buffer[r * SCREEN_WIDTH + c];
-					// worldPosImgData[r * SCREEN_WIDTH * 4 + c * 4 + 2] = buffer[r * SCREEN_WIDTH + c];
-					// worldPosImgData[r * SCREEN_WIDTH * 4 + c * 4 + 3] = buffer[r * SCREEN_WIDTH + c];
 					worldPosImgData[r * ImageWidth * 4 + c * 4] = 0.f;
 					worldPosImgData[r * ImageWidth * 4 + c * 4 + 1] = 0.f;
 					worldPosImgData[r * ImageWidth * 4 + c * 4 + 2] = 0.f;
 					worldPosImgData[r * ImageWidth * 4 + c * 4 + 3] = 0.f;
 				}
 			}
+
 			AxImageRGBA8 renderImage(ImageWidth, ImageHeight);
-			{
-				// GPU
-				houdiniVolumes[0]->DeviceMalloc();
-				AxVolumeRenderObjectRawData data;
-				data.densityInfo = houdiniVolumes[0]->GetFieldInfo();
-				data.density = houdiniVolumes[0]->GetRawDataDevice();
-				AxVolumeMaterial material;
-				renderImage.DeviceMalloc();
-				worldPosImg.DeviceMalloc();
-				uchar4* cudaOutput = (uchar4*)renderImage.GetRawDataDevice();
-				float4* worldPosTex = (float4*)worldPosImg.GetRawDataDevice();
 
-				CUDA_CHECK(cudaMemset(cudaOutput, 128, ImageWidth * ImageHeight * 4));
-				volume_kernel(data, material, worldPosTex, cudaOutput, camInfo, lightInfo, stepSize, ImageWidth, ImageHeight);
-				renderImage.LoadToHost();
-			}
-			//AlphaCore::Image::SaveAsTga("c:/Users/xdestiny/Desktop/ue4.tga", &renderImage);
-			UE_LOG(LogRenderer, Log, TEXT("save volume render result"));
+			// GPU
+			houdiniVolumes[0]->DeviceMalloc();
+			AxVolumeRenderObjectRawData data;
+			data.densityInfo = houdiniVolumes[0]->GetFieldInfo();
+			data.density = houdiniVolumes[0]->GetRawDataDevice();
+			AxVolumeMaterial material;
+			material.minMaxInputDensity = { 0, 600 };
+			material.densityScale = 1.f;
+			material.shadowScale = 1.f;
+			renderImage.DeviceMalloc();
+			worldPosImg.DeviceMalloc();
+			uchar4* cudaOutput = (uchar4*)renderImage.GetRawDataDevice();
+			float4* worldPosTex = (float4*)worldPosImg.GetRawDataDevice();
 
+			CUDA_CHECK(cudaMemset(cudaOutput, 128, ImageWidth * ImageHeight * 4));
+			volume_kernel(data, material, worldPosTex, cudaOutput, camInfo, lightInfo, stepSize, ImageWidth, ImageHeight);
+			renderImage.LoadToHost();
+
+
+			//AlphaCore::Image::SaveAsTga("C:/Users/hao.chen/Desktop/ue4.tga", &renderImage);
+			//UE_LOG(LogRenderer, Log, TEXT("save volume render result"));
+			
 			TArray<FLinearColor> OutputData;
+
 			OutputData.AddDefaulted(ImageWidth * ImageHeight);
 			auto output = renderImage.GetRawData();
-			for (int i = 0; i < OutputData.Num(); ++i) {
-				FLinearColor TempColor = FLinearColor(output[i].r / 255.f, output[i].g / 255.f,
-					output[i].b / 255.f, output[i].a / 255.f);
-				OutputData[i] = TempColor;
+			//for (int i = 0; i < OutputData.Num(); ++i) {
+			//	FLinearColor TempColor = FLinearColor(output[i].r / 255.f, output[i].g / 255.f,
+			//		output[i].b / 255.f, output[i].a / 255.f);
+			//	OutputData[i] = TempColor;
+			//}
+			for (int r = 0; r < ImageHeight; ++r)
+			{
+				for (int c = 0; c < ImageWidth; ++c)
+				{
+					FLinearColor TempColor = FLinearColor(output[r * ImageWidth + c].r / 255.f, output[r * ImageWidth + c].g / 255.f,
+						output[r * ImageWidth + c].b / 255.f, output[r * ImageWidth + c].a / 255.f);
+					OutputData[(ImageHeight - r - 1) * ImageWidth + ImageWidth -1 - c] = TempColor;
+				}
 			}
+
 			FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
 			FUpdateTextureRegion2D TempRegion(0, 0, 0, 0, ImageWidth, ImageHeight);
 			RHIUpdateTexture2D(SimOutputTex->GetTexture2D(), 0, TempRegion, ImageWidth * 4 * sizeof(float), (uint8*)OutputData.GetData());
