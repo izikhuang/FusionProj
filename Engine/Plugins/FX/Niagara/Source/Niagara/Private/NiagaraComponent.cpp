@@ -317,7 +317,7 @@ TUniformBuffer<FPrimitiveUniformShaderParameters>& FNiagaraSceneProxy::GetCustom
 				.InstancePayloadDataStride(LocalPrimitiveSceneInfo ? LocalPrimitiveSceneInfo->GetInstancePayloadDataStride() : 0)
 				.ReceivesDecals(ReceivesDecals())
 				.DrawsVelocity(DrawsVelocity())
-				.OutputVelocity(bOutputVelocity)
+				.OutputVelocity(bOutputVelocity || AlwaysHasVelocity())
 				.CastContactShadow(CastsContactShadow())
 				.CastShadow(CastsDynamicShadow())
 				.HasCapsuleRepresentation(HasDynamicIndirectShadowCasterRepresentation())
