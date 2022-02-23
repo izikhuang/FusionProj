@@ -1219,6 +1219,15 @@ void UDirectionalLightComponent::SetShadowDistanceFadeoutFraction(float NewValue
 	}
 }
 
+void UDirectionalLightComponent::SetShadowCascadeBiasDistribution(float NewValue)
+{
+	if (ShadowCascadeBiasDistribution != NewValue)
+	{
+		ShadowCascadeBiasDistribution = NewValue;
+		MarkRenderStateDirty();
+	}
+}
+
 void UDirectionalLightComponent::SetEnableLightShaftOcclusion(bool bNewValue)
 {
 	if (AreDynamicDataChangesAllowed()
@@ -1239,6 +1248,15 @@ void UDirectionalLightComponent::SetOcclusionMaskDarkness(float NewValue)
 	}
 }
 
+void UDirectionalLightComponent::SetOcclusionDepthRange(float NewValue)
+{
+	if (AreDynamicDataChangesAllowed()
+		&& OcclusionDepthRange != NewValue)
+	{
+		OcclusionDepthRange = NewValue;
+		MarkRenderStateDirty();
+	}
+}
 void UDirectionalLightComponent::SetLightShaftOverrideDirection(FVector NewValue)
 {
 	if (AreDynamicDataChangesAllowed()
@@ -1250,6 +1268,36 @@ void UDirectionalLightComponent::SetLightShaftOverrideDirection(FVector NewValue
 			FDirectionalLightSceneProxy* DirectionalLightSceneProxy = (FDirectionalLightSceneProxy*)SceneProxy;
 			DirectionalLightSceneProxy->UpdateLightShaftOverrideDirection_GameThread(this);
 		}
+	}
+}
+
+void UDirectionalLightComponent::SetLightSourceAngle(float NewValue)
+{
+	if (AreDynamicDataChangesAllowed()
+		&& LightSourceAngle != NewValue)
+	{
+		LightSourceAngle = NewValue;
+		MarkRenderStateDirty();
+	}
+}
+
+void UDirectionalLightComponent::SetLightSourceSoftAngle(float NewValue)
+{
+	if (AreDynamicDataChangesAllowed()
+		&& LightSourceSoftAngle != NewValue)
+	{
+		LightSourceSoftAngle = NewValue;
+		MarkRenderStateDirty();
+	}
+}
+
+void UDirectionalLightComponent::SetShadowSourceAngleFactor(float NewValue)
+{
+	if (AreDynamicDataChangesAllowed()
+		&& ShadowSourceAngleFactor != NewValue)
+	{
+		ShadowSourceAngleFactor = NewValue;
+		MarkRenderStateDirty();
 	}
 }
 
