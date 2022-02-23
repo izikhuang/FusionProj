@@ -67,7 +67,7 @@ ILegacyCacheStore* CreateZenCacheStore(const TCHAR* NodeName, const TCHAR* Servi
  * This class is used to create a singleton that represents the derived data cache hierarchy and all of the wrappers necessary
  * ideally this would be data driven and the backends would be plugins...
  */
-class FDerivedDataBackendGraph : public FDerivedDataBackend
+class FDerivedDataBackendGraph final : public FDerivedDataBackend
 {
 public:
 	using FParsedNode = TPair<ILegacyCacheStore*, ECacheStoreFlags>;
@@ -94,6 +94,9 @@ public:
 			*LOCTEXT("CommandText_DDCUnmountPak", "Unmounts read-only pak file").ToString(),
 			FConsoleCommandWithArgsDelegate::CreateRaw(this, &FDerivedDataBackendGraph::UnmountPakCommandHandler))
 	{
+		check(!StaticGraph);
+		StaticGraph = this;
+
 		check(IsInGameThread()); // we pretty much need this to be initialized from the main thread...it uses GConfig, etc
 		check(GConfig && GConfig->IsReadyForUse());
 		RootCache = nullptr;
@@ -1007,8 +1010,10 @@ public:
 
 	virtual ~FDerivedDataBackendGraph()
 	{
+		check(StaticGraph == this);
 		RootCache = nullptr;
 		DestroyCreatedBackends();
+		StaticGraph = nullptr;
 	}
 
 	ILegacyCacheStore& GetRoot() override
@@ -1143,8 +1148,8 @@ public:
 
 	static FORCEINLINE FDerivedDataBackendGraph& Get()
 	{
-		static FDerivedDataBackendGraph SingletonInstance;
-		return SingletonInstance;
+		check(StaticGraph);
+		return *StaticGraph;
 	}
 
 	virtual FDerivedDataBackendInterface* MountPakFile(const TCHAR* PakFilename) override
@@ -1234,6 +1239,8 @@ private:
 		}
 		MountPakFile(*Args[0]);
 	}
+
+	static inline FDerivedDataBackendGraph*			StaticGraph;
 
 	FThreadSafeCounter								AsyncCompletionCounter;
 	FString											GraphName;
@@ -1454,6 +1461,11 @@ void FDerivedDataBackendInterface::LegacyStats(FDerivedDataCacheStatsNode& OutNo
 bool FDerivedDataBackendInterface::LegacyDebugOptions(FBackendDebugOptions& Options)
 {
 	return ApplyDebugOptions(Options);
+}
+
+FDerivedDataBackend* FDerivedDataBackend::Create()
+{
+	return new FDerivedDataBackendGraph();
 }
 
 FDerivedDataBackend& FDerivedDataBackend::Get()
