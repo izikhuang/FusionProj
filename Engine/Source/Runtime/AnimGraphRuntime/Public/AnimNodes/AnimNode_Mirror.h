@@ -29,7 +29,6 @@ public:
 
 	// Get Mirror State
 	virtual bool GetMirror() const;
-
 	// How long to blend using inertialization when switching  mirrored state
 	virtual float GetBlendTimeOnMirrorStateChange() const;
 
@@ -126,8 +125,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = Settings, meta = (FoldProperty))
 	TObjectPtr<UMirrorDataTable> MirrorDataTable = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = Settings, meta = (PinHiddenByDefault, FoldProperty))
-	float BlendTimeOnMirrorStateChange = 0.0f;
+	// Inertialization blend time to use when transitioning between mirrored and unmirrored states
+	UPROPERTY(EditAnywhere, Category = MirrorTransition, meta = (PinHiddenByDefault, FoldProperty))
+	float BlendTime = 0.0f;
+	// Whether to reset (reinitialize) the child (source) pose when the mirror state changes
+	UPROPERTY(EditAnywhere, Category = MirrorTransition, meta = (FoldProperty))
+	bool bResetChild = false;
 
 	UPROPERTY(EditAnywhere, Category = MirroredChannels, meta=(DisplayName="Bone", FoldProperty))
 	bool bBoneMirroring = true;
@@ -137,10 +140,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = MirroredChannels, meta=(DisplayName = "Attributes", FoldProperty))
 	bool bAttributeMirroring = true;
-
-	// Whether to reset (reinitialize) the child (source)pose when the mirror state changes
-	UPROPERTY(EditAnywhere, Category = Settings, meta = ( FoldProperty))
-	bool bResetChildOnMirrorStateChange = false;
 #endif
 };
 
@@ -180,8 +179,13 @@ protected:
 	UPROPERTY(EditAnywhere, Category = Settings)
 	TObjectPtr<UMirrorDataTable> MirrorDataTable = nullptr;
 
-	UPROPERTY(EditAnywhere, Category = Settings, meta = (PinHiddenByDefault, FoldProperty))
-	float BlendTimeOnMirrorStateChange = 0.0f;
+	// Inertialization blend time to use when transitioning between mirrored and unmirrored states
+	UPROPERTY(EditAnywhere, Category = MirrorTransition, meta = (PinHiddenByDefault, FoldProperty))
+	float BlendTime = 0.0f;
+
+	// Whether to reset (reinitialize) the child (source) pose when the mirror state changes
+	UPROPERTY(EditAnywhere, Category = MirrorTransition, meta = (FoldProperty))
+	bool bResetChild = false;
 
 	UPROPERTY(EditAnywhere, Category = MirroredChannels, meta = (DisplayName = "Bone", FoldProperty))
 	bool bBoneMirroring = true;
@@ -191,8 +195,4 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = MirroredChannels, meta = (DisplayName = "Attributes", FoldProperty))
 	bool bAttributeMirroring = true;
-
-	// Whether to reset (reinitialize) the child (source)pose when the mirror state changes
-	UPROPERTY(EditAnywhere, Category = Settings, meta = (FoldProperty))
-	bool bResetChildOnMirrorStateChange = false;
 };
