@@ -235,6 +235,9 @@ namespace Chaos
 		int32 ChaosSolverCollisionUseManifolds = 1;
 		FAutoConsoleVariableRef CVarChaosSolverCollisionUseManifolds(TEXT("p.Chaos.Solver.Collision.UseManifolds"), ChaosSolverCollisionUseManifolds, TEXT("Enable/Disable use of manifolds in collision."));
 
+		// Allow manifolds to be reused between ticks
+		int32 ChaosSolverCollisionAllowManifoldUpdate = 1;
+		FAutoConsoleVariableRef CVarChaosSolverCollisionAllowManifoldUpdate(TEXT("p.Chaos.Solver.Collision.AllowManifoldUpdate"), ChaosSolverCollisionAllowManifoldUpdate, TEXT("Enable/Disable reuse of manifolds between ticks (for small movement)."));
 
 		// Joint cvars
 		float ChaosSolverJointMinSolverStiffness = 1.0f;
@@ -814,6 +817,8 @@ namespace Chaos
 		const FReal StartSimTime = GetSolverTime();
 		MEvolution->GetCollisionDetector().GetNarrowPhase().GetContext().bDeferUpdate = (ChaosSolverCollisionDeferNarrowPhase != 0);
 		MEvolution->GetCollisionDetector().GetNarrowPhase().GetContext().bAllowManifolds = (ChaosSolverCollisionUseManifolds != 0);
+		MEvolution->GetCollisionDetector().GetNarrowPhase().GetContext().bAllowManifoldReuse = (ChaosSolverCollisionAllowManifoldUpdate != 0);
+
 		
 		FPBDJointSolverSettings JointsSettings = MEvolution->GetJointConstraints().GetSettings();
 		JointsSettings.MinSolverStiffness = ChaosSolverJointMinSolverStiffness;
