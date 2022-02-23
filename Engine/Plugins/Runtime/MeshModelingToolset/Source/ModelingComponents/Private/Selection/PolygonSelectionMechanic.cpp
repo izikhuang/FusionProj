@@ -600,6 +600,8 @@ void UPolygonSelectionMechanic::OnUpdateModifierState(int ModifierID, bool bIsOn
 
 void UPolygonSelectionMechanic::OnDragRectangleStarted()
 {
+	bCurrentlyMarqueeDragging = true;
+
 	ParentTool->GetToolManager()->BeginUndoTransaction(LOCTEXT("SelectionChange", "Selection"));
 	BeginChange();
 
@@ -653,6 +655,8 @@ void UPolygonSelectionMechanic::OnDragRectangleChanged(const FCameraRectangle& C
 
 void UPolygonSelectionMechanic::OnDragRectangleFinished(const FCameraRectangle& Rectangle, bool bCancelled)
 {
+	bCurrentlyMarqueeDragging = false;
+
 	TriIsOccludedCache.Reset();
 
 	if (PersistentSelection != PreDragPersistentSelection)
@@ -676,7 +680,10 @@ void UPolygonSelectionMechanic::UpdateMarqueeEnabled()
 
 void UPolygonSelectionMechanic::BeginChange()
 {
-	check(ActiveChange.IsValid() == false);
+	// If you hit this ensure, either you didn't match a BeginChange with an EndChange(), or you
+	// interleaved two actions that both needed a BeginChange(). For instance, are you sure you
+	// are not performing actions while a marquee rectangle is active?
+	ensure(ActiveChange.IsValid() == false);
 	ActiveChange = MakeUnique<FPolygonSelectionMechanicSelectionChange>();
 	ActiveChange->Before = PersistentSelection;
 	ActiveChange->Timestamp = SelectionTimestamp;
@@ -684,10 +691,9 @@ void UPolygonSelectionMechanic::BeginChange()
 
 TUniquePtr<FToolCommandChange> UPolygonSelectionMechanic::EndChange()
 {
-	check(ActiveChange.IsValid() == true);
-	ActiveChange->After = PersistentSelection;
-	if (SelectionTimestamp != ActiveChange->Timestamp)
+	if (ensure(ActiveChange.IsValid()) && SelectionTimestamp != ActiveChange->Timestamp)
 	{
+		ActiveChange->After = PersistentSelection;
 		return MoveTemp(ActiveChange);
 	}
 	ActiveChange = TUniquePtr<FPolygonSelectionMechanicSelectionChange>();
@@ -696,10 +702,9 @@ TUniquePtr<FToolCommandChange> UPolygonSelectionMechanic::EndChange()
 
 bool UPolygonSelectionMechanic::EndChangeAndEmitIfModified()
 {
-	check(ActiveChange.IsValid() == true);
-	ActiveChange->After = PersistentSelection;
-	if (SelectionTimestamp != ActiveChange->Timestamp)
+	if (ensure(ActiveChange.IsValid()) && SelectionTimestamp != ActiveChange->Timestamp)
 	{
+		ActiveChange->After = PersistentSelection;
 		GetParentTool()->GetToolManager()->EmitObjectChange(this, MoveTemp(ActiveChange),
 			LOCTEXT("SelectionChangeMessage", "Selection Change"));
 		return true;
