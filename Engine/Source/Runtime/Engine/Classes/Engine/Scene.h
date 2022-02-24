@@ -1523,7 +1523,7 @@ struct FPostProcessSettings
 	UPROPERTY(interp, BlueprintReadWrite, Category="Lens|Dirt Mask", meta=(editcondition = "bOverride_BloomDirtMaskTint", DisplayName = "Dirt Mask Tint", HideAlphaChannel))
 	FLinearColor BloomDirtMaskTint;
 
-	/** Chooses the Dynamic Global Illumination method. */
+	/** Chooses the Dynamic Global Illumination method.  Not compatible with Forward Shading. */
 	UPROPERTY(interp, EditAnywhere, BlueprintReadWrite, Category = "Global Illumination", meta = (editcondition = "bOverride_DynamicGlobalIlluminationMethod", DisplayName = "Method"))
 	TEnumAsByte<EDynamicGlobalIlluminationMethod::Type> DynamicGlobalIlluminationMethod;
 
@@ -1580,7 +1580,7 @@ struct FPostProcessSettings
 	UPROPERTY(interp, EditAnywhere, BlueprintReadWrite, Category = "Global Illumination|Ray Tracing Global Illumination", meta = (ClampMin = "1", ClampMax = "64", editcondition = "bOverride_RayTracingGISamplesPerPixel", DisplayName = "Samples Per Pixel"))
 	int32 RayTracingGISamplesPerPixel;
 	
-	/** Chooses the Reflection method. */
+	/** Chooses the Reflection method. Not compatible with Forward Shading. */
 	UPROPERTY(interp, EditAnywhere, BlueprintReadWrite, Category = "Reflections", meta = (editcondition = "bOverride_ReflectionMethod", DisplayName = "Method"))
 	TEnumAsByte<EReflectionMethod::Type> ReflectionMethod;
 
