@@ -218,7 +218,6 @@ bool IsAutoExposureDebugMode(const FViewInfo& View)
 		(EngineShowFlags.VisualizeVirtualShadowMap && View.CurrentVirtualShadowMapVisualizationMode != NAME_None) ||
 		EngineShowFlags.RayTracingDebug ||
 		EngineShowFlags.VisualizeDistanceFieldAO ||
-		EngineShowFlags.VisualizeGlobalDistanceField ||
 		EngineShowFlags.VisualizeVolumetricCloudConservativeDensity ||
 		EngineShowFlags.CollisionVisibility ||
 		EngineShowFlags.CollisionPawn ||
