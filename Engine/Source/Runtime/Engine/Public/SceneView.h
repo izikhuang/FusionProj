@@ -1247,6 +1247,9 @@ public:
 
 #if RHI_RAYTRACING
 	FIESLightProfileResource* IESLightProfileResource;
+
+	/** Use to allow ray tracing on this view. */
+	bool bAllowRayTracing = false;
 #endif
 
 protected:
