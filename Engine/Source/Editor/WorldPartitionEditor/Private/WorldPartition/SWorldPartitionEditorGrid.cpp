@@ -18,14 +18,18 @@ void SWorldPartitionEditorGrid::Construct(const FArguments& InArgs)
 	World = InArgs._InWorld;
 	WorldPartition = World ? World->GetWorldPartition() : nullptr;
 
-	if (!WorldPartition)
+	if (!WorldPartition || !WorldPartition->bEnableStreaming)
 	{
+		const FText Message = WorldPartition ? 
+			LOCTEXT("WorldPartitionHasStreamingDisabled", "World Partition streaming is not enabled for this map") : 
+			LOCTEXT("WorldPartitionMustBeEnabled", "World Partition is not enabled for this map");
+
 		ChildSlot
 		.VAlign(VAlign_Center)
 		.HAlign(HAlign_Center)
 		[
 			SNew(STextBlock)
-			.Text(LOCTEXT("WorldPartitionMustBeEnabled", "World Partition is Not Enabled for this Map"))
+			.Text(Message)
 			.ColorAndOpacity(FSlateColor::UseForeground())
 		];
 	}
@@ -98,6 +102,11 @@ void SWorldPartitionEditorGrid::Refresh()
 			SceneOutlinerPtr->FullRefresh();
 		}
 	}
+}
+
+bool SWorldPartitionEditorGrid::IsDisabled() const
+{
+	return !WorldPartition || !WorldPartition->bEnableStreaming;
 }
 
 #undef LOCTEXT_NAMESPACE

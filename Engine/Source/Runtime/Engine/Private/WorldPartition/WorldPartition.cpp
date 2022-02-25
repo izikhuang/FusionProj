@@ -30,6 +30,7 @@
 #include "LevelEditorViewport.h"
 #include "Misc/ScopedSlowTask.h"
 #include "Misc/ScopeExit.h"
+#include "Misc/MessageDialog.h"
 #include "ScopedTransaction.h"
 #include "UnrealEdMisc.h"
 #include "WorldPartition/IWorldPartitionEditorModule.h"
@@ -42,6 +43,7 @@
 #include "WorldPartition/WorldPartitionMiniMapHelper.h"
 #include "WorldPartition/DataLayer/WorldDataLayers.h"
 #include "WorldPartition/WorldPartitionActorDescViewProxy.h"
+#include "WorldPartition/HLOD/HLODLayer.h"
 #include "Modules/ModuleManager.h"
 #include "GameDelegates.h"
 
@@ -254,6 +256,8 @@ UWorldPartition::UWorldPartition(const FObjectInitializer& ObjectInitializer)
 #if WITH_EDITOR
 	, EditorHash(nullptr)
 	, WorldPartitionEditor(nullptr)
+	, bEnableStreaming(true)
+	, bStreamingWasEnabled(true)
 	, bForceGarbageCollection(false)
 	, bForceGarbageCollectionPurge(false)
 	, bIsPIE(false)
@@ -346,7 +350,11 @@ void UWorldPartition::OnEndPlay()
 
 FName UWorldPartition::GetWorldPartitionEditorName() const
 {
-	return EditorHash->GetWorldPartitionEditorName();
+	if (bEnableStreaming)
+	{
+		return EditorHash->GetWorldPartitionEditorName();
+	}
+	return NAME_None;
 }
 #endif
 
@@ -694,7 +702,7 @@ UWorldPartition* UWorldPartition::CreateOrRepairWorldPartition(AWorldSettings* W
 
 		WorldSettings->MarkPackageDirty();
 
-		WorldPartition->DefaultHLODLayer = nullptr;
+		WorldPartition->DefaultHLODLayer = UHLODLayer::GetEngineDefaultHLODLayersSetup();
 
 		AWorldDataLayers* WorldDataLayers = World->GetWorldDataLayers();
 		if (!WorldDataLayers)
@@ -1124,6 +1132,86 @@ void UWorldPartition::UnhashActorDesc(FWorldPartitionActorDesc* ActorDesc)
 	check(EditorHash);
 	FWorldPartitionHandle ActorHandle(this, ActorDesc->GetGuid());
 	EditorHash->UnhashActor(ActorHandle);
+}
+
+void UWorldPartition::PostLoad()
+{
+	FWorldPartitionActorDesc::bForceAlwaysLoaded = !bEnableStreaming;
+
+	if (bEnableStreaming)
+	{
+		bStreamingWasEnabled = true;
+	}
+
+	Super::PostLoad();
+}
+
+void UWorldPartition::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent)
+{
+	if (PropertyChangedEvent.GetPropertyName() == GET_MEMBER_NAME_CHECKED(UWorldPartition, bEnableStreaming))
+	{
+		bool bApplyStreamingChange = true;
+
+		if (bEnableStreaming)
+		{
+			if (!bStreamingWasEnabled)
+			{
+				if (FMessageDialog::Open(EAppMsgType::YesNo, LOCTEXT("WorldPartitionConfirmEnableStreaming", "You are about to enable streaming, the world will be setup to stream. Continue?")) == EAppReturnType::No)
+				{
+					bEnableStreaming = false;
+					bApplyStreamingChange = false;
+				}
+				else
+				{
+					bStreamingWasEnabled = true;
+
+					FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("WorldPartitionEnableStreamingDialolg", "Please refer to https://docs.unrealengine.com/5.0/en-US/building-virtual-worlds/world-partition for how to set up streaming."));
+				}
+			}
+		}
+		else
+		{
+			if (FMessageDialog::Open(EAppMsgType::YesNo, LOCTEXT("WorldPartitionConfirmDisableStreaming", "You are about to disable streaming, all actors in the world will be always loaded. Continue?")) == EAppReturnType::No)
+			{
+				bEnableStreaming = true;
+				bApplyStreamingChange = false;
+			}
+		}
+
+		if (bApplyStreamingChange)
+		{
+			// Pin the actor handles on the actor to prevent unloading it when unhashing
+			TArray<FWorldPartitionHandlePinRefScope> PinRefScopes;
+			PinRefScopes.Reserve(ActorDescList.Num());
+
+			for (UActorDescContainer::TIterator<> ActorDescIterator(this); ActorDescIterator; ++ActorDescIterator)
+			{
+				FWorldPartitionHandle ExistingActorHandle(this, ActorDescIterator->GetGuid());
+				PinRefScopes.Emplace(ExistingActorHandle);
+
+				UnhashActorDesc(*ActorDescIterator);
+			}
+
+			FWorldPartitionActorDesc::bForceAlwaysLoaded = !bEnableStreaming;
+
+			for (UActorDescContainer::TIterator<> ActorDescIterator(this); ActorDescIterator; ++ActorDescIterator)
+			{
+				HashActorDesc(*ActorDescIterator);
+			}
+
+			if (!bEnableStreaming)
+			{
+				UpdateLoadingEditorCell(EditorHash->GetAlwaysLoadedCell(), true, false);
+			}
+
+			if (WorldPartitionEditor)
+			{
+				WorldPartitionEditor->Reconstruct();
+			}
+		}
+	}
+
+	Super::PostEditChangeProperty(PropertyChangedEvent);
 }
 #endif
 
