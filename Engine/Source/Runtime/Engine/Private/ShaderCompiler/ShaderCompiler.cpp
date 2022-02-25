@@ -524,7 +524,7 @@ void FShaderCompileJobCollection::SubmitJobs(const TArray<FShaderCommonCompileJo
 			if (ShaderCompiler::IsJobCacheEnabled())
 			{
 				TRACE_CPUPROFILER_EVENT_SCOPE(GetInputHash);
-				ParallelFor(InJobs.Num(), [&InJobs](int32 Index) { InJobs[Index]->GetInputHash(); });
+				ParallelFor(InJobs.Num(), [&InJobs](int32 Index) { InJobs[Index]->GetInputHash(); }, EParallelForFlags::Unbalanced);
 			}
 
 			FWriteScopeLock Locker(Lock);
@@ -6891,46 +6891,55 @@ void CompileGlobalShaderMap(EShaderPlatform Platform, const ITargetPlatform* Tar
 			AsyncDDCRequestHandles.SetNum(ShaderFilenameNum);
 
 			int32 HandleIndex = 0;
-
-			// Submit DDC requests.
-			for (const auto& ShaderFilenameDependencies : ShaderMapId.GetShaderFilenameToDependeciesMap())
+			// If NoShaderDDC then don't check for a material the first time we encounter it to simulate
+			// a cold DDC
+			static bool bNoShaderDDC = FParse::Param(FCommandLine::Get(), TEXT("noshaderddc"));
+			if (UNLIKELY(bNoShaderDDC))
 			{
-				SlowTask.EnterProgressFrame(ProgressStep, LOCTEXT("SubmitDDCRequests", "Submitting global shader DDC Requests..."));
-
-				const FString DataKey = GetGlobalShaderMapKeyString(ShaderMapId, Platform, TargetPlatform, ShaderFilenameDependencies.Value);
-
-				AsyncDDCRequestHandles[HandleIndex] = GetDerivedDataCacheRef().GetAsynchronous(*DataKey, TEXT("GlobalShaderMap"_SV));
-
-				++HandleIndex;
+				bShaderMapIsBeingCompiled = true;
 			}
-
-
-			TArray<uint8> CachedData;
-
-			HandleIndex = 0;
-
-			// Process finished DDC requests.
-			for (const auto& ShaderFilenameDependencies : ShaderMapId.GetShaderFilenameToDependeciesMap())
+			else
 			{
-				SlowTask.EnterProgressFrame(ProgressStep, LOCTEXT("ProcessDDCRequests", "Processing global shader DDC requests..."));
-				CachedData.Reset();
-				COOK_STAT(auto Timer = GlobalShaderCookStats::UsageStats.TimeSyncWork());
+				// Submit DDC requests.
+				for (const auto& ShaderFilenameDependencies : ShaderMapId.GetShaderFilenameToDependeciesMap())
+				{
+					SlowTask.EnterProgressFrame(ProgressStep, LOCTEXT("SubmitDDCRequests", "Submitting global shader DDC Requests..."));
 
-				GetDerivedDataCacheRef().WaitAsynchronousCompletion(AsyncDDCRequestHandles[HandleIndex]);
-				if (GetDerivedDataCacheRef().GetAsynchronousResults(AsyncDDCRequestHandles[HandleIndex], CachedData))
-				{
-					COOK_STAT(Timer.AddHit(CachedData.Num()));
-					FMemoryReader MemoryReader(CachedData);
-					GGlobalShaderMap[Platform]->AddSection(FGlobalShaderMapSection::CreateFromArchive(MemoryReader));
-				}
-				else
-				{
-					// it's a miss, but we haven't built anything yet. Save the counting until we actually have it built.
-					COOK_STAT(Timer.TrackCyclesOnly());
-					bShaderMapIsBeingCompiled = true;
+					const FString DataKey = GetGlobalShaderMapKeyString(ShaderMapId, Platform, TargetPlatform, ShaderFilenameDependencies.Value);
+
+					AsyncDDCRequestHandles[HandleIndex] = GetDerivedDataCacheRef().GetAsynchronous(*DataKey, TEXT("GlobalShaderMap"_SV));
+
+					++HandleIndex;
 				}
 
-				++HandleIndex;
+
+				TArray<uint8> CachedData;
+
+				HandleIndex = 0;
+
+				// Process finished DDC requests.
+				for (const auto& ShaderFilenameDependencies : ShaderMapId.GetShaderFilenameToDependeciesMap())
+				{
+					SlowTask.EnterProgressFrame(ProgressStep, LOCTEXT("ProcessDDCRequests", "Processing global shader DDC requests..."));
+					CachedData.Reset();
+					COOK_STAT(auto Timer = GlobalShaderCookStats::UsageStats.TimeSyncWork());
+
+					GetDerivedDataCacheRef().WaitAsynchronousCompletion(AsyncDDCRequestHandles[HandleIndex]);
+					if (GetDerivedDataCacheRef().GetAsynchronousResults(AsyncDDCRequestHandles[HandleIndex], CachedData))
+					{
+						COOK_STAT(Timer.AddHit(CachedData.Num()));
+						FMemoryReader MemoryReader(CachedData);
+						GGlobalShaderMap[Platform]->AddSection(FGlobalShaderMapSection::CreateFromArchive(MemoryReader));
+					}
+					else
+					{
+						// it's a miss, but we haven't built anything yet. Save the counting until we actually have it built.
+						COOK_STAT(Timer.TrackCyclesOnly());
+						bShaderMapIsBeingCompiled = true;
+					}
+
+					++HandleIndex;
+				}
 			}
 		}
 
@@ -7488,32 +7497,81 @@ FShaderCommonCompileJob::FInputHash FShaderCompileJob::GetInputHash()
 		checkf(Archive.IsSaving() && !Archive.IsLoading(), TEXT("A loading archive is passed to FShaderCompileJob::GetInputHash(), this is not supported as it may corrupt its data"));
 
 		Archive << Input;
-		Archive << Input.Environment;
+		Input.Environment.SerializeEverythingButFiles(Archive);
 
 		// hash the source file so changes to files during the development are picked up
 		const FSHAHash& SourceHash = GetShaderFileHash(*Input.VirtualSourceFilePath, Input.Target.GetPlatform());
 		Archive << const_cast<FSHAHash&>(SourceHash);
 
+		// unroll the included files for the parallel processing.
+		// These are temporary arrays that only exist for the ParallelFor
+		TArray<const TCHAR*> IncludeVirtualPaths;
+		TArray<const FString*> Contents;
+		TArray<bool> OnlyHashIncludes;
+		TArray<FBlake3Hash> Hashes;
+
+		// while the contents of this is already hashed (included in Environment's operator<<()), we still need to account for includes in the generated files and hash them, too
+		for (TMap<FString, FString>::TConstIterator It(Input.Environment.IncludeVirtualPathToContentsMap); It; ++It)
+		{
+			const FString& VirtualPath = It.Key();
+			IncludeVirtualPaths.Add(*VirtualPath);
+			Contents.Add(&It.Value());
+			OnlyHashIncludes.Add(true);	// not hashing contents of the file itself, as it was included in Environment's operator<<()
+			Hashes.AddDefaulted();
+		}
+
 		for (TMap<FString, FThreadSafeSharedStringPtr>::TConstIterator It(Input.Environment.IncludeVirtualPathToExternalContentsMap); It; ++It)
 		{
 			const FString& VirtualPath = It.Key();
-			Archive << const_cast<FString&>(VirtualPath);
+			IncludeVirtualPaths.Add(*VirtualPath);
 			check(It.Value());
-			FString& Contents = *It.Value();
-			Archive << Contents;
+			Contents.Add(&(*It.Value()));
+			OnlyHashIncludes.Add(false);
+			Hashes.AddDefaulted();
 		}
 
 		if (Input.SharedEnvironment)
 		{
-			Archive << *Input.SharedEnvironment;
+			Input.SharedEnvironment->SerializeEverythingButFiles(Archive);
+
+			for (TMap<FString, FString>::TConstIterator It(Input.SharedEnvironment->IncludeVirtualPathToContentsMap); It; ++It)
+			{
+				const FString& VirtualPath = It.Key();
+				IncludeVirtualPaths.Add(*VirtualPath);
+				Contents.Add(&It.Value());
+				OnlyHashIncludes.Add(true);	// not hashing contents of the file itself, as it was included in Environment's operator<<()
+				Hashes.AddDefaulted();
+			}
+
 			for (TMap<FString, FThreadSafeSharedStringPtr>::TConstIterator It(Input.SharedEnvironment->IncludeVirtualPathToExternalContentsMap); It; ++It)
 			{
 				const FString& VirtualPath = It.Key();
-				Archive << const_cast<FString&>(VirtualPath);
+				IncludeVirtualPaths.Add(*VirtualPath);
 				check(It.Value());
-				FString& Contents = *It.Value();
-				Archive << Contents;
+				Contents.Add(&(*It.Value()));
+				OnlyHashIncludes.Add(false);
+				Hashes.AddDefaulted();
 			}
+		}
+
+		check(IncludeVirtualPaths.Num() == Contents.Num());
+		check(Contents.Num() == OnlyHashIncludes.Num());
+		check(OnlyHashIncludes.Num() == Hashes.Num());
+
+		EShaderPlatform Platform = Input.Target.GetPlatform();
+		ParallelFor(Contents.Num(), [&IncludeVirtualPaths, &Contents, &OnlyHashIncludes, &Hashes, &Platform](int32 FileIndex)
+			{ 
+				FMemoryHasherBlake3 MemHasher;
+				HashShaderFileWithIncludes(MemHasher, IncludeVirtualPaths[FileIndex], *Contents[FileIndex], Platform, OnlyHashIncludes[FileIndex]);
+				Hashes[FileIndex] = MemHasher.Finalize();
+			},
+			EParallelForFlags::Unbalanced
+		);
+
+		// include the hashes in the main hash (consider sorting them if includes are found to have a random order)
+		for (int32 HashIndex = 0, NumHashes = Hashes.Num(); HashIndex < NumHashes; ++HashIndex)
+		{
+			Archive << Hashes[HashIndex];
 		}
 	};
 
