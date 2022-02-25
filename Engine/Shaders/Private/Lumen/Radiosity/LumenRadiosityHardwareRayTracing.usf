@@ -16,6 +16,7 @@
 #include "../LumenCardCommon.ush"
 #include "../LumenTracingCommon.ush"
 #include "../LumenHardwareRayTracingCommon.ush"
+#include "../LumenSceneLighting.ush"
 #include "../LumenCardTile.ush"
 #include "LumenRadiosity.ush"
 
@@ -28,6 +29,7 @@ float MinTraceDistance;
 float MaxTraceDistance;
 float MinTraceDistanceToSampleSurface;
 float SurfaceBias;
+float HeightfieldSurfaceBias;
 float AvoidSelfIntersectionTraceDistance;
 float MaxRayIntensity;
 uint NumThreadsToDispatch;
@@ -72,7 +74,15 @@ RAY_TRACING_ENTRY_RAYGEN(LumenRadiosityHardwareRayTracingRGS)
 				GetRadiosityRay(RadiosityTexel, RadiosityTexel.AtlasCoord / ProbeSpacingInRadiosityTexels, TraceTexelCoord, WorldRayDirection, ConeHalfAngle, PDF);
 
 				RayDesc Ray;
-				Ray.Origin = WorldPosition + WorldNormal * SurfaceBias;
+				if (RadiosityTexel.bHeightfield)
+				{
+					float3 WorldCameraOrigin = LWCHackToFloat(PrimaryView.WorldCameraOrigin);
+					CalculateDistanceBasedHeightfieldBias(HeightfieldSurfaceBias, WorldPosition, WorldCameraOrigin);
+				}
+				else
+				{
+					Ray.Origin = WorldPosition + WorldNormal * SurfaceBias;
+				}
 				Ray.Direction = WorldRayDirection;
 				Ray.TMin = MinTraceDistance;
 
