@@ -1303,7 +1303,7 @@ bool UAnimSequenceBase::ShouldDataModelBeValid() const
 {
 	return
 #if WITH_EDITOR
-		!GetOutermost()->HasAnyPackageFlags(PKG_FilterEditorOnly);
+		!GetOutermost()->HasAnyPackageFlags(PKG_Cooked);
 #else
 		false;
 #endif
