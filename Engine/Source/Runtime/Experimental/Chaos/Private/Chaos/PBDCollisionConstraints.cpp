@@ -100,7 +100,7 @@ namespace Chaos
 		const THandleArray<FChaosPhysicsMaterial>* const InSimMaterials,
 		const int32 InApplyPairIterations /*= 1*/,
 		const int32 InApplyPushOutPairIterations /*= 1*/,
-		const FReal InRestitutionThreshold /*= (FReal)0*/)
+		const FReal InRestitutionThreshold /*= (FReal)2000*/)
 		: FPBDConstraintContainer(FConstraintContainerHandle::StaticType())
 		, Particles(InParticles)
 		, NumActivePointConstraints(0)
@@ -119,7 +119,7 @@ namespace Chaos
 		, bCanDisableContacts(true)
 		, GravityDirection(FVec3(0,0,-1))
 		, GravitySize(980)
-		, MaxPushOutVelocity(0)
+		, SolverSettings()
 		, SolverType(EConstraintSolverType::QuasiPbd)
 	{
 	}
@@ -358,10 +358,6 @@ namespace Chaos
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
 			SolverContainer.SetNum(NumIslandConstraints);
-
-			// @todo(chaos): we shouldn't have to pass settings down to the solvers every frame. Ideally the solver containers would be created by the constraint containers and
-			// the settings would be passed on then. Currently the solver containers are created here FPBDIslandSolverData::AddConstraintDatas
-			SolverContainer.SetMaxPushOutVelocity(MaxPushOutVelocity);
 		}
 		else
 		{
@@ -392,7 +388,7 @@ namespace Chaos
 			check(Constraint.IsEnabled());
 
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			SolverContainer.AddConstraintSolver(Dt, Constraint, Particle0Level, Particle1Level, SolverData.GetBodyContainer());
+			SolverContainer.AddConstraintSolver(Dt, Constraint, Particle0Level, Particle1Level, SolverData.GetBodyContainer(), SolverSettings);
 		}
 		else
 		{
@@ -408,6 +404,7 @@ namespace Chaos
 			{
 				if (Constraint->IsEnabled())
 				{
+					PreGatherInput(*Constraint, SolverData);
 					GatherInput(Dt, *Constraint, INDEX_NONE, INDEX_NONE, SolverData);
 				}
 			}
@@ -457,7 +454,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolvePositionSerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers());
+			return SolverContainer.SolvePositionSerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers(), SolverSettings);
 		}
 		else
 		{
@@ -473,7 +470,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolvePositionSerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers());
+			return SolverContainer.SolvePositionSerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers(), SolverSettings);
 		}
 		else
 		{
@@ -489,7 +486,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolvePositionSerial(Dt, It, NumIts, BeginIndex, EndIndex);
+			return SolverContainer.SolvePositionSerial(Dt, It, NumIts, BeginIndex, EndIndex, SolverSettings);
 		}
 		else
 		{
@@ -505,7 +502,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolvePositionParallel(Dt, It, NumIts, BeginIndex, EndIndex);
+			return SolverContainer.SolvePositionParallel(Dt, It, NumIts, BeginIndex, EndIndex, SolverSettings);
 		}
 		else
 		{
@@ -521,7 +518,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolveVelocitySerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers());
+			return SolverContainer.SolveVelocitySerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers(), SolverSettings);
 		}
 		else
 		{
@@ -537,7 +534,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolveVelocitySerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers());
+			return SolverContainer.SolveVelocitySerial(Dt, It, NumIts, 0, SolverContainer.NumSolvers(), SolverSettings);
 		}
 		else
 		{
@@ -553,7 +550,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolveVelocitySerial(Dt, It, NumIts, BeginIndex, EndIndex);
+			return SolverContainer.SolveVelocitySerial(Dt, It, NumIts, BeginIndex, EndIndex, SolverSettings);
 		}
 		else
 		{
@@ -569,7 +566,7 @@ namespace Chaos
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
 			FPBDCollisionSolverContainer& SolverContainer = GetConstraintSolverContainer(SolverData);
-			return SolverContainer.SolveVelocityParallel(Dt, It, NumIts, BeginIndex, EndIndex);
+			return SolverContainer.SolveVelocityParallel(Dt, It, NumIts, BeginIndex, EndIndex, SolverSettings);
 		}
 		else
 		{
