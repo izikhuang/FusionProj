@@ -158,10 +158,21 @@ void FAnimNode_RetargetPoseFromMesh::EnsureInitialized(const UAnimInstance* InAn
 	if (!SourceMeshComponent.IsValid() && bUseAttachedParent)
 	{
 		USkeletalMeshComponent* TargetMesh = InAnimInstance->GetSkelMeshComponent();
-		USkeletalMeshComponent* ParentComponent = Cast<USkeletalMeshComponent>(TargetMesh->GetAttachParent());
-		if (ParentComponent)
+	
+		// Walk up the attachment chain until we find a skeletal mesh component
+		USkeletalMeshComponent* ParentMeshComponent = nullptr;
+		for (USceneComponent* AttachParentComp = TargetMesh->GetAttachParent(); AttachParentComp != nullptr; AttachParentComp = AttachParentComp->GetAttachParent())
 		{
-			SourceMeshComponent = ParentComponent;
+			ParentMeshComponent = Cast<USkeletalMeshComponent>(AttachParentComp);
+			if (ParentMeshComponent)
+			{
+				break;
+			}
+		}
+
+		if (ParentMeshComponent)
+		{
+			SourceMeshComponent = ParentMeshComponent;
 		}
 	}
 	
