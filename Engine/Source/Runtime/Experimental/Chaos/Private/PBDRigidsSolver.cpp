@@ -1436,7 +1436,7 @@ CSV_CUSTOM_STAT(PhysicsCounters, Name, Value, ECsvCustomStatOp::Set);
 		CHAOS_COUNTER_STAT(NumContacts, NumCollisionConstraints());
 		CHAOS_COUNTER_STAT(NumJoints, NumJointConstraints());
 
-#if !UE_BUILD_SHIPPING
+#if !UE_BUILD_SHIPPING && !UE_BUILD_TEST
 		UpdateExpensiveStatCounters();
 #endif
 
