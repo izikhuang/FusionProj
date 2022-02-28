@@ -573,7 +573,7 @@ namespace Chaos
 			{
 				CollisionSolvers[SolverIndex].GetSolver().SolvePositionWithFriction(Dt, MaxPushOut);
 			}
-		}, 100, !bParallel);
+		}, Chaos::LargeBatchSize, !bParallel);
 		return true;
 	}
 
@@ -595,7 +595,7 @@ namespace Chaos
 			{
 				CollisionSolvers[SolverIndex].GetSolver().SolvePositionNoFriction(Dt, MaxPushOut);
 			}
-		}, 100, !bParallel);
+		}, Chaos::LargeBatchSize, !bParallel);
 		return true;
 	}
 
@@ -646,7 +646,7 @@ namespace Chaos
 			{
 				CollisionSolvers[SolverIndex].ScatterOutput(Dt);
 			}
-		}, 100);
+		}, Chaos::LargeBatchSize);
 	}
 
 }
