@@ -199,8 +199,10 @@ static void CopyImage(const FImage& SrcImage, FImage& DestImage)
 				ParallelFor(NumJobs, [DestColors, SrcColors, TexelsPerJob, NumTexels](int64 JobIndex)
 				{
 					TRACE_CPUPROFILER_EVENT_SCOPE(CopyImage.PF);
-
-					for (int64 TexelIndex = 0; TexelIndex < NumTexels; ++TexelIndex)
+					
+					const int64 StartIndex = JobIndex * TexelsPerJob;
+					const int64 EndIndex = FMath::Min(StartIndex + TexelsPerJob, NumTexels);
+					for (int64 TexelIndex = StartIndex; TexelIndex < EndIndex; ++TexelIndex)
 					{
 						int64 DestIndex = TexelIndex * 4;
 						DestColors[DestIndex + 0] = FColor::QuantizeUNormFloatTo16( SrcColors[TexelIndex].R );
@@ -218,8 +220,10 @@ static void CopyImage(const FImage& SrcImage, FImage& DestImage)
 				ParallelFor(NumJobs, [DestColors, SrcColors, TexelsPerJob, NumTexels](int64 JobIndex)
 				{
 					TRACE_CPUPROFILER_EVENT_SCOPE(CopyImage.PF);
-
-					for (int64 TexelIndex = 0; TexelIndex < NumTexels; ++TexelIndex)
+					
+					const int64 StartIndex = JobIndex * TexelsPerJob;
+					const int64 EndIndex = FMath::Min(StartIndex + TexelsPerJob, NumTexels);
+					for (int64 TexelIndex = StartIndex; TexelIndex < EndIndex; ++TexelIndex)
 					{
 						DestColors[TexelIndex] = FFloat16Color(SrcColors[TexelIndex]);
 					}
@@ -233,8 +237,10 @@ static void CopyImage(const FImage& SrcImage, FImage& DestImage)
 				ParallelFor(NumJobs, [DestColors, SrcColors, TexelsPerJob, NumTexels](int64 JobIndex)
 				{
 					TRACE_CPUPROFILER_EVENT_SCOPE(CopyImage.PF);
-
-					for (int64 TexelIndex = 0; TexelIndex < NumTexels; ++TexelIndex)
+					
+					const int64 StartIndex = JobIndex * TexelsPerJob;
+					const int64 EndIndex = FMath::Min(StartIndex + TexelsPerJob, NumTexels);
+					for (int64 TexelIndex = StartIndex; TexelIndex < EndIndex; ++TexelIndex)
 					{
 						DestColors[TexelIndex] = FFloat16(SrcColors[TexelIndex].R);
 					}
