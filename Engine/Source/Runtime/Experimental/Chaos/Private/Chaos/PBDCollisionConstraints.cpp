@@ -396,7 +396,7 @@ namespace Chaos
 		}
 	}
 
-	void FPBDCollisionConstraints::GatherInput(const FReal Dt, FPBDIslandSolverData& SolverData)
+	void FPBDCollisionConstraints::PreGatherInput(const FReal Dt, FPBDIslandSolverData& SolverData)
 	{
 		if (SolverType == EConstraintSolverType::QuasiPbd)
 		{
@@ -405,6 +405,19 @@ namespace Chaos
 				if (Constraint->IsEnabled())
 				{
 					PreGatherInput(*Constraint, SolverData);
+				}
+			}
+		}
+	}
+
+	void FPBDCollisionConstraints::GatherInput(const FReal Dt, FPBDIslandSolverData& SolverData)
+	{
+		if (SolverType == EConstraintSolverType::QuasiPbd)
+		{
+			for (FPBDCollisionConstraint* Constraint : GetConstraints())
+			{
+				if (Constraint->IsEnabled())
+				{
 					GatherInput(Dt, *Constraint, INDEX_NONE, INDEX_NONE, SolverData);
 				}
 			}
