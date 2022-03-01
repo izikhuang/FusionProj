@@ -297,6 +297,11 @@ FString FEOSSDKManager::GetProductVersion() const
 	return FApp::GetBuildVersion();
 }
 
+FString FEOSSDKManager::GetCacheDirBase() const
+{
+	return FPlatformProcess::UserDir();
+}
+
 void FEOSSDKManager::ReleasePlatform(EOS_HPlatform PlatformHandle)
 {
 	if (ensure(ActivePlatforms.Contains(PlatformHandle)

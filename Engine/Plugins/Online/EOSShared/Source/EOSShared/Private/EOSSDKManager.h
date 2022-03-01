@@ -31,6 +31,7 @@ public:
 
 	virtual FString GetProductName() const override;
 	virtual FString GetProductVersion() const override;
+	virtual FString GetCacheDirBase() const override;
 	// End IEOSSDKManager
 
 	void Shutdown();
