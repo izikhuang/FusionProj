@@ -349,16 +349,6 @@ UNiagaraStackEntry::EStackRowStyle UNiagaraStackEntry::GetStackRowStyle() const
 	return EStackRowStyle::None;
 }
 
-bool UNiagaraStackEntry::HasFrontDivider() const
-{
-	UNiagaraStackEntry* Outer = Cast<UNiagaraStackEntry>(GetOuter());
-	if (Outer == nullptr)
-	{
-		return false;
-	}
-	return Outer->HasFrontDivider();
-}
-
 bool UNiagaraStackEntry::GetShouldShowInStack() const
 {
 	return true;
@@ -689,7 +679,7 @@ void UNiagaraStackEntry::RefreshChildren()
 	for (UNiagaraStackEntry* Child : Children)
 	{
 		UNiagaraStackEntry* OuterOwner = Cast<UNiagaraStackEntry>(Child->GetOuter());
-		Child->IndentLevel = GetChildIndentLevel();
+		Child->IndentLevel = GetChildIndentLevel() + (Child->IsSemanticChild() ? 1 : 0);
 		Child->bOwnerIsEnabled = OuterOwner == nullptr || (OuterOwner->GetIsEnabled() && OuterOwner->GetOwnerIsEnabled());
 		Child->RefreshChildren();
 		Child->OnStructureChanged().AddUObject(this, &UNiagaraStackEntry::ChildStructureChanged);
@@ -991,4 +981,11 @@ void UNiagaraStackEntry::OnRenamed(FText NewName)
 			AlternateDisplayNameChangedDelegate.Broadcast();
 		}
 	}
+}
+
+void UNiagaraStackSpacer::Initialize(FRequiredEntryData InRequiredEntryData, float InSpacerHeight, TAttribute<bool> InShouldShowInStack, FString InOwningStackItemEditorDataKey)
+{
+	Super::Initialize(InRequiredEntryData, InOwningStackItemEditorDataKey + TEXT("Spacer"));
+	SpacerHeight = InSpacerHeight;
+	ShouldShowInStack = InShouldShowInStack;
 }

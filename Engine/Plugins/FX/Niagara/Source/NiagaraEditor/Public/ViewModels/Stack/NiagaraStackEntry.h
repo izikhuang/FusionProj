@@ -135,9 +135,12 @@ public:
 		ItemHeader,
 		ItemContent,
 		ItemContentAdvanced,
+		ItemContentNote,
 		ItemFooter,
 		ItemCategory,
-		StackIssue
+		ItemSubCategory,
+		StackIssue,
+		Spacer
 	};
 
 	struct FRequiredEntryData
@@ -292,9 +295,11 @@ public:
 	FName GetExecutionSubcategoryName() const;
 
 	virtual EStackRowStyle GetStackRowStyle() const;
-	virtual bool HasFrontDivider() const;
 
 	int32 GetIndentLevel() const;
+
+	/** Returns whether or not this entry should be treated as a child of a previous sibling for layout purposes. */
+	virtual bool IsSemanticChild() const { return false; }
 
 	virtual bool GetShouldShowInStack() const;
 
@@ -513,6 +518,12 @@ public:
 
 	virtual FText GetIconText() const { return FText(); }
 
+	virtual bool SupportsInheritance() const { return false; }
+
+	virtual bool GetIsInherited() const { return false; }
+
+	virtual FText GetInheritanceMessage() const { return FText(); }
+
 protected:
 	virtual void BeginDestroy() override;
 
@@ -638,4 +649,22 @@ private:
 	TOptional<FText> AlternateDisplayName;
 
 	mutable TOptional<FCollectedIssueData> CachedCollectedIssueData;
+};
+
+
+UCLASS()
+class NIAGARAEDITOR_API UNiagaraStackSpacer : public UNiagaraStackEntry
+{
+	GENERATED_BODY()
+public:
+	void Initialize(FRequiredEntryData InRequiredEntryData, float InSpacerHeight, TAttribute<bool> InShouldShowInStack, FString InOwningStackItemEditorDataKey);
+	virtual EStackRowStyle GetStackRowStyle() const override { return UNiagaraStackEntry::EStackRowStyle::Spacer; }
+	virtual bool GetCanExpand() const override { return false; }
+	virtual bool GetShouldShowInStack() const override { return ShouldShowInStack.Get(); }
+
+	float GetSpacerHeight() const { return SpacerHeight; }
+
+private:
+	float SpacerHeight;
+	TAttribute<bool> ShouldShowInStack;
 };
