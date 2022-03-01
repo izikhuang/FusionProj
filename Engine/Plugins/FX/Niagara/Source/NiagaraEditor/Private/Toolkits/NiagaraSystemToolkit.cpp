@@ -1138,8 +1138,8 @@ void FNiagaraSystemToolkit::ExtendToolbar()
 			);
 
 			MenuBuilder.AddMenuEntry(
-				LOCTEXT("RenderBaker", "Render Baker"),
-				LOCTEXT("RenderBakerTooltip", "Renders the Baker using the current settings."),
+				LOCTEXT("RunBaker", "Bake"),
+				LOCTEXT("RunBakerTooltip", "Runs the bake process."),
 				FSlateIcon(),
 				FUIAction(FExecuteAction::CreateSP(Toolkit, &FNiagaraSystemToolkit::RenderBaker))
 			);
