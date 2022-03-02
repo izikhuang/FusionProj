@@ -2658,6 +2658,7 @@ void FDeferredShadingSceneRenderer::UpdateLumenScene(FRDGBuilder& GraphBuilder)
 				CullingConfig.bSupportsMultiplePasses	= true;
 				CullingConfig.bForceHWRaster			= RasterContext.RasterScheduling == Nanite::ERasterScheduling::HardwareOnly;
 				CullingConfig.SetViewFlags(*SharedView);
+				CullingConfig.bIsLumenCapture = true;
 
 				Nanite::FCullingContext CullingContext = Nanite::InitCullingContext(
 					GraphBuilder,

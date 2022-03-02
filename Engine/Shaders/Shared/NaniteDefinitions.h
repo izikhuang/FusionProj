@@ -120,6 +120,7 @@
 #define NANITE_RENDER_FLAG_IS_GAME_VIEW						0x100
 #define NANITE_RENDER_FLAG_GAME_SHOW_FLAG_ENABLED			0x200
 #define NANITE_RENDER_FLAG_EDITOR_SHOW_FLAG_ENABLED			0x400
+#define NANITE_RENDER_FLAG_IS_LUMEN_CAPTURE					0x800
 
 // Only available with the DEBUG_FLAGS permutation active.
 // Default value (no debug) is 0
