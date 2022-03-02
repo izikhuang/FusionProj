@@ -236,7 +236,7 @@ void UE::PixelStreaming::FSignallingServerConnection::OnConnected()
 
 	if (UPixelStreamingDelegates* Delegates = UPixelStreamingDelegates::GetPixelStreamingDelegates())
 	{
-		Delegates->OnConnecedToSignallingServer.Broadcast();
+		Delegates->OnConnectedToSignallingServer.Broadcast();
 	}
 }
 
