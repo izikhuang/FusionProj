@@ -187,7 +187,8 @@ namespace Chaos
 					ValidCollisionHandles.SetNum(NumValidCollisions);
 					if (ValidCollisionHandles.Num() > 0)
 					{
-						AllCollisionsDataArray.SetNum(NumValidCollisions);
+						FCollisionDataArray DupAllCollisionsDataArray;
+						DupAllCollisionsDataArray.SetNum(NumValidCollisions);
 						InnerPhysicsParallelForRange(ValidCollisionHandles.Num(), [&](int32 StartRangeIndex, int32 EndRangeIndex)
 						{
 							for (int32 IdxCollision = StartRangeIndex; IdxCollision < EndRangeIndex; ++IdxCollision)
@@ -253,7 +254,7 @@ namespace Chaos
 								if (!SolverCollisionEventFilter->Enabled() || SolverCollisionEventFilter->Pass(Data))
 
 								{
-									AllCollisionsDataArray[IdxCollision] = Data;
+									DupAllCollisionsDataArray[IdxCollision] = Data;
 #if TODO_REIMPLEMENT_RIGID_CLUSTERING
 									// If Constraint.ParticleIndex is a cluster store an index for a mesh in this cluster
 									if (ClusterIdsArray[Constraint.ParticleIndex].NumChildren > 0)
@@ -273,33 +274,20 @@ namespace Chaos
 								}
 							}
 						}, Chaos::SmallBatchSize);
-						int32 IdxCollision = 0, IdxCollision2 = NumValidCollisions - 1, NumDeleted = 0;
-						while (IdxCollision <= IdxCollision2)
+						for (int32 IdxCollision = 0; IdxCollision < NumValidCollisions; ++IdxCollision)
 						{
-							if (AllCollisionsDataArray[IdxCollision].Proxy1 == nullptr && AllCollisionsDataArray[IdxCollision2].Proxy1 == nullptr)
+							if (DupAllCollisionsDataArray[IdxCollision].Proxy1 != nullptr)
 							{
-								NumDeleted++;
-								IdxCollision2--;
-							}
-							else if (AllCollisionsDataArray[IdxCollision].Proxy1 == nullptr)
-							{
-								AllCollisionsDataArray[IdxCollision] = AllCollisionsDataArray[IdxCollision2];
-								NumDeleted++;
-								IdxCollision2--;
-							}
-							else
-							{
+								int32 NewIdx = AllCollisionsDataArray.Add(DupAllCollisionsDataArray[IdxCollision]);
 								// Add to AllCollisionsIndicesByPhysicsProxy
-								AllCollisionsIndicesByPhysicsProxy.FindOrAdd(AllCollisionsDataArray[IdxCollision].Proxy1).Add(FEventManager::EncodeCollisionIndex(IdxCollision, false));
+								AllCollisionsIndicesByPhysicsProxy.FindOrAdd(AllCollisionsDataArray[NewIdx].Proxy1).Add(FEventManager::EncodeCollisionIndex(NewIdx, false));
 
-								if (AllCollisionsDataArray[IdxCollision].Proxy2 && AllCollisionsDataArray[IdxCollision].Proxy2 != AllCollisionsDataArray[IdxCollision].Proxy1)
+								if (AllCollisionsDataArray[NewIdx].Proxy2 && AllCollisionsDataArray[NewIdx].Proxy2 != AllCollisionsDataArray[NewIdx].Proxy1)
 								{
-									AllCollisionsIndicesByPhysicsProxy.FindOrAdd(AllCollisionsDataArray[IdxCollision].Proxy2).Add(FEventManager::EncodeCollisionIndex(IdxCollision, true));
+									AllCollisionsIndicesByPhysicsProxy.FindOrAdd(AllCollisionsDataArray[NewIdx].Proxy2).Add(FEventManager::EncodeCollisionIndex(NewIdx, true));
 								}
-								IdxCollision++;
 							}
 						}
-						AllCollisionsDataArray.SetNum(NumValidCollisions - NumDeleted, false);
 					}
 				}
 			}
