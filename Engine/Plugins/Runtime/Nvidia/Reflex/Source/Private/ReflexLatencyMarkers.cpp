@@ -46,6 +46,11 @@ void FReflexLatencyMarkers::Initialize()
 			bProperDriverVersion = true;
 		}
 
+		if (DriverVersion >= 51123)
+		{
+			bFlashIndicatorDriverControlled = true;
+		}
+
 		// Need to verify that Reflex Low Latency mode is supported on current hardware
 		NV_GET_SLEEP_STATUS_PARAMS_V1 SleepStatusParams = { 0 };
 		SleepStatusParams.version = NV_GET_SLEEP_STATUS_PARAMS_VER1;
@@ -214,7 +219,7 @@ void FReflexLatencyMarkers::SetFlashIndicatorLatencyMarker(uint64 FrameNumber)
 {
 	if (DisableLatencyMarkers == 0 && bProperDriverVersion && bEnabled && IsRHIDeviceNVIDIA() && bFeatureSupport)
 	{
-		if (bFlashIndicatorEnabled)
+		if (GetFlashIndicatorEnabled())
 		{
 			NvAPI_Status status = NVAPI_OK;
 			NV_LATENCY_MARKER_PARAMS_V1 params = { 0 };
@@ -253,7 +258,7 @@ bool FReflexLatencyMarkers::GetFlashIndicatorEnabled()
 		return false;
 	}
 
-	return bFlashIndicatorEnabled;
+	return bFlashIndicatorEnabled || bFlashIndicatorDriverControlled;
 }
 
 void FReflexLatencyMarkers::SetEnabled(bool bInEnabled)
