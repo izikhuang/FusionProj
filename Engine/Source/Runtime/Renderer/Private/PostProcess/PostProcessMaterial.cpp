@@ -128,6 +128,40 @@ FRHIBlendState* GetMaterialBlendState(const FMaterial* Material)
 	return BlendStates[Material->GetBlendMode()];
 }
 
+bool PostProcessStencilTest(uint32 StencilValue, uint32 StencilComp, uint32 StencilRef)
+{
+	bool bStencilTestPassed = true;
+
+	switch (StencilComp)
+	{
+	case EMaterialStencilCompare::MSC_Less:
+		bStencilTestPassed = (StencilRef < StencilValue);
+		break;
+	case EMaterialStencilCompare::MSC_LessEqual:
+		bStencilTestPassed = (StencilRef <= StencilValue);
+		break;
+	case EMaterialStencilCompare::MSC_GreaterEqual:
+		bStencilTestPassed = (StencilRef >= StencilValue);
+		break;
+	case EMaterialStencilCompare::MSC_Equal:
+		bStencilTestPassed = (StencilRef == StencilValue);
+		break;
+	case EMaterialStencilCompare::MSC_Greater:
+		bStencilTestPassed = (StencilRef > StencilValue);
+		break;
+	case EMaterialStencilCompare::MSC_NotEqual:
+		bStencilTestPassed = (StencilRef != StencilValue);
+		break;
+	case EMaterialStencilCompare::MSC_Never:
+		bStencilTestPassed = false;
+		break;
+	default:
+		break;
+	}
+
+	return !bStencilTestPassed;
+}
+
 class FPostProcessMaterialShader : public FMaterialShader
 {
 public:
@@ -562,44 +596,75 @@ FScreenPassTexture AddPostProcessMaterialPass(
 		ScreenPassFlags |= EScreenPassDrawFlags::FlipYAxis;
 	}
 
-	AddDrawScreenPass(
-		GraphBuilder,
-		RDG_EVENT_NAME("PostProcessMaterial"),
-		View,
-		OutputViewport,
-		SceneColorViewport,
-		FScreenPassPipelineState(VertexShader, PixelShader, BlendState, DepthStencilState, MaterialStencilRef),
-		PostProcessMaterialParameters,
-		ScreenPassFlags,
-		[&View, VertexShader, PixelShader, MaterialRenderProxy, Material, PostProcessMaterialParameters, MaterialStencilRef](FRHICommandList& RHICmdList)
-	{
-		FPostProcessMaterialVS::SetParameters(RHICmdList, VertexShader, View, MaterialRenderProxy, *Material, *PostProcessMaterialParameters);
-		FPostProcessMaterialPS::SetParameters(RHICmdList, PixelShader, View, MaterialRenderProxy, *Material, *PostProcessMaterialParameters);
-	});
+	// check if we can skip that draw call in case if all pixels will fail the stencil test of the material
+	bool bSkipPostProcess = false;
 
-	if (bForceIntermediateTarget && !bCompositeWithInputAndDecode)
+	if (Material->IsStencilTestEnabled() && IsPostProcessStencilTestAllowed())
 	{
-		if (!Inputs.bFlipYAxis)
+		bool bFailStencil = true;
+
+		// Always check against clear value, since a material might want to perform operations against that value
+		uint32 StencilClearValue = Inputs.CustomDepthTexture ? Inputs.CustomDepthTexture->Desc.ClearValue.Value.DSValue.Stencil : 0;
+		bFailStencil &= PostProcessStencilTest(StencilClearValue, Material->GetStencilCompare(), PostProcessMaterialParameters->MobileStencilValueRef);
+
+		for (const uint32& Value : View.CustomDepthStencilValues)
 		{
-			// We shouldn't get here unless we had an override target.
-			check(Inputs.OverrideOutput.IsValid());
-			AddDrawTexturePass(GraphBuilder, View, Output.Texture, Inputs.OverrideOutput.Texture);
-			Output = Inputs.OverrideOutput;
-		}
-		else
-		{
-			FScreenPassRenderTarget TempTarget = Output;
-			if (Inputs.OverrideOutput.IsValid())
+			bFailStencil &= PostProcessStencilTest(Value, Material->GetStencilCompare(), PostProcessMaterialParameters->MobileStencilValueRef);
+
+			if (!bFailStencil)
 			{
+				break;
+			}
+		}
+
+		bSkipPostProcess = bFailStencil;
+	}
+
+	if (!bSkipPostProcess)
+	{
+		AddDrawScreenPass(
+			GraphBuilder,
+			RDG_EVENT_NAME("PostProcessMaterial"),
+			View,
+			OutputViewport,
+			SceneColorViewport,
+			FScreenPassPipelineState(VertexShader, PixelShader, BlendState, DepthStencilState, MaterialStencilRef),
+			PostProcessMaterialParameters,
+			ScreenPassFlags,
+			[&View, VertexShader, PixelShader, MaterialRenderProxy, Material, PostProcessMaterialParameters, MaterialStencilRef](FRHICommandList& RHICmdList)
+			{
+				FPostProcessMaterialVS::SetParameters(RHICmdList, VertexShader, View, MaterialRenderProxy, *Material, *PostProcessMaterialParameters);
+				FPostProcessMaterialPS::SetParameters(RHICmdList, PixelShader, View, MaterialRenderProxy, *Material, *PostProcessMaterialParameters);
+			});
+
+		if (bForceIntermediateTarget && !bCompositeWithInputAndDecode)
+		{
+			if (!Inputs.bFlipYAxis)
+			{
+				// We shouldn't get here unless we had an override target.
+				check(Inputs.OverrideOutput.IsValid());
+				AddDrawTexturePass(GraphBuilder, View, Output.Texture, Inputs.OverrideOutput.Texture);
 				Output = Inputs.OverrideOutput;
 			}
 			else
 			{
-				Output = FScreenPassRenderTarget(SceneColor, ERenderTargetLoadAction::ENoAction);
-			}
+				FScreenPassRenderTarget TempTarget = Output;
+				if (Inputs.OverrideOutput.IsValid())
+				{
+					Output = Inputs.OverrideOutput;
+				}
+				else
+				{
+					Output = FScreenPassRenderTarget(SceneColor, ERenderTargetLoadAction::ENoAction);
+				}
 
-			AddCopyAndFlipTexturePass(GraphBuilder, View, TempTarget.Texture, Output.Texture);
+				AddCopyAndFlipTexturePass(GraphBuilder, View, TempTarget.Texture, Output.Texture);
+			}
 		}
+	}
+	else
+	{
+		Output = FScreenPassRenderTarget(SceneColor, ERenderTargetLoadAction::ENoAction);
 	}
 
 	return MoveTemp(Output);
