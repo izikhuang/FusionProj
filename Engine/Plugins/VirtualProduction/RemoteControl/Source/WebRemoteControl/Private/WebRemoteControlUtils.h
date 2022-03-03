@@ -48,6 +48,7 @@ namespace RemotePayloadSerializer
 namespace WebRemoteControlUtils
 {
 	static const TCHAR* WrappedRequestHeader = TEXT("UE-Wrapped-Request");
+	static const FString PassphraseHeader = TEXT("Passphrase");
 
 	/**
 	 * Convert a UTF-8 payload to a TCHAR payload.

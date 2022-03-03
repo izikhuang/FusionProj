@@ -268,6 +268,27 @@ void FWebRemoteControlModule::StartupModule()
 	RegisterConsoleCommands();
 	RegisterRoutes();
 
+	WebSocketRouter->AddPreDispatch([this](const struct FRemoteControlWebSocketMessage& Message)
+	{
+		const TArray<FString>* InPassphrase = Message.Header.Find(WebRemoteControlUtils::PassphraseHeader);
+		
+		const bool bCanBeDispatched = InPassphrase ? CheckPassphrase(InPassphrase->Last()) : CheckPassphrase("");
+
+		if (!bCanBeDispatched)
+		{
+			TArray<uint8> Response;
+			FRCRequestWrapper Wrapper;
+			Wrapper.RequestId = Message.MessageId;
+			
+			WebRemoteControlUtils::CreateUTF8ErrorMessage(FString::Printf(TEXT("Given Passphrase is not correct!")), Wrapper.TCHARBody);
+			WebRemoteControlUtils::SerializeResponse(Wrapper, Response);
+
+			WebSocketServer.Send(Message.ClientId, MoveTemp(Response));
+		}
+
+		return bCanBeDispatched;
+	});
+
 	if (GetDefault<URemoteControlSettings>()->bAutoStartWebServer || CVarWebControlStartOnBoot.GetValueOnAnyThread() > 0)
 	{
 		StartHttpServer();
@@ -384,6 +405,31 @@ void FWebRemoteControlModule::StartHttpServer()
 			StartRoute(Route);
 		}
 
+		const FHttpRequestHandler ValidationRequestHandler = FHttpRequestHandler([this](const FHttpServerRequest& Request, const FHttpResultCallback& OnComplete)
+		{
+			TUniquePtr<FHttpServerResponse> Response = WebRemoteControlUtils::CreateHttpResponse();
+
+			TArray<FString> ValueArray = {};
+			if (Request.Headers.Find(WebRemoteControlUtils::PassphraseHeader))
+			{
+				ValueArray = Request.Headers[WebRemoteControlUtils::PassphraseHeader];
+			}
+			
+			const FString Passphrase = !ValueArray.IsEmpty() ? ValueArray.Last() : "";
+
+			if (!CheckPassphrase(Passphrase))
+			{
+				WebRemoteControlUtils::CreateUTF8ErrorMessage(FString::Printf(TEXT("Given Passphrase is not correct!")), Response->Body);
+				Response->Code = EHttpServerResponseCodes::Denied;
+				OnComplete(MoveTemp(Response));
+				return true;
+			}
+
+			return false;
+		});
+
+		HttpRouter->RegisterRequestPreprocessor(ValidationRequestHandler);
+		
 		// Go through externally registered request pre-processors and register them with the http router.
 		for (const TPair<FDelegateHandle, FHttpRequestHandler>& Handler : PreprocessorsToRegister)
 		{
@@ -516,6 +562,14 @@ void FWebRemoteControlModule::RegisterRoutes()
 		FHttpPath(TEXT("/remote/object/describe")),
 		EHttpServerRequestVerbs::VERB_PUT,
 		FRequestHandlerDelegate::CreateRaw(this, &FWebRemoteControlModule::HandleDescribeObjectRoute)
+		});
+
+	// Passphrase Checking
+	RegisterRoute({
+		TEXT("Check whether or no the given Passphrase is correct"),
+		FHttpPath(TEXT("/remote/passphrase/")),
+		EHttpServerRequestVerbs::VERB_GET,
+		FRequestHandlerDelegate::CreateRaw(this, &FWebRemoteControlModule::HandlePassphraseRoute)
 		});
 
 	// Preset API
@@ -741,8 +795,11 @@ bool FWebRemoteControlModule::HandleBatchRequest(const FHttpServerRequest& Reque
 	JsonWriter->WriteIdentifierPrefix("Responses");
 	JsonWriter->WriteArrayStart();
 
+	BatchRequest.Passphrase = Request.Headers[WebRemoteControlUtils::PassphraseHeader].Last();
+
 	for (FRCRequestWrapper& Wrapper : BatchRequest.Requests)
 	{
+		Wrapper.Passphrase = BatchRequest.Passphrase;
 		// This makes sure the Json writer is in a good state before writing raw data.
 		JsonWriter->WriteRawJSONValue(TEXT(""));
 		InvokeWrappedRequest(Wrapper, Writer, &Request);
@@ -1423,6 +1480,34 @@ bool FWebRemoteControlModule::HandleDescribeObjectRoute(const FHttpServerRequest
 	return true;
 }
 
+bool FWebRemoteControlModule::HandlePassphraseRoute(const FHttpServerRequest& Request, const FHttpResultCallback& OnComplete)
+{
+	TUniquePtr<FHttpServerResponse> Response = WebRemoteControlUtils::CreateHttpResponse();
+	
+	FString Passphrase = "";
+	const TArray<FString>* PassphraseHeader = Request.Headers.Find(WebRemoteControlUtils::PassphraseHeader);
+	
+	if (PassphraseHeader)
+	{
+		Passphrase = PassphraseHeader->Last();
+	}
+	
+	if (bool bIsCorrect = CheckPassphrase(Passphrase))
+	{
+		WebRemoteControlUtils::SerializeResponse(FCheckPassphraseResponse{ bIsCorrect}, Response->Body);
+		Response->Code = EHttpServerResponseCodes::Ok;
+	}
+	else
+	{
+		WebRemoteControlUtils::SerializeResponse(FCheckPassphraseResponse{ bIsCorrect}, Response->Body);
+		Response->Code = EHttpServerResponseCodes::Denied;
+	}
+
+	OnComplete(MoveTemp(Response));
+	return true;
+}
+
+
 bool FWebRemoteControlModule::HandleSearchActorRoute(const FHttpServerRequest& Request, const FHttpResultCallback& OnComplete)
 {
 	TUniquePtr<FHttpServerResponse> Response = WebRemoteControlUtils::CreateHttpResponse(EHttpServerResponseCodes::NotSupported);
@@ -1637,6 +1722,34 @@ bool FWebRemoteControlModule::HandleEntityMetadataOperationsRoute(const FHttpSer
 	return true;
 }
 
+bool FWebRemoteControlModule::CheckPassphrase(const FString& HashedPassphrase) const
+{
+	bool bOutResult = !(GetMutableDefault<URemoteControlSettings>()->bUseRemoteControlPassphrase);
+
+	if (bOutResult)
+	{
+		return true;
+	}
+
+	TArray<FString> HashedPassphrases = GetMutableDefault<URemoteControlSettings>()->GetHashedPassphrases();
+	if (HashedPassphrases.IsEmpty())
+	{
+		return true;
+	}
+	
+	for (const FString& InPassphrase : HashedPassphrases)
+	{
+		bOutResult = bOutResult || InPassphrase == HashedPassphrase;
+
+		if (bOutResult)
+		{
+			break;
+		}
+	}
+	
+	return bOutResult;
+}
+
 bool FWebRemoteControlModule::HandleEntitySetLabelRoute(const FHttpServerRequest& Request, const FHttpResultCallback& OnComplete)
 {
 	TUniquePtr<FHttpServerResponse> Response = WebRemoteControlUtils::CreateHttpResponse();
@@ -1706,6 +1819,11 @@ void FWebRemoteControlModule::HandleWebSocketHttpMessage(const FRemoteControlWeb
 	if (!WebRemoteControlUtils::DeserializeWrappedRequestPayload(WebSocketMessage.RequestPayload, nullptr, Wrapper))
 	{
 		return;
+	}
+	
+	if (WebSocketMessage.Header.Find(WebRemoteControlUtils::PassphraseHeader))
+	{
+		Wrapper.Passphrase = WebSocketMessage.Header[WebRemoteControlUtils::PassphraseHeader][0];
 	}
 
 	LogRequestExternally(Wrapper.RequestId, TEXT("UE Received"));

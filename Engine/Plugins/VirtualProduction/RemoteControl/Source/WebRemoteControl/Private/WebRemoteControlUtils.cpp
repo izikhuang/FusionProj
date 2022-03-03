@@ -85,6 +85,7 @@ namespace RemotePayloadSerializer
 		WrappedHttpRequest->RelativePath = Wrapper.URL;
 		WrappedHttpRequest->Verb = ParseHttpVerb(Wrapper.Verb);
 		WrappedHttpRequest->Body = Wrapper.TCHARBody;
+		WrappedHttpRequest->Headers.Add(WebRemoteControlUtils::PassphraseHeader, { Wrapper.Passphrase });
 
 		return WrappedHttpRequest;
 	}
