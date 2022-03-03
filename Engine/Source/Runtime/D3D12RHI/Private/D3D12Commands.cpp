@@ -421,7 +421,7 @@ static void HandleTransientAliasing(FD3D12CommandContext& Context, const FD3D12T
 
 			if (GD3D12TransientAllocatorFullAliasingBarrier != 0)
 			{
-				Context.CommandListHandle.AddAliasingBarrier(nullptr, Resource);
+				Context.CommandListHandle.AddAliasingBarrier(nullptr, Resource->GetResource());
 			}
 			else
 			{
@@ -440,7 +440,7 @@ static void HandleTransientAliasing(FD3D12CommandContext& Context, const FD3D12T
 					}
 
 					check(ResourceBefore);
-					Context.CommandListHandle.AddAliasingBarrier(ResourceBefore, Resource);
+					Context.CommandListHandle.AddAliasingBarrier(ResourceBefore->GetResource(), Resource->GetResource());
 				}
 			}
 		}
