@@ -199,7 +199,7 @@ void UEditorEngine::EndPlayMap()
 	EnableScreenSaver( true );
 
 	// Make a list of all the actors that should be selected
-	TArray<UObject *> SelectedActors;
+	TArray<TWeakObjectPtr<AActor>> SelectedActors;
 	if ( ActorsThatWereSelected.Num() > 0 )
 	{
 		for ( int32 ActorIndex = 0; ActorIndex < ActorsThatWereSelected.Num(); ++ActorIndex )
@@ -207,7 +207,7 @@ void UEditorEngine::EndPlayMap()
 			TWeakObjectPtr<AActor> Actor = ActorsThatWereSelected[ ActorIndex ].Get();
 			if (Actor.IsValid())
 			{
-				SelectedActors.Add( Actor.Get() );
+				SelectedActors.Add( Actor );
 			}
 		}
 		ActorsThatWereSelected.Empty();
@@ -236,19 +236,6 @@ void UEditorEngine::EndPlayMap()
 	GetSelectedActors()->DeselectAll();
 	GetSelectedObjects()->DeselectAll();
 	GetSelectedComponents()->DeselectAll();
-
-	// For every actor that was selected previously, make sure it's editor equivalent is selected
-	GEditor->GetSelectedActors()->BeginBatchSelectOperation();
-	for ( int32 ActorIndex = 0; ActorIndex < SelectedActors.Num(); ++ActorIndex )
-	{
-		AActor* Actor = Cast<AActor>( SelectedActors[ ActorIndex ] );
-		if (Actor)
-		{
-			// We need to notify or else the manipulation transform widget won't appear, but only notify once at the end because OnEditorSelectionChanged is expensive for large groups. 
-			SelectActor( Actor, true, false );
-		}
-	}	
-	GEditor->GetSelectedActors()->EndBatchSelectOperation(true);
 
 	// let the editor know
 	FEditorDelegates::EndPIE.Broadcast(bIsSimulatingInEditor);
@@ -455,6 +442,19 @@ void UEditorEngine::EndPlayMap()
 	// Final cleanup/reseting
 	FWorldContext& EditorWorldContext = GEditor->GetEditorWorldContext();
 	UPackage* Package = EditorWorldContext.World()->GetOutermost();
+
+	// For every actor that was selected previously, make sure it's editor equivalent is selected. We do that after the cleanup in case some actor where removed.
+	GEditor->GetSelectedActors()->BeginBatchSelectOperation();
+	for (int32 ActorIndex = 0; ActorIndex < SelectedActors.Num(); ++ActorIndex)
+	{
+		AActor* Actor = SelectedActors[ActorIndex].Get();
+		if (Actor)
+		{
+			// We need to notify or else the manipulation transform widget won't appear, but only notify once at the end because OnEditorSelectionChanged is expensive for large groups. 
+			SelectActor(Actor, true, false);
+		}
+	}
+	GEditor->GetSelectedActors()->EndBatchSelectOperation(true);
 
 	// Spawn note actors dropped in PIE.
 	if(GEngine->PendingDroppedNotes.Num() > 0)
