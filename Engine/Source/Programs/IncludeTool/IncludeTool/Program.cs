@@ -1055,6 +1055,7 @@ namespace IncludeTool
 							&& !File.Location.FullName.Contains("libSampleRate")
 							&& !File.Location.FullName.Contains("lz4")
 							&& !File.Location.FullName.Contains("NeuralNetworkInference")
+							&& !File.Location.FullName.Contains("NNI")
 							&& !File.Location.FullName.Contains("PhyaLib")
 							)
 						{
