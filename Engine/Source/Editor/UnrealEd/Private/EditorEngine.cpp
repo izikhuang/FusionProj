@@ -1687,6 +1687,7 @@ void UEditorEngine::Tick( float DeltaSeconds, bool bIdleMode )
 	EmitDynamicResolutionEvent(EDynamicResolutionStateEvent::BeginFrame);
 
 	// if we have the side-by-side world for "Play From Here", tick it unless we are ensuring slate is responsive
+	bool bHasPIEViewport = false;
 	if( FSlateThrottleManager::Get().IsAllowingExpensiveTasks() )
 	{
 		// Determine number of PIE worlds that should tick and if they feature an active movie sequence tick.
@@ -1799,6 +1800,7 @@ void UEditorEngine::Tick( float DeltaSeconds, bool bIdleMode )
 				if ( GameViewport != NULL )
 				{
 					GameViewport->Tick(TickDeltaSeconds);
+					bHasPIEViewport = true;
 				}
 			}
 
@@ -1984,7 +1986,7 @@ void UEditorEngine::Tick( float DeltaSeconds, bool bIdleMode )
 	}
 
 	// If we're not Realtime and no NonRealtime viewports are drawn, or if everything is hidden, make sure RHI gets its flush to prevent memory from accumulating
-	if ((bAllWindowsHidden || !IsRealtime) && !bEditorFrameNonRealtimeViewportDrawn && IsRunningRHIInSeparateThread())
+	if ((bAllWindowsHidden || !IsRealtime) && !bEditorFrameNonRealtimeViewportDrawn && !bHasPIEViewport && IsRunningRHIInSeparateThread())
 	{
 		ENQUEUE_RENDER_COMMAND(FlushPendingDeleteRHIResources_NonRealtime)(
 			[](FRHICommandListImmediate& RHICmdList)
