@@ -594,7 +594,7 @@ void SDetailSingleItemRow::Construct( const FArguments& InArgs, FDetailLayoutCus
 			ResetToDefault.ToolTip = TAttribute<FText>::Create([this]() 
 			{
 				return IsResetToDefaultEnabled() ?
-					NSLOCTEXT("PropertyEditor", "ResetToDefaultToolTip", "Reset this property to its default value.") :
+					NSLOCTEXT("PropertyEditor", "ResetToDefaultPropertyValueToolTip", "Reset this property to its default value.") :
 					FText::GetEmpty();
 			});
 
