@@ -152,6 +152,8 @@
 
 # Exception for VirtualProduction LiveLinkVCamFiles
 !/Engine/Extras/VirtualProduction/LiveLinkVCAM/**
+/Engine/Extras/VirtualProduction/LiveLinkVCAM/UE4LiveLinkProvider.framework/UE4LiveLinkProvider
+/Engine/Extras/VirtualProduction/LiveLinkVCAM/UE5LiveLinkProvider.framework/UE5LiveLinkProvider
 
 # Ignore the automatically created mono symlink
 /Engine/Binaries/ThirdParty/Mono/Mac/bin/mono
@@ -181,6 +183,7 @@
 !/Engine/Binaries/DotNET/GitDependencies.exe.config
 
 # Ignore NET binaries
+/Engine/Binaries/ThirdParty/DotNet/
 /Engine/Binaries/DotNET/UnrealBuildTool/
 /Engine/Binaries/DotNET/AutomationTool/
 /Engine/Source/Programs/DotNETCommon/BuildUtilities/bin/
@@ -250,4 +253,4 @@ Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/**
 /Engine/Binaries/ThirdParty/USD/**
 
 # Ignore test json data files in NeuralNetworkInterface
-/Engine/Plugins/Experimental/NeuralNetworkInference/Source/ThirdParty/Deps/json/**
+/Engine/Plugins/Experimental/NNI/Source/ThirdParty/Deps/json/**
