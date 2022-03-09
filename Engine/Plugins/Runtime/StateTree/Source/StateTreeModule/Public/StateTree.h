@@ -102,14 +102,14 @@ private:
 	TArray<TObjectPtr<UObject>> InstanceObjects;
 
 	/** Script Struct that can be used to instantiate the runtime storage */
-	UPROPERTY()
+	UPROPERTY(Transient)
 	TObjectPtr<UScriptStruct> InstanceStorageStruct;
 
 	/** Offsets into the runtime type to quickly get a struct view to a specific Task or Evaluator */
 	TArray<FStateTreeInstanceStorageOffset> InstanceStorageOffsets;
 
 	/** Instance of the runtime storage that contains the default values. */
-	UPROPERTY()
+	UPROPERTY(Transient)
 	FInstancedStruct InstanceStorageDefaultValue;
 
 	/** List of external data required by the state tree, creating during linking. */

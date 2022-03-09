@@ -89,19 +89,7 @@ void UStateTree::PostLoad()
 
 	Link();
 	
-#if WITH_EDITOR
 	InitInstanceStorageType();
-#else
-	// Item offsets still need to be calculated in non editor target since the struct sizes might be different.
-	checkf(InstanceStorageOffsets.Num() == 0, TEXT("RuntimeStorageOffsets is transient and should only be computed once."));
-
-	for (TFieldIterator<FProperty> PropertyIt(InstanceStorageStruct); PropertyIt; ++PropertyIt)
-	{
-		FStructProperty* StructProperty = CastField<FStructProperty>(*PropertyIt);
-		checkf(StructProperty, TEXT("InstanceStorageStruct is expected to only contain Struct properties"));
-		InstanceStorageOffsets.Emplace(StructProperty->Struct, StructProperty->GetOffset_ForInternal());
-	}
-#endif // WITH_EDITOR
 }
 
 void UStateTree::BeginDestroy()
@@ -174,7 +162,7 @@ void UStateTree::InitInstanceStorageType()
 		OldStruct->Rename(*OldStructName, nullptr, REN_DontCreateRedirectors|REN_ForceNoResetLoaders);
 	}
 
-	UScriptStruct* NewStruct = NewObject<UScriptStruct>(this, *StructName, RF_Public);
+	UScriptStruct* NewStruct = NewObject<UScriptStruct>(this, *StructName, RF_Public | RF_Standalone | RF_Transient);
 
 	if (Schema)
 	{
