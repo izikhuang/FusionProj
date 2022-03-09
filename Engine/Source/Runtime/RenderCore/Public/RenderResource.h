@@ -472,9 +472,6 @@ public:
 
 
 private:
-	/** The last time the texture has been rendered via this reference. */
-	FLastRenderTimeContainer LastRenderTimeRHI;
-
 	/** True if the texture reference has been initialized from the game thread. */
 	bool bInitialized_GameThread;
 
@@ -486,7 +483,7 @@ public:
 	virtual ~FTextureReference();
 
 	/** Returns the last time the texture has been rendered via this reference. */
-	double GetLastRenderTime() const { return LastRenderTimeRHI.GetLastRenderTime(); }
+	double GetLastRenderTime() const;
 
 	/** Invalidates the last render time. */
 	void InvalidateLastRenderTime();

@@ -1235,14 +1235,13 @@ class RHI_API FRHITexture : public FRHIResource
 public:
 	
 	/** Initialization constructor. */
-	FRHITexture(ERHIResourceType InResourceType, uint32 InNumMips, uint32 InNumSamples, EPixelFormat InFormat, ETextureCreateFlags InFlags, FLastRenderTimeContainer* InLastRenderTime, const FClearValueBinding& InClearValue)
+	FRHITexture(ERHIResourceType InResourceType, uint32 InNumMips, uint32 InNumSamples, EPixelFormat InFormat, ETextureCreateFlags InFlags, const FClearValueBinding& InClearValue)
 		: FRHIResource(InResourceType)
 		, ClearValue(InClearValue)
 		, NumMips(InNumMips)
 		, NumSamples(InNumSamples)
 		, Format(InFormat)
 		, Flags(InFlags)
-	, LastRenderTime(InLastRenderTime ? *InLastRenderTime : DefaultLastRenderTime)	
 	{}
 
 	// Dynamic cast methods.
@@ -1325,19 +1324,9 @@ public:
 		LastRenderTime.SetLastRenderTime(InLastRenderTime);
 	}
 
-	/** Returns the last render time container, or NULL if none were specified at creation. */
-	FLastRenderTimeContainer* GetLastRenderTimeContainer()
+	double GetLastRenderTime() const
 	{
-		if (&LastRenderTime == &DefaultLastRenderTime)
-		{
-			return NULL;
-		}
-		return &LastRenderTime;
-	}
-
-	FORCEINLINE_DEBUGGABLE void SetDefaultLastRenderTimeContainer()
-	{
-		LastRenderTime = DefaultLastRenderTime;
+		return LastRenderTime.GetLastRenderTime();
 	}
 
 	void SetName(const FName& InName)
@@ -1402,8 +1391,7 @@ private:
 	uint32 NumSamples;
 	EPixelFormat Format;
 	ETextureCreateFlags Flags;
-	FLastRenderTimeContainer& LastRenderTime;
-	FLastRenderTimeContainer DefaultLastRenderTime;	
+	FLastRenderTimeContainer LastRenderTime;
 	FName TextureName;
 };
 
@@ -1413,7 +1401,7 @@ public:
 	
 	/** Initialization constructor. */
 	FRHITexture2D(uint32 InSizeX,uint32 InSizeY,uint32 InNumMips,uint32 InNumSamples,EPixelFormat InFormat,ETextureCreateFlags InFlags, const FClearValueBinding& InClearValue, ERHIResourceType InResourceTypeOverride = RRT_None)
-	: FRHITexture(InResourceTypeOverride != RRT_None ? InResourceTypeOverride : RRT_Texture2D, InNumMips, InNumSamples, InFormat, InFlags, NULL, InClearValue)
+	: FRHITexture(InResourceTypeOverride != RRT_None ? InResourceTypeOverride : RRT_Texture2D, InNumMips, InNumSamples, InFormat, InFlags, InClearValue)
 	, SizeX(InSizeX)
 	, SizeY(InSizeY)
 	{}
@@ -1490,7 +1478,7 @@ public:
 	
 	/** Initialization constructor. */
 	FRHITexture3D(uint32 InSizeX,uint32 InSizeY,uint32 InSizeZ,uint32 InNumMips,EPixelFormat InFormat,ETextureCreateFlags InFlags, const FClearValueBinding& InClearValue)
-	: FRHITexture(RRT_Texture3D, InNumMips,1,InFormat,InFlags,NULL, InClearValue)
+	: FRHITexture(RRT_Texture3D, InNumMips,1,InFormat,InFlags, InClearValue)
 	, SizeX(InSizeX)
 	, SizeY(InSizeY)
 	, SizeZ(InSizeZ)
@@ -1526,7 +1514,7 @@ public:
 	
 	/** Initialization constructor. */
 	FRHITextureCube(uint32 InSize,uint32 InNumMips,EPixelFormat InFormat,ETextureCreateFlags InFlags, const FClearValueBinding& InClearValue)
-	: FRHITexture(RRT_TextureCube, InNumMips,1,InFormat,InFlags,NULL, InClearValue)
+	: FRHITexture(RRT_TextureCube, InNumMips,1,InFormat,InFlags, InClearValue)
 	, Size(InSize)
 	{}
 	
@@ -1549,8 +1537,8 @@ private:
 class RHI_API FRHITextureReference final : public FRHITexture
 {
 public:
-	explicit FRHITextureReference(FLastRenderTimeContainer* InLastRenderTime)
-		: FRHITexture(RRT_TextureReference, 0, 0, PF_Unknown, TexCreate_None, InLastRenderTime, FClearValueBinding())
+	explicit FRHITextureReference()
+		: FRHITexture(RRT_TextureReference, 0, 0, PF_Unknown, TexCreate_None, FClearValueBinding())
 	{
 		check(DefaultTexture);
 		ReferencedTexture = DefaultTexture;
