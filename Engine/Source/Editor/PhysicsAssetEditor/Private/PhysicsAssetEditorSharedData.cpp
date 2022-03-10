@@ -2554,7 +2554,6 @@ void FPhysicsAssetEditorSharedData::EnableSimulation(bool bEnableSimulation)
 			EditorSkelComp->ResetAllBodiesSimulatePhysics();
 			EditorSkelComp->SetPhysicsBlendWeight(EditorOptions->PhysicsBlend);
 			PhysicalAnimationComponent->SetSkeletalMeshComponent(EditorSkelComp);
-		PhysicalAnimationComponent->SetSkeletalMeshComponent(EditorSkelComp);
 			// Make it start simulating
 			EditorSkelComp->WakeAllRigidBodies();
 		}
