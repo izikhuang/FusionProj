@@ -1762,6 +1762,11 @@ void FUnrealStructDefinitionInfo::CreateUObjectEngineTypesInternal(ECreateEngine
 			PropertyDef->CreateUObjectEngineTypes(Phase);
 		}
 
+		for (TSharedRef<FUnrealFunctionDefinitionInfo>& FunctionDef : Functions)
+		{
+			FunctionDef->CreateUObjectEngineTypes(Phase);
+		}
+
 		GetStruct()->Bind();
 
 		// Internals will assert of we are relinking an intrinsic 
