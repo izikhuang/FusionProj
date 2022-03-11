@@ -2274,7 +2274,7 @@ void FGroomBuilder::VoxelizeGroupIndex(const FHairDescriptionGroups& In, FHairSt
 			Out.Datas[I].Roughness += Curve.Roughness;
 		}
 
-		const uint32 CurveCount = Grid.Voxels[I].VoxelCurves.Num() > 0;
+		const uint32 CurveCount = Grid.Voxels[I].VoxelCurves.Num();
 		if (CurveCount > 0)
 		{
 			Out.Datas[I].BaseColor /= float(CurveCount);
