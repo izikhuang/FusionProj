@@ -550,6 +550,7 @@ private:
 	void PatchRigElementKeyCacheOnLoad();
 	void PatchBoundVariables();
 	void PatchVariableNodesWithIncorrectType();
+	void PatchPropagateToChildren();
 
 	TMap<FName, int32> AddedMemberVariableMap;
 	TArray<FBPVariableDescription> LastNewVariables;
