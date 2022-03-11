@@ -2603,6 +2603,9 @@ void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder)
 		}
 
 		RenderForwardShadowProjections(GraphBuilder, SceneTextures, ForwardScreenSpaceShadowMaskTexture, ForwardScreenSpaceShadowMaskHairTexture);
+
+		// With forward shading we need to render volumetric fog before the base pass
+		ComputeVolumetricFog(GraphBuilder, SceneTextures);
 	}
 
 	FDBufferTextures DBufferTextures = CreateDBufferTextures(GraphBuilder, SceneTextures.Config.Extent, ShaderPlatform);
@@ -2766,7 +2769,11 @@ void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder)
 			RenderLumenSceneLighting(GraphBuilder, Views[0], LumenFrameTemporaries);
 		}
 
-		ComputeVolumetricFog(GraphBuilder, SceneTextures);
+		// If forward shading is enabled, we computed fog earlier already
+		if (!IsForwardShadingEnabled(ShaderPlatform))
+		{
+			ComputeVolumetricFog(GraphBuilder, SceneTextures);
+		}
 	}
 	// End shadow and fog after base pass
 
