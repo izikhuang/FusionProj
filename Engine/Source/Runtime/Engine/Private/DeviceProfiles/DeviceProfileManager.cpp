@@ -753,7 +753,7 @@ bool UDeviceProfileManager::HasLoadableProfileName(const FString& ProfileName, F
 #else
 
 		checkf(OptionalPlatformName == FName(FPlatformProperties::IniPlatformName()), 
-			"UDeviceProfileManager::HasLoadableProfileName - This platform cannot load configurations for other platforms.");
+			TEXT("UDeviceProfileManager::HasLoadableProfileName - This platform cannot load configurations for other platforms."));
 #endif
 	}
 
