@@ -319,7 +319,7 @@ protected:
 		return (GetLastError() == ERROR_SUCCESS);
 	}
 
-private:
+protected:
 
 	// Holds the collection of processes that were started using the Run() method.
 	TMap<FGuid, void*> Processes;
