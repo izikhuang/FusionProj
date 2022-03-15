@@ -1137,8 +1137,15 @@ public:
 		uint32 MaxSizeInCache = 0;
 	};
 	
-	// ctor
-	FSoundWaveData() = default;
+	FSoundWaveData()
+		: bIsLooping(0)
+		, bIsTemplate(0)
+		, bIsStreaming(0)
+		, bIsSeekable(0)
+		, bShouldUseStreamCaching(0)
+		, bLoadingBehaviorOverridden(0)
+	{
+	}
 
 	// dtor
 	~FSoundWaveData();
@@ -1211,7 +1218,7 @@ private:
 
 	FFormatContainer CompressedFormatData;
 
-	int32 ResourceSize;
+	int32 ResourceSize = 0;
 
 	FBulkDataBuffer<uint8> ResourceData;
 
@@ -1228,12 +1235,12 @@ private:
 	TArray<FSoundWaveCuePoint> CuePoints;
 	ESoundAssetCompressionType SoundAssetCompressionType;
 
-	float SampleRate;
-	float Duration;
+	float SampleRate = 0;
+	float Duration = 0;
 
-	uint32 NumChannels;
-	uint32 NumChunks;
-	int32 NumFrames;
+	uint32 NumChannels = 0;
+	uint32 NumChunks = 0;
+	int32 NumFrames = 0;
 
 	// shared flags
 	uint8 bIsLooping : 1;
