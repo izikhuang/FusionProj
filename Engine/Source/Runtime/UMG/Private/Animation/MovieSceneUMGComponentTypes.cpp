@@ -88,6 +88,7 @@ FMovieSceneUMGComponentTypes::FMovieSceneUMGComponentTypes()
 	.AddComposite(BuiltInComponents->FloatResult[1], &FMargin::Top)
 	.AddComposite(BuiltInComponents->FloatResult[2], &FMargin::Right)
 	.AddComposite(BuiltInComponents->FloatResult[3], &FMargin::Bottom)
+	.SetBlenderSystem<UMovieScenePiecewiseFloatBlenderSystem>()
 	.Commit();
 
 	BuiltInComponents->PropertyRegistry.DefineCompositeProperty(WidgetTransform)
