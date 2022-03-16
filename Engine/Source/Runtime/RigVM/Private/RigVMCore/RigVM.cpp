@@ -157,18 +157,32 @@ void URigVM::Save(FArchive& Ar)
 
 #else
 
-	Ar << ExternalPropertyPathDescriptions;
+	if(!Ar.IsIgnoringArchetypeRef())
+	{
+		Ar << ExternalPropertyPathDescriptions;
+	}
 	
 #endif
-	
-	Ar << FunctionNamesStorage;
-	Ar << ByteCodeStorage;
-	Ar << Parameters;
+
+	// we rely on Ar.IsIgnoringArchetypeRef for determining if we are currently performing
+	// CPFUO (Copy Properties for unrelated objects). During a reinstance pass we don't
+	// want to overwrite the bytecode and some other properties - since that's handled already
+	// by the RigVMCompiler.
+	if(!Ar.IsIgnoringArchetypeRef())
+	{
+		Ar << FunctionNamesStorage;
+		Ar << ByteCodeStorage;
+		Ar << Parameters;
+	}
 }
 
 void URigVM::Load(FArchive& Ar)
 {
-	Reset();
+	// we rely on Ar.IsIgnoringArchetypeRef for determining if we are currently performing
+	// CPFUO (Copy Properties for unrelated objects). During a reinstance pass we don't
+	// want to overwrite the bytecode and some other properties - since that's handled already
+	// by the RigVMCompiler.
+	Reset(Ar.IsIgnoringArchetypeRef());
 
 	int32 RigVMUClassBasedStorageDefine = 1;
 	if (Ar.CustomVer(FUE5MainStreamObjectVersion::GUID) >= FUE5MainStreamObjectVersion::RigVMMemoryStorageObject)
@@ -210,11 +224,14 @@ void URigVM::Load(FArchive& Ar)
 	{
 		ClearMemory();
 	}
-	
-	Ar << ExternalPropertyPathDescriptions;
-	Ar << FunctionNamesStorage;
-	Ar << ByteCodeStorage;
-	Ar << Parameters;
+
+	if(!Ar.IsIgnoringArchetypeRef())
+	{
+		Ar << ExternalPropertyPathDescriptions;
+		Ar << FunctionNamesStorage;
+		Ar << ByteCodeStorage;
+		Ar << Parameters;
+	}
 
 #endif
 
@@ -539,21 +556,24 @@ bool URigVM::ValidateAllOperandsDuringLoad()
 	return bAllOperandsValid;
 }
 
-void URigVM::Reset()
+void URigVM::Reset(bool IsIgnoringArchetypeRef)
 {
 #if UE_RIGVM_UCLASS_BASED_STORAGE_DISABLED
 	WorkMemoryStorage.Reset();
 	LiteralMemoryStorage.Reset();
 	DebugMemoryStorage.Reset();
 #endif
-	FunctionNamesStorage.Reset();
-	FunctionsStorage.Reset();
-	ExternalPropertyPathDescriptions.Reset();
-	ExternalPropertyPaths.Reset();
-	ByteCodeStorage.Reset();
-	Instructions.Reset();
-	Parameters.Reset();
-	ParametersNameMap.Reset();
+	if(!IsIgnoringArchetypeRef)
+	{
+		FunctionNamesStorage.Reset();
+		FunctionsStorage.Reset();
+		ExternalPropertyPathDescriptions.Reset();
+		ExternalPropertyPaths.Reset();
+		ByteCodeStorage.Reset();
+		Instructions.Reset();
+		Parameters.Reset();
+		ParametersNameMap.Reset();
+	}
 	DeferredVMToCopy = nullptr;
 
 #if UE_RIGVM_UCLASS_BASED_STORAGE_DISABLED
@@ -561,9 +581,12 @@ void URigVM::Reset()
 	LiteralMemoryPtr = &LiteralMemoryStorage;
 	DebugMemoryPtr = &DebugMemoryStorage;
 #endif
-	FunctionNamesPtr = &FunctionNamesStorage;
-	FunctionsPtr = &FunctionsStorage;
-	ByteCodePtr = &ByteCodeStorage;
+	if(!IsIgnoringArchetypeRef)
+	{
+		FunctionNamesPtr = &FunctionNamesStorage;
+		FunctionsPtr = &FunctionsStorage;
+		ByteCodePtr = &ByteCodeStorage;
+	}
 
 	InvalidateCachedMemory();
 	
