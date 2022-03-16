@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "MultiGPU.h"
+
 class FRHITexture2D;
 class FRHICommandListImmediate;
 
