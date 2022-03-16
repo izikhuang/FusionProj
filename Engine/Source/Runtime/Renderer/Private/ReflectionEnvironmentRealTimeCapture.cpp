@@ -529,14 +529,13 @@ void FScene::AllocateAndCaptureFrameSkyEnvMap(
 					CubeView.CachedViewUniformShaderParameters->CameraAerialPerspectiveVolume = GSystemTextures.VolumetricBlackDummy->GetRenderTargetItem().ShaderResourceTexture;
 				}
 
-				TUniformBufferRef<FViewUniformShaderParameters> CubeViewUniformBuffer = TUniformBufferRef<FViewUniformShaderParameters>::CreateUniformBufferImmediate(*CubeView.CachedViewUniformShaderParameters, UniformBuffer_SingleFrame);
-				CubeView.ViewUniformBuffer = CubeViewUniformBuffer;
+				CubeView.CreateViewUniformBuffers(*CubeView.CachedViewUniformShaderParameters);
 				if (CubeView.bSceneHasSkyMaterial)
 				{
 					GPUScene.UploadDynamicPrimitiveShaderDataForView(GraphBuilder, this, CubeView);
 				}
 
-				SkyRC.ViewUniformBuffer = CubeViewUniformBuffer;
+				SkyRC.ViewUniformBuffer = CubeView.ViewUniformBuffer;
 				SkyRC.ViewMatrices = &CubeViewMatrices;
 
 				SkyRC.SkyAtmosphereViewLutTexture = BlackDummy2dTex;
@@ -582,7 +581,7 @@ void FScene::AllocateAndCaptureFrameSkyEnvMap(
 							}
 
 							AddSimpleMeshPass(GraphBuilder, PassParameters, Scene, MainView, &InstanceCullingManager, RDG_EVENT_NAME("CaptureSkyMeshReflection"), SkyRC.Viewport,
-							[&MainView, &CubeViewUniformBuffer, bUseDepthBuffer, Scene](FDynamicPassMeshDrawListContext* DynamicMeshPassContext)
+							[&MainView, CubeViewUniformBuffer = CubeView.ViewUniformBuffer, bUseDepthBuffer, Scene](FDynamicPassMeshDrawListContext* DynamicMeshPassContext)
 							{
 								FMeshPassProcessorRenderState DrawRenderState;
 
@@ -643,7 +642,7 @@ void FScene::AllocateAndCaptureFrameSkyEnvMap(
 							TShaderMapRef<FRenderRealTimeReflectionHeightFogPS> PixelShader(GetGlobalShaderMap(SkyRC.FeatureLevel), PsPermutationVector);
 
 							FRenderRealTimeReflectionHeightFogPS::FParameters* PsPassParameters = GraphBuilder.AllocParameters<FRenderRealTimeReflectionHeightFogPS::FParameters>();
-							PsPassParameters->ViewUniformBuffer = CubeViewUniformBuffer;
+							PsPassParameters->ViewUniformBuffer = CubeView.ViewUniformBuffer;
 							PsPassParameters->RenderTargets = SkyRC.RenderTargets;
 							PsPassParameters->DepthTexture = CubeDepthTexture != nullptr ? CubeDepthTexture : BlackDummy2dTex;
 							PsPassParameters->FogStruct = CreateFogUniformBuffer(GraphBuilder, CubeView);
@@ -689,7 +688,7 @@ void FScene::AllocateAndCaptureFrameSkyEnvMap(
 
 				if (bShouldRenderVolumetricCloud && bExecuteCloud)
 				{
-					CloudRC.ViewUniformBuffer = CubeViewUniformBuffer;
+					CloudRC.ViewUniformBuffer = CubeView.ViewUniformBuffer;
 
 					CloudRC.RenderTargets[0] = SkyRC.RenderTargets[0];
 					//	CloudRC.RenderTargets[1] = Null target will skip export
