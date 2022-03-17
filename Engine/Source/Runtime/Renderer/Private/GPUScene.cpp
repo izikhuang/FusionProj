@@ -1203,12 +1203,11 @@ void FGPUScene::UploadGeneral(FRHICommandListImmediate& RHICmdList, FScene *Scen
 								const TArray<Nanite::FSceneProxyBase::FMaterialSection>& PassMaterials = NaniteSceneProxy->GetMaterialSections();
 								if (PassMaterials.Num() == PassMaterialSlots.Num())
 								{
-									const uint32 TableEntryCount = uint32(NaniteSceneProxy->GetMaterialMaxIndex() + 1);
-									check(TableEntryCount >= uint32(PassMaterials.Num()));
+									const uint32 MaterialSlotCount = uint32(PassMaterialSlots.Num());
 
-									void* MaterialSlotRange = NaniteMaterials.GetMaterialSlotPtr(UploadInfo.PrimitiveID, TableEntryCount);
+									void* MaterialSlotRange = NaniteMaterials.GetMaterialSlotPtr(UploadInfo.PrimitiveID, MaterialSlotCount);
 									uint32* MaterialSlots = static_cast<uint32*>(MaterialSlotRange);
-									for (int32 Entry = 0; Entry < PassMaterialSlots.Num(); ++Entry)
+									for (uint32 Entry = 0; Entry < MaterialSlotCount; ++Entry)
 									{
 										MaterialSlots[PassMaterials[Entry].MaterialIndex] = PassMaterialSlots[Entry];
 									}
@@ -1217,7 +1216,7 @@ void FGPUScene::UploadGeneral(FRHICommandListImmediate& RHICmdList, FScene *Scen
 									if (NaniteMeshPass == ENaniteMeshPass::BasePass && NaniteSceneProxy->GetHitProxyMode() == Nanite::FSceneProxyBase::EHitProxyMode::MaterialSection)
 									{
 										const TArray<uint32>& PassHitProxyIds = PrimitiveSceneInfo->NaniteHitProxyIds;
-										uint32* HitProxyTable = static_cast<uint32*>(NaniteMaterials.GetHitProxyTablePtr(UploadInfo.PrimitiveID, TableEntryCount));
+										uint32* HitProxyTable = static_cast<uint32*>(NaniteMaterials.GetHitProxyTablePtr(UploadInfo.PrimitiveID, MaterialSlotCount));
 										for (int32 Entry = 0; Entry < PassHitProxyIds.Num(); ++Entry)
 										{
 											HitProxyTable[PassMaterials[Entry].MaterialIndex] = PassHitProxyIds[Entry];
