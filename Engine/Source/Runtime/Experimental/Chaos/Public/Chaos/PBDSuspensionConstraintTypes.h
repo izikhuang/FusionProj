@@ -75,6 +75,8 @@ namespace Chaos
 		}
 
 		FVec3 NetPushOut;
+		FVec3 HardStopNetPushOut;
+		FVec3 HardStopNetImpulse;
 		FReal Length;
 	};
 
