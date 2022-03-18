@@ -1237,7 +1237,8 @@ void FAssetRegistryGenerator::FinalizeChunkIDs(const TSet<FName>& InCookedPackag
 		const_cast<FAssetData&>(AssetData).ChunkIDs.Empty();
 
 		// Update whether the owner package contains a map
-		if (AssetData.GetClass()->IsChildOf(UWorld::StaticClass()) || AssetData.GetClass()->IsChildOf(ULevel::StaticClass()))
+		UClass* AssetClass = AssetData.GetClass();
+		if (AssetClass && (AssetClass->IsChildOf(UWorld::StaticClass()) || AssetClass->IsChildOf(ULevel::StaticClass())))
 		{
 			PackagesContainingMaps.Add(AssetData.PackageName);
 		}
