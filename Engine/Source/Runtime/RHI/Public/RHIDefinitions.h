@@ -397,6 +397,7 @@ class RHI_API FGenericDataDrivenShaderPlatformInfo
 	uint32 bSupportsInlineRayTracing : 1;
 	uint32 bSupportsRayTracingShaders : 1;
 	uint32 bSupportsVertexShaderLayer : 1;
+	uint32 bSupportsVolumeTextureAtomics : 1;
 
 		
 #if WITH_EDITOR
@@ -903,6 +904,11 @@ public:
 	{
 		check(IsValid(Platform));
 		return Infos[Platform].bSupportsVertexShaderLayer;
+	}
+
+	static FORCEINLINE_DEBUGGABLE const bool GetSupportsVolumeTextureAtomics(const FStaticShaderPlatform Platform)
+	{
+		return Infos[Platform].bSupportsVolumeTextureAtomics;
 	}
 
 #if WITH_EDITOR
