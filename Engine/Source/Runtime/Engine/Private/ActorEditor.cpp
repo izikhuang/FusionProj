@@ -54,8 +54,9 @@ void AActor::PreEditChange(FProperty* PropertyThatWillChange)
 	}
 
 	PreEditChangeDataLayers.Reset();
-	if (PropertyThatWillChange->GetFName() == GET_MEMBER_NAME_CHECKED(AActor, DataLayers) ||
-		PropertyThatWillChange->GetFName() == GET_MEMBER_NAME_CHECKED(FActorDataLayer, Name))
+	if (PropertyThatWillChange != nullptr &&
+		(PropertyThatWillChange->GetFName() == GET_MEMBER_NAME_CHECKED(AActor, DataLayers) ||
+		 PropertyThatWillChange->GetFName() == GET_MEMBER_NAME_CHECKED(FActorDataLayer, Name)))
 	{
 		PreEditChangeDataLayers = DataLayers;
 	}
