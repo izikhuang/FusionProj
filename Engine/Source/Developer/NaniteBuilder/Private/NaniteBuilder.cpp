@@ -24,7 +24,7 @@
 // differences, etc.) replace the version GUID below with a new one.
 // In case of merge conflicts with DDC versions, you MUST generate a new GUID
 // and set this new GUID as the version.
-#define NANITE_DERIVEDDATA_VER TEXT("37DD3B6C-D4A4-41C0-BCF6-32AE2029E647")
+#define NANITE_DERIVEDDATA_VER TEXT("AC88CFBD-DA61-4A9C-8488-F64D2DAF699D")
 
 namespace Nanite
 {
@@ -217,11 +217,8 @@ static void BuildCoarseRepresentation(
 			Vertex.UVs[UVIndex] = UVs[UVIndex].ContainsNaN() ? FVector2f::ZeroVector : UVs[UVIndex];
 		}
 
-		if (CoarseRepresentation.bHasColors)
-		{
-			Vertex.Color = CoarseRepresentation.GetColor(Iter).ToFColor(false /* sRGB */);
-		}
-
+		Vertex.Color = CoarseRepresentation.bHasColors ? CoarseRepresentation.GetColor(Iter).ToFColor(false /* sRGB */) : FColor::White;
+		
 		Verts.Add(Vertex);
 	}
 
@@ -345,11 +342,21 @@ static void ClusterTriangles(
 	{
 		if( Adjacency.Direct[ EdgeIndex ] == -2 )
 		{
+			// EdgeHash is built in parallel, so we need to sort before use to ensure determinism.
+			// This path is only executed in the rare event that an edge is shared by more than two triangles,
+			// so performance impact should be negligible in practice.
+			TArray< TPair< int32, int32 >, TInlineAllocator< 16 > > Edges;
 			EdgeHash.ForAllMatching( EdgeIndex, false, GetPosition,
 				[&]( int32 EdgeIndex0, int32 EdgeIndex1 )
 				{
-					Adjacency.Link( EdgeIndex0, EdgeIndex1 );
+					Edges.Emplace( EdgeIndex0, EdgeIndex1 );
 				} );
+			Edges.Sort();	
+			
+			for( const TPair< int32, int32 >& Edge : Edges )
+			{
+				Adjacency.Link( Edge.Key, Edge.Value );
+			}
 		}
 
 		Adjacency.ForAll( EdgeIndex,

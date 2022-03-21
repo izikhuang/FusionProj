@@ -190,7 +190,7 @@ public:
 	TMap< uint32, uint32 >	AdjacentClusters;
 
 	FBounds		Bounds;
-	uint32		GUID = 0;
+	uint64		GUID = 0;
 	int32		MipLevel = 0;
 
 	FIntVector	QuantizedPosStart		= { 0u, 0u, 0u };
