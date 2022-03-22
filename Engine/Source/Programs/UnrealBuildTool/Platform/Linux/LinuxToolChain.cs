@@ -606,7 +606,10 @@ namespace UnrealBuildTool
 
 			Result += " -Wno-unused-private-field"; // MultichannelTcpSocket.h triggers this, possibly more
 			Result += " -Wno-tautological-compare"; // this hides the "warning : comparison of unsigned expression < 0 is always false" type warnings due to constant comparisons, which are possible with template arguments
+
 			Result += " -Wno-undefined-bool-conversion"; // hides checking if 'this' pointer is null
+			Result += " -fno-delete-null-pointer-checks"; // The 'this' vs nullptr comparisons get optimized away for newer versions of Clang, which is undesirable until we refactor these checks.
+
 			Result += " -Wno-unused-local-typedef";	// clang is being overly strict here? PhysX headers trigger this.
 			Result += " -Wno-inconsistent-missing-override";	// these have to be suppressed for UE 4.8, should be fixed later.
 			Result += " -Wno-undefined-var-template"; // not really a good warning to disable
