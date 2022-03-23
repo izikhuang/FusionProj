@@ -228,8 +228,11 @@ namespace UnrealBuildTool
 				Result += " -Wno-range-loop-analysis ";
 			}
 
-			// We have 'this' vs nullptr comparisons that get optimized away for newer versions of Clang, which is undesirable until we refactor these checks.
-			Result += " -fno-delete-null-pointer-checks";
+			if (GetClangVersion().Major >= 12)
+			{
+				// We have 'this' vs nullptr comparisons that get optimized away for newer versions of Clang, which is undesirable until we refactor these checks.
+				Result += " -fno-delete-null-pointer-checks";
+			}
 
 			//Result += " -Wsign-compare"; // fed up of not seeing the signed/unsigned warnings we get on Windows - lets enable them here too.
 

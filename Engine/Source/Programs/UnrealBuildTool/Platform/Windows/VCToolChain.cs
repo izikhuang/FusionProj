@@ -857,8 +857,11 @@ namespace UnrealBuildTool
 
 				// Sometimes we compare 'this' pointers against nullptr, which Clang warns about by default
 				Arguments.Add("-Wno-undefined-bool-conversion");
-				// The 'this' vs nullptr comparisons get optimized away for newer versions of Clang, which is undesirable until we refactor these checks.
-				Arguments.Add("-fno-delete-null-pointer-checks");
+				if (EnvVars.CompilerVersion >= new VersionNumber(12))
+				{
+					// The 'this' vs nullptr comparisons get optimized away for newer versions of Clang, which is undesirable until we refactor these checks.
+					Arguments.Add("-fno-delete-null-pointer-checks");
+				}
 
 				// @todo clang: Disabled warnings were copied from MacToolChain for the most part
 				Arguments.Add("-Wno-deprecated-declarations");
