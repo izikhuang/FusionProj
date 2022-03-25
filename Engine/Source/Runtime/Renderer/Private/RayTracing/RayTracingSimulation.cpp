@@ -350,7 +350,7 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 
 
 				// 文件路径需要修改下
-				std::string smokeFieldsPath = "C:/gitrepo/FusionProj-git/FusionProj/Engine/Source/Runtime/Renderer/Private/AlphaCore/boxVolume.axc";
+				std::string smokeFieldsPath = "C:/gitrepo/FusionProj-git/FusionProj/Engine/Source/Runtime/Renderer/Private/AlphaCore/boxVolume.json";
 				
 
 				std::vector<AxScalarFieldF32*> houdiniVolumes;
