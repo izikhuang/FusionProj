@@ -208,42 +208,6 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 				GDynamicRHI->RHIReadSurfaceFloatData_RenderThread(RHICmdList, WorldPosTex, IntRect, WorldPosData, CubeFace_PosX, 0, 0);
 				FViewUniformShaderParameters ViewVoxelizeParameters = *View.CachedViewUniformShaderParameters;
 
-				
-				//AxTextureRGBA PosImage(ImageWidth, ImageHeight);
-				//
-				//for (int r = 0; r < ImageHeight; ++r)
-				//{
-				//	for (int c = 0; c < ImageWidth; ++c)
-				//	{
-				//		AxColorRGBA tmp = { 
-				//			WorldPosData[r * ImageWidth + c].R / 100.f,
-				//			WorldPosData[r * ImageWidth + c].G / 100.f,
-				//			WorldPosData[r * ImageWidth + c].B / 100.f,
-				//			WorldPosData[r * ImageWidth + c].A / 100.f };
-				//		PosImage.SetValue( (ImageHeight-1-r) * ImageWidth + c, tmp);
-				//		
-				//	}
-				//}
-
-				//TArray<FLinearColor> OutputData;
-				//OutputData.AddDefaulted(ImageWidth* ImageHeight);
-				//AxColorRGBA8* ImageData = image.GetRawData();
-
-
-
-				
-
-				//AlphaCore::Image::SaveAsTga("C:/Users/hao.chen/Desktop/VolumeRender/depth/ue4.tga", &PosImage);
-				
-				//AxColorRGBA vv = PosImage.GetValue(100);
-				//FLinearColor TempWorldPos = FLinearColor(WorldPosData[100]);
-				//UE_LOG(LogRenderer, Log, TEXT("PosImageData %f\n"), TempWorldPos.A);
-				//UE_LOG(LogRenderer, Log, TEXT("OutputData %s\n"), *OutputData[100].ToString());
-				//UE_LOG(LogRenderer, Log, TEXT("camera pos: %s"), *ViewVoxelizeParameters.WorldCameraOrigin.ToString());
-				//UE_LOG(LogRenderer, Log, TEXT("camera forword: %s"), *ViewVoxelizeParameters.ViewForward.ToString());
-				//UE_LOG(LogRenderer, Log, TEXT("camera up: %s"), *ViewVoxelizeParameters.ViewUp.ToString());
-
-
 
 				FVector LightDirection;
 
@@ -253,8 +217,6 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 					UE_LOG(LogRenderer, Log, TEXT("DirectionLight LightDirection: %s"), *LightDirection.ToString());
 				}
 
-
-				//auto a = DirectionalLightSceneInfo->Proxy->GetLightComponent()
 
 				///AlphaCore Content
 
@@ -386,8 +348,11 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 				//	sceneRenderDesc.camInfo.UpVector.y, 
 				//	sceneRenderDesc.camInfo.UpVector.z);
 
+
+				// 文件路径需要修改下
+				std::string smokeFieldsPath = "C:/gitrepo/FusionProj-git/FusionProj/Engine/Source/Runtime/Renderer/Private/AlphaCore/boxVolume.axc";
 				
-				std::string smokeFieldsPath = "C:/Users/hao.chen/Desktop/VolumeRender/boxVolume.axc";
+
 				std::vector<AxScalarFieldF32*> houdiniVolumes;
 				AlphaCore::GridDense::ReadFields(smokeFieldsPath, houdiniVolumes);
 
@@ -405,30 +370,6 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 
 				depthTexBuf.DeviceMalloc();
 
-
-
-				//TArray<FLinearColor> OutputData;
-				//OutputData.AddDefaulted(ImageWidth* ImageHeight);
-				//for (int r = 0; r < ImageHeight; ++r)
-				//{
-				//	for (int c = 0; c < ImageWidth; ++c)
-				//	{
-				//		//float ttt = ImageData[r * ImageWidth + c].b / 255.f;
-				//		//if (ttt > 0) UE_LOG(LogRenderer, Log, TEXT("ImageData: %f"),ttt);
-				//		FLinearColor tmpData = FLinearColor(
-				//			float((WorldPosData[r * ImageWidth + c].A - 400.f) / 1250.f),
-				//			float((WorldPosData[r * ImageWidth + c].A - 400.f) / 1250.f),
-				//			float((WorldPosData[r * ImageWidth + c].A - 400.f) / 1250.f),
-				//			float((WorldPosData[r * ImageWidth + c].A-400.f)/ 1250.f));
-				//		OutputData[r * ImageWidth + c] = tmpData;
-				//	}
-				//}
-
-				//FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
-				//FUpdateTextureRegion2D TempRegion(0, 0, 0, 0, ImageWidth, ImageHeight);
-				//RHIUpdateTexture2D(SimOutputTex->GetTexture2D(), 0, TempRegion, ImageWidth * 4 * sizeof(float), (uint8*)OutputData.GetData());
-				//
-
 				
 				AxTextureRGBA8 image(ImageWidth, ImageHeight);
 				image.SetFieldResolution(ImageWidth, ImageHeight);
@@ -436,7 +377,7 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 				image.DeviceMalloc();
 
 				float stepSize = 5.f;
-				
+
 				AxVolumeRenderObject VolumeData;
 
 				VolumeData.material.minMaxInputDensity = { 0, 50 };
