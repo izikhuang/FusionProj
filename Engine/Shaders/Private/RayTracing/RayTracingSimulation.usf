@@ -60,12 +60,12 @@ void MainWorldPosCS(uint3 DTid : SV_DispatchThreadID)
 
 	const FGBufferData GBufferData = GetGBufferDataFromSceneTexturesLoad(PixelCoord);
 	const float DeviceZ = SceneDepthTexture.Load(int3(PixelCoord, 0)).r;
-
+	float SceneDepth = ConvertFromDeviceZ(DeviceZ);
 	float3 WorldPosition;
 	float3 CameraDirection;
 	ReconstructWorldPositionAndCameraDirectionFromDeviceZ(PixelCoord, DeviceZ, WorldPosition, CameraDirection);
 
-	OutWorldPos[GoodId] = float4(WorldPosition, 1);
+	OutWorldPos[GoodId] = float4(WorldPosition, SceneDepth);
 	if (DeviceZ == 0)
 	{
 		OutWorldPos[GoodId] = 0.0f;

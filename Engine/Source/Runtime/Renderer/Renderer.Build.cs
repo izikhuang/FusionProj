@@ -47,10 +47,38 @@ public class Renderer : ModuleRules
         DynamicallyLoadedModuleNames.AddRange(new string[] { "HeadMountedDisplay" });
 
 		var alphacore_inc_dir = "AlphaCore/include";
+		var alphacore_dir = "AlphaCore";
 		var alphacore_lib_dir = "AlphaCore/lib/Release";
-		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private", alphacore_inc_dir));
-		PublicAdditionalLibraries.Add(Path.Combine("Runtime/Renderer/Private", alphacore_lib_dir, "AlphaCore.lib"));
-		Definitions.Add("ALPHA_CUDA");
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/AccelTree"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Collision"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Debug/Collision"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Geometric"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Grid"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/MicroSolver"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Particle"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/PBD"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/ProceduralContent"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/SolidUtility"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Test"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/Utility"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/include/VolumeRender"));
+        PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/thirdParty"));
+        PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/thirdParty/spdlog/include"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/external/AxCoreEngine/"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/external/AxCoreEngine/include"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/external/AxCoreEngine/include/Vera"));
+		PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/external/AxCoreEngine/include/Catalyst/"));
+
+		// PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private", alphacore_dir, "external"));
+		// PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private", alphacore_dir ,"thirdParty"));
+		// PublicIncludePaths.Add(Path.Combine("Runtime/Renderer/Private", alphacore_dir ,"thirdParty/spdlog/include"));
+
+
+
+		PublicAdditionalLibraries.Add(Path.Combine("Runtime/Renderer/Private/AlphaCore/lib/Release/AlphaCore.lib"));
+		Definitions.Add("ALPHA_CUDA=1");
 		var cuda_path = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.6";
 		var cuda_include = "include";
 		var cuda_lib = "lib/x64";
