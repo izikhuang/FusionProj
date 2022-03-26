@@ -408,8 +408,8 @@ void FDeferredShadingSceneRenderer::RenderSimulation(
 					else if (vol->GetName() == "temperature") {
 						VolumeData.tempInfo = vol->GetFieldInfo();
 						//UE_LOG(LogRenderer, Log, TEXT("temperature"));
-							vol->DeviceMalloc();
-							VolumeData.temp = vol->GetRawDataDevice();
+						vol->DeviceMalloc();
+						VolumeData.temp = vol->GetRawDataDevice();
 					}
 				}
 
