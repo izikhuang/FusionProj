@@ -27,6 +27,7 @@
 #include "SceneTextureParameters.h"
 #include "DeferredShadingRenderer.h"
 #include "ScenePrivate.h"
+#include "RendererModule.h"
 
 #include <cmath>
 
@@ -35,6 +36,34 @@
 static TAutoConsoleVariable<int32> CVarRayTracingRenderSim(
 	TEXT("r.RayTracing.Simulation"),
 	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<float> CVarRayTracingSimColorR(
+	TEXT("r.RayTracing.SimColorR"),
+	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<float> CVarRayTracingSimColorG(
+	TEXT("r.RayTracing.SimColorG"),
+	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<float> CVarRayTracingSimColorB(
+	TEXT("r.RayTracing.SimColorB"),
+	0,
+	TEXT("Enables simulation (default = 0)"),
+	ECVF_RenderThreadSafe
+);
+
+static TAutoConsoleVariable<float> CVarRayTracingSimColorA(
+	TEXT("r.RayTracing.SimColorA"),
+	1.0f,
 	TEXT("Enables simulation (default = 0)"),
 	ECVF_RenderThreadSafe
 );
@@ -76,6 +105,59 @@ class FRetchWorldPosCS : public FGlobalShader
 
 IMPLEMENT_GLOBAL_SHADER(FRetchWorldPosCS, "/Plugin/AlphaCore/Private/SimAlphaCore.usf", "MainWorldPosCS", SF_Compute);
 
+BEGIN_SHADER_PARAMETER_STRUCT(FApplyLightingAlphaCoreShaderParameters, )
+	SHADER_PARAMETER_RDG_TEXTURE(Texture2D, AlphaCoreColor)
+	SHADER_PARAMETER(FMatrix, ScreenToTranslatedWorld)
+	RDG_TEXTURE_ACCESS(WorldPos, ERHIAccess::SRVGraphics)
+	RDG_TEXTURE_ACCESS(SimOutput, ERHIAccess::SRVGraphics)
+	RENDER_TARGET_BINDING_SLOTS()
+END_SHADER_PARAMETER_STRUCT()
+
+class FApplyLightingAlphaCoreShaderVS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FApplyLightingAlphaCoreShaderVS);
+	SHADER_USE_PARAMETER_STRUCT(FApplyLightingAlphaCoreShaderVS, FGlobalShader);
+
+	using FParameters = FApplyLightingAlphaCoreShaderParameters;
+
+	using FPermutationDomain = TShaderPermutationDomain<>;
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+class FApplyLightingAlphaCoreShaderPS : public FGlobalShader
+{
+public:
+	DECLARE_GLOBAL_SHADER(FApplyLightingAlphaCoreShaderPS);
+	SHADER_USE_PARAMETER_STRUCT(FApplyLightingAlphaCoreShaderPS, FGlobalShader);
+
+	using FParameters = FApplyLightingAlphaCoreShaderParameters;
+
+	using FPermutationDomain = TShaderPermutationDomain<>;
+
+	static void ModifyCompilationEnvironment(const FGlobalShaderPermutationParameters& Parameters, FShaderCompilerEnvironment& OutEnvironment)
+	{
+		FGlobalShader::ModifyCompilationEnvironment(Parameters, OutEnvironment);
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+};
+
+IMPLEMENT_GLOBAL_SHADER(FApplyLightingAlphaCoreShaderVS, "/Plugin/AlphaCore/Private/ApplyLightingAlphaCore.usf", "MainVS", SF_Vertex);
+IMPLEMENT_GLOBAL_SHADER(FApplyLightingAlphaCoreShaderPS, "/Plugin/AlphaCore/Private/ApplyLightingAlphaCore.usf", "MainPS", SF_Pixel);
+
 BEGIN_SHADER_PARAMETER_STRUCT(FRenderSimulationParameters, )
 	//SHADER_PARAMETER_RDG_UNIFORM_BUFFER(FSceneTextureUniformParameters, SceneTextures)
 	RDG_TEXTURE_ACCESS(BufferATexture, ERHIAccess::SRVGraphics)
@@ -115,6 +197,7 @@ namespace RenderAlphaCore
 		FRDGTextureRef WorldPosTexture = nullptr;
 		FRDGTextureRef SimOutput = nullptr;
 		FRDGTextureRef DepthTexture = nullptr;
+		FRDGTextureRef SceneColorTexture = GraphBuilder.RegisterExternalTexture(Resources.SceneColor);
 
 		{
 			FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(
@@ -159,7 +242,103 @@ namespace RenderAlphaCore
 			FComputeShaderUtils::Dispatch(RHICmdList, ComputeShader, *PassParameters, DisPatchSize);
 		});
 
-    }
+		FLightSceneInfo* DirectionalLightSceneInfo = NULL;
+
+		for (TSparseArray<FLightSceneInfoCompact>::TConstIterator LightIt(Scene.Lights); LightIt; ++LightIt)
+		{
+			const FLightSceneInfoCompact& LightSceneInfoCompact = *LightIt;
+			FLightSceneInfo* LightSceneInfo = LightSceneInfoCompact.LightSceneInfo;
+
+			if (LightSceneInfo->Proxy->GetLightType() == LightType_Directional
+				// Band-aid fix for extremely rare case that light scene proxy contains NaNs.
+				&& !LightSceneInfo->Proxy->GetDirection().ContainsNaN()
+				/*&& LightSceneInfo->ShouldRenderLightViewIndependent()
+				&& LightSceneInfo->ShouldRenderLight(View)*/)
+			{
+				DirectionalLightSceneInfo = LightSceneInfo;
+			}
+		}
+
+		FGlobalShaderMap* GlobalShaderMap = GetGlobalShaderMap(ERHIFeatureLevel::SM5);
+		TShaderMapRef<FApplyLightingAlphaCoreShaderVS> VertexShader(GlobalShaderMap);
+		TShaderMapRef<FApplyLightingAlphaCoreShaderPS> PixelShader(GlobalShaderMap);
+
+		FApplyLightingAlphaCoreShaderParameters* ApplyLightingPassParameters = GraphBuilder.AllocParameters<FApplyLightingAlphaCoreShaderParameters>();
+		ApplyLightingPassParameters->AlphaCoreColor = SimOutput;
+		ApplyLightingPassParameters->WorldPos = WorldPosTexture;
+		ApplyLightingPassParameters->SimOutput = SimOutput;
+		ApplyLightingPassParameters->RenderTargets[0] = FRenderTargetBinding(SceneColorTexture, ERenderTargetLoadAction::ELoad);
+		//FRenderSimulationParameters* SimParameters = GraphBuilder.AllocParameters<FRenderSimulationParameters>();
+		//SimParameters->SceneTextures = SceneTextureBuffers;
+		//SimParameters->WorldPos = WorldPosTexture;
+		//SimParameters->SimOutput = SimOutput;
+		ERDGPassFlags PassFlags = ERDGPassFlags::Raster;
+
+		GraphBuilder.AddPass(
+			RDG_EVENT_NAME("SimParameters"),
+			ApplyLightingPassParameters,
+			PassFlags,
+			[ApplyLightingPassParameters, GlobalShaderMap, VertexShader, PixelShader, WorldPosTexture, SimOutput, &View, DirectionalLightSceneInfo](FRHICommandListImmediate& RHICmdList)
+		{
+			FRHITexture* WorldPosTex = TryGetRHI(WorldPosTexture);
+
+			int ImageWidth = View.ViewRect.Width();
+			int ImageHeight = View.ViewRect.Height();
+			FReadSurfaceDataFlags readPixelFlags(RCM_UNorm);
+			FIntRect IntRect(View.ViewRect.Min.X, View.ViewRect.Min.Y, ImageWidth, ImageHeight);
+			TArray<FFloat16Color> WorldPosData;
+			//RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
+			GDynamicRHI->RHIReadSurfaceFloatData_RenderThread(RHICmdList, WorldPosTex, IntRect, WorldPosData, CubeFace_PosX, 0, 0);
+
+			FViewUniformShaderParameters ViewVoxelizeParameters = *View.CachedViewUniformShaderParameters;
+			FLinearColor TempWorldPos = FLinearColor(WorldPosData[100]);
+			//UE_LOG(LogRenderer, Log, TEXT("WorldPosData %s"), *TempWorldPos.ToString());
+			//UE_LOG(LogRenderer, Log, TEXT("camera pos: %s"), *ViewVoxelizeParameters.WorldCameraOrigin.ToString());
+			//UE_LOG(LogRenderer, Log, TEXT("camera forword: %s"), *ViewVoxelizeParameters.ViewForward.ToString());
+
+			if (DirectionalLightSceneInfo)
+			{
+				const FVector LightDirection = DirectionalLightSceneInfo->Proxy->GetDirection().GetSafeNormal();
+				//UE_LOG(LogRenderer, Log, TEXT("DirectionLight LightDirection: %s"), *LightDirection.ToString());
+			}
+
+			TArray<FLinearColor> OutputData;
+			OutputData.AddDefaulted(ImageWidth * ImageHeight);
+			FLinearColor TempColor = FLinearColor(CVarRayTracingSimColorR.GetValueOnAnyThread(), CVarRayTracingSimColorG.GetValueOnAnyThread(),
+				CVarRayTracingSimColorB.GetValueOnAnyThread(), CVarRayTracingSimColorA.GetValueOnAnyThread());
+			for (int i = 0; i < OutputData.Num(); i++)
+			{
+				OutputData[i] = TempColor;
+			}
+			FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
+			FUpdateTextureRegion2D TempRegion(View.ViewRect.Min.X, View.ViewRect.Min.Y, View.ViewRect.Min.X, View.ViewRect.Min.Y, ImageWidth, ImageHeight);
+
+			RHIUpdateTexture2D(SimOutputTex->GetTexture2D(), 0, TempRegion, ImageWidth * 4 * sizeof(float), (uint8*)OutputData.GetData());
+
+
+			RHICmdList.SetViewport(IntRect.Min.X, IntRect.Min.Y, 0.0f, IntRect.Max.X, IntRect.Max.Y, 1.0f);
+
+			FGraphicsPipelineStateInitializer GraphicsPSOInit;
+			RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+			GraphicsPSOInit.BlendState = TStaticBlendState<CW_RGBA, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha, BO_Add, BF_Zero, BF_One>::GetRHI();
+			                           //TStaticBlendState<CW_RGBA, BO_Add, BF_One, BF_One, BO_Add, BF_One, BF_One>::GetRHI();
+			GraphicsPSOInit.RasterizerState = TStaticRasterizerState<>::GetRHI();
+			GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+
+			GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GetVertexDeclarationFVector4();
+			GraphicsPSOInit.BoundShaderState.VertexShaderRHI = VertexShader.GetVertexShader();
+			GraphicsPSOInit.BoundShaderState.PixelShaderRHI = PixelShader.GetPixelShader();
+			GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+
+			SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
+			RHICmdList.SetStencilRef(0);
+
+			SetShaderParameters(RHICmdList, VertexShader, VertexShader.GetVertexShader(), *ApplyLightingPassParameters);
+			SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), *ApplyLightingPassParameters);
+
+			RHICmdList.DrawPrimitive(0, 1, 1);
+		});
+	}
 
 } // namespace RenderAlphaCore
 
