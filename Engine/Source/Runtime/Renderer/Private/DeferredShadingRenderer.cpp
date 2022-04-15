@@ -199,6 +199,12 @@ static TAutoConsoleVariable<float> CVarRayTracingCullingAngle(
 	TEXT("Do camera culling for objects behind the camera with a projected angle smaller than this threshold in ray tracing effects (default = 5 degrees )"),
 	ECVF_RenderThreadSafe);
 
+static TAutoConsoleVariable<bool> CVarRenderAlphaCorePluginEnable(
+	TEXT("r.AlphaCore.RenderPlugin"),
+	true,
+	TEXT("Whether to use a plugin for alpha core libary (default = true)"),
+	ECVF_RenderThreadSafe);
+
 #if !UE_BUILD_SHIPPING
 static TAutoConsoleVariable<int32> CVarForceBlackVelocityBuffer(
 	TEXT("r.Test.ForceBlackVelocityBuffer"), 0,
@@ -281,6 +287,12 @@ FGlobalIlluminationExperimentalPluginDelegates::FRenderDiffuseIndirectVisualizat
 }
 #endif //!(UE_BUILD_SHIPPING || UE_BUILD_TEST)
 
+
+static FAlphaCorePluginDelegates::FRenderAlphaCore RenderAlphaCoreDelegate;
+FAlphaCorePluginDelegates::FRenderAlphaCore& FAlphaCorePluginDelegates::RenderAlphaCoreEffect()
+{
+	return RenderAlphaCoreDelegate;
+}
 
 const TCHAR* GetDepthPassReason(bool bDitheredLODTransitionsUseStencil, EShaderPlatform ShaderPlatform)
 {
@@ -2302,6 +2314,23 @@ void FDeferredShadingSceneRenderer::Render(FRHICommandListImmediate& RHICmdList)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_FDeferredShadingSceneRenderer_RenderSkyAtmosphere);
 		RenderSkyAtmosphere(GraphBuilder, SceneTextures, SceneColorTexture.Target, SceneDepthTexture.Target);
+	}
+
+	if (CVarRenderAlphaCorePluginEnable.GetValueOnRenderThread())
+	{
+		// Get the resources and call the GI plugin's rendering function delegate
+		FGlobalIlluminationExperimentalPluginResources GIPluginResources;
+		GIPluginResources.GBufferA = SceneContext.GBufferA;
+		GIPluginResources.GBufferB = SceneContext.GBufferB;
+		GIPluginResources.GBufferC = SceneContext.GBufferC;
+		GIPluginResources.LightingChannelsTexture = LightingChannelsTexture;
+		GIPluginResources.SceneDepthZ = SceneContext.SceneDepthZ;
+		GIPluginResources.SceneColor = SceneContext.GetSceneColor();
+		for (FViewInfo& View : Views)
+		{
+			FAlphaCorePluginDelegates::FRenderAlphaCore& Delegate = FAlphaCorePluginDelegates::RenderAlphaCoreEffect();
+			Delegate.Broadcast(*Scene, View, GraphBuilder, GIPluginResources);
+		}
 	}
 
 	// Draw fog.

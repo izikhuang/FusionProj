@@ -68,6 +68,17 @@ public:
 
 
 /**
+ * Delegate callback used by global illumination plugins (experimental).
+ */
+class RENDERER_API FAlphaCorePluginDelegates
+{
+public:
+	DECLARE_MULTICAST_DELEGATE_FourParams(FRenderAlphaCore, const FScene& /*Scene*/, const FViewInfo& /*View*/, FRDGBuilder& /*GraphBuilder*/, FGlobalIlluminationExperimentalPluginResources& /*Resources*/);
+
+	static FRenderAlphaCore& RenderAlphaCoreEffect();
+};
+
+/**
  * Scene renderer that implements a deferred shading pipeline and associated features.
  */
 class FDeferredShadingSceneRenderer : public FSceneRenderer

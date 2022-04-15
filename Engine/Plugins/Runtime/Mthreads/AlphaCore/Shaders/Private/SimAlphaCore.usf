@@ -1,0 +1,73 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#define SUPPORT_CONTACT_SHADOWS		0
+
+#include "../Common.ush"
+#include "../MonteCarlo.ush"
+#include "../DeferredShadingCommon.ush"
+#include "../DeferredLightingCommon.ush"
+#include "../SceneTextureParameters.ush"
+#include "../PathTracing/Utilities/PathTracingRandomSequence.ush" 
+
+
+//float FloatParameter;
+
+RWTexture2D<float4> OutWorldPos;
+
+
+FGBufferData GetGBufferDataFromSceneTexturesLoad(uint2 PixelCoord, bool bGetNormalizedNormal = true)
+{
+	float4 GBufferA = GBufferATexture.Load(int3(PixelCoord, 0));
+	float4 GBufferB = GBufferBTexture.Load(int3(PixelCoord, 0));
+	float4 GBufferC = GBufferCTexture.Load(int3(PixelCoord, 0));
+	float4 GBufferD = GBufferDTexture.Load(int3(PixelCoord, 0));
+	float4 GBufferE = GBufferETexture.Load(int3(PixelCoord, 0));
+	float4 GBufferF = GBufferFTexture.Load(int3(PixelCoord, 0));
+
+#if GBUFFER_HAS_VELOCITY
+	float4 GBufferVelocity = GBufferVelocityTexture.Load(int3(PixelCoord, 0));
+#else
+	float4 GBufferVelocity = 0.0f;
+#endif
+
+	uint CustomStencil = 0;
+	float CustomNativeDepth = 0;
+
+	float DeviceZ = SceneDepthTexture.Load(int3(PixelCoord, 0)).r;;
+
+	float SceneDepth = ConvertFromDeviceZ(DeviceZ);
+
+	return DecodeGBufferData(GBufferA, GBufferB, GBufferC, GBufferD, GBufferE, GBufferF, GBufferVelocity, CustomNativeDepth, CustomStencil, SceneDepth, bGetNormalizedNormal, CheckerFromPixelPos(PixelCoord));
+}
+
+void ReconstructWorldPositionAndCameraDirectionFromDeviceZ(uint2 PixelCoord, float DeviceZ, out float3 OutWorldPosition, out float3 OutCameraDirection)
+{
+	float4 TranslatedWorldPosition = mul(float4(PixelCoord + 0.5, DeviceZ, 1), View.SVPositionToTranslatedWorld);
+	TranslatedWorldPosition.xyz /= TranslatedWorldPosition.w;
+	OutWorldPosition = TranslatedWorldPosition.xyz + View.WorldCameraOrigin;
+	OutCameraDirection = normalize(TranslatedWorldPosition.xyz - View.TranslatedWorldCameraOrigin);
+}
+
+[numthreads(16, 16, 1)]
+void MainWorldPosCS(uint3 DTid : SV_DispatchThreadID)
+{
+	if (any(DTid.xy > View.BufferSizeAndInvSize.xy))
+	{
+		return;
+	}
+	uint2 GoodId = min(DTid.xy, uint2(View.BufferSizeAndInvSize.xy));
+	uint2 PixelCoord = GoodId.xy + uint2(View.ViewRectMin.xy);
+
+	const FGBufferData GBufferData = GetGBufferDataFromSceneTexturesLoad(PixelCoord);
+	const float DeviceZ = SceneDepthTexture.Load(int3(PixelCoord, 0)).r;
+
+	float3 WorldPosition;
+	float3 CameraDirection;
+	ReconstructWorldPositionAndCameraDirectionFromDeviceZ(PixelCoord, DeviceZ, WorldPosition, CameraDirection);
+
+	OutWorldPos[GoodId] = float4(WorldPosition, 1);
+	if (DeviceZ == 0)
+	{
+		OutWorldPos[GoodId] = 0.0f;
+	}
+}
