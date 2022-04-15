@@ -9,7 +9,17 @@ class FAlphaCoreModule : public IModuleInterface
 {
 public:
 
+	static FString GetModularFeatureName()
+	{
+		static FString FeatureName = FString(TEXT("AlphaCore"));
+		return FeatureName;
+	}
+
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
 	virtual void ShutdownModule() override;
+
+private:
+	void StartupAlphaCore();
+	void ShutdownAlphaCore();
 };
