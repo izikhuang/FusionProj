@@ -13,6 +13,7 @@
 #include "Model.h"
 #include "UnrealEngine.h"
 #include "UObject/UObjectHash.h"
+#include "GameFramework/WorldSettings.h"
 #include "WorldPartition/ActorDescContainer.h"
 #include "WorldPartition/WorldPartitionActorDesc.h"
 #include "WorldPartition/WorldPartition.h"
@@ -387,10 +388,13 @@ bool FWorldPartitionLevelHelper::LoadActors(ULevel* InDestLevel, TArrayView<FWor
 					// Possible actor isn't found if Actor package failed to load because of missing dependencies (ex: deleted Blueprint)
 					if (DuplicatedActor)
 					{
+						AWorldSettings* WorldSettings = DuplicatedActor->GetLevel()->GetWorldSettings();
+						FTransform Transform = FTransform(WorldSettings->LevelInstancePivotOffset) * Mapping->ContainerTransform;
+
 						DuplicatedActor->Rename(*FString::Printf(TEXT("%s_%s"), *DuplicatedActor->GetName(), *Mapping->ContainerID.ToString()), InDestLevel, REN_NonTransactional | REN_ForceNoResetLoaders | REN_DoNotDirty | REN_DontCreateRedirectors);
 						USceneComponent* RootComponent = DuplicatedActor->GetRootComponent();
 
-						FLevelUtils::FApplyLevelTransformParams TransformParams(nullptr, Mapping->ContainerTransform);
+						FLevelUtils::FApplyLevelTransformParams TransformParams(nullptr, Transform);
 						TransformParams.Actor = DuplicatedActor;
 						TransformParams.bDoPostEditMove = false;
 						FLevelUtils::ApplyLevelTransform(TransformParams);
