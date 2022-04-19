@@ -2306,36 +2306,35 @@ void FControlRigParameterTrackEditor::HandleControlSelected(UControlRig* Subject
 	TArray<FRigControl> Controls;
 
 	URigHierarchy* Hierarchy = Subject->GetHierarchy();
-	if (bSelected)
+
+	if (URigHierarchyController* Controller = Hierarchy->GetController())
 	{
-		if (URigHierarchyController* Controller = Hierarchy->GetController())
+		Hierarchy->ForEach<FRigControlElement>([ControlElement, Controller, bSelected](FRigControlElement* OtherControlElement) -> bool
 		{
-			Hierarchy->ForEach<FRigControlElement>([ControlElement, Controller, bSelected](FRigControlElement* OtherControlElement) -> bool
+			if (OtherControlElement->Settings.ControlType == ERigControlType::Bool ||
+				OtherControlElement->Settings.ControlType == ERigControlType::Float ||
+				OtherControlElement->Settings.ControlType == ERigControlType::Integer)
+			{
+				if (OtherControlElement->Settings.bShapeEnabled || !OtherControlElement->Settings.bAnimatable)
 				{
-					if (OtherControlElement->Settings.ControlType == ERigControlType::Bool ||
-						OtherControlElement->Settings.ControlType == ERigControlType::Float ||
-						OtherControlElement->Settings.ControlType == ERigControlType::Integer)
-					{
-						if(OtherControlElement->Settings.bShapeEnabled || !OtherControlElement->Settings.bAnimatable)
-						{
-							return true;
-						}
-						
-						for (const FRigElementParentConstraint& ParentConstraint : OtherControlElement->ParentConstraints)
-						{
-							if (ParentConstraint.ParentElement == ControlElement)
-							{
-								Controller->SelectElement(OtherControlElement->GetKey(), bSelected);
-								break;
-							}
-						}
-					}
-
 					return true;
-				});
-		}
+				}
 
+				for (const FRigElementParentConstraint& ParentConstraint : OtherControlElement->ParentConstraints)
+				{
+					if (ParentConstraint.ParentElement == ControlElement)
+					{
+						Controller->SelectElement(OtherControlElement->GetKey(), bSelected);
+						break;
+					}
+				}
+			}
+
+			return true;
+		});
 	}
+
+	
 	if (bIsDoingSelection)
 	{
 		return;
@@ -3487,6 +3486,9 @@ bool FControlRigParameterTrackEditor::CollapseAllLayers(TSharedPtr<ISequencer>& 
 				OwnerTrack->RemoveSectionAt(Index);
 			}
 		}
+
+		//remove all keys, except Space Channels, from the Section.
+		ParameterSection->RemoveAllKeys(false /*bIncludedSpaceKeys*/);
 
 		FRigControlModifiedContext Context;
 		Context.SetKey = EControlRigSetKey::Always;
