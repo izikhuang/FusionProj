@@ -2724,6 +2724,7 @@ struct FRigVMControllerObjectFactory : public FCustomizableTextObjectFactory
 public:
 	URigVMController* Controller;
 	TArray<URigVMNode*> CreatedNodes;
+	TArray<FName> CreateNodeNames;
 	TMap<FName, FName> NodeNameMap;
 	TArray<URigVMLink*> CreatedLinks;
 public:
@@ -2753,8 +2754,15 @@ protected:
 	{
 		if (URigVMNode* DefaultNode = Cast<URigVMNode>(ObjectClass->GetDefaultObject()))
 		{
-			FName ValidName = *Controller->GetValidNodeName(InOutObjName.ToString());
+			URigVMGraph* Graph = Controller->GetGraph();
+			check(Graph);
+
+			const FName ValidName = Controller->GetUniqueName(InOutObjName, [Graph, this](const FName& InName) {
+				return !CreateNodeNames.Contains(InName) && Graph->IsNameAvailable(InName.ToString());
+			}, false, true);
+			
 			NodeNameMap.Add(InOutObjName, ValidName);
+			CreateNodeNames.Add(ValidName);
 			InOutObjName = ValidName;
 		}
 	}
