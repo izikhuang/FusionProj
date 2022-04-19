@@ -3749,6 +3749,7 @@ void FShaderCompilingManager::ReleaseJob(FShaderCommonCompileJobPtr& Job)
 
 void FShaderCompilingManager::ReleaseJob(FShaderCommonCompileJob* Job)
 {
+	Job->PendingShaderMap.SafeRelease();
 	Job->bReleased = true;
 	AllJobs.RemoveJob(Job);
 }
