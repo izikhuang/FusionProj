@@ -25,6 +25,8 @@ DEFINE_LOG_CATEGORY(LogDirectLinkManager);
 
 namespace UE::DatasmithImporter
 {
+	TUniquePtr<FDirectLinkManager> FDirectLinkManager::Instance = nullptr;
+
 	FDirectLinkAutoReconnectManager::FDirectLinkAutoReconnectManager(FDirectLinkManager& InManager)
 		: Manager(InManager)
 		, bShouldRun(true)
@@ -143,12 +145,14 @@ namespace UE::DatasmithImporter
 	{
 		Endpoint->AddEndpointObserver(this);
 
+		ensureMsgf(!Instance, TEXT("There can only be one instance of FDirectLinkManager."));
+
 #if WITH_EDITOR
 		OnPIEEndHandle = FEditorDelegates::EndPIE.AddRaw(this, &FDirectLinkManager::OnEndPIE);
 #endif //WITH_EDITOR
 	}
 
-	FDirectLinkManager::~FDirectLinkManager()
+	void FDirectLinkManager::Clear()
 	{
 		Endpoint->RemoveEndpointObserver(this);
 
