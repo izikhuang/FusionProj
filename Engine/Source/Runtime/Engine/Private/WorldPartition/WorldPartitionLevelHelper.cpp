@@ -289,6 +289,16 @@ bool FWorldPartitionLevelHelper::LoadActors(ULevel* InDestLevel, TArrayView<FWor
 					check(Actor->IsPackageExternal());
 					InDestLevel->Actors.Add(Actor);
 					check(Actor->GetLevel() == InDestLevel);
+
+					// Handle child actors
+					Actor->ForEachComponent<UChildActorComponent>(true, [InDestLevel](UChildActorComponent* ChildActorComponent)
+					{
+						if (AActor* ChildActor = ChildActorComponent->GetChildActor())
+						{
+							InDestLevel->Actors.Add(ChildActor);
+							check(ChildActor->GetLevel() == InDestLevel);
+						}
+					});
 				}
 								
 				UE_LOG(LogEngine, Verbose, TEXT(" ==> Loaded %s (remaining: %d)"), *Actor->GetFullName(), LoadProgress->NumPendingLoadRequests);
