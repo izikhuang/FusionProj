@@ -629,7 +629,7 @@ UControlRig* SControlRigPoseView::GetFirstControlRigInLevelSequence(UControlRig*
 {
 	if (ControlRig == nullptr)
 	{
-		ULevelSequence* LevelSequence = ULevelSequenceEditorBlueprintLibrary::GetCurrentLevelSequence();
+		ULevelSequence* LevelSequence = ULevelSequenceEditorBlueprintLibrary::GetFocusedLevelSequence();
 		if (LevelSequence)
 		{
 			TArray<FControlRigSequencerBindingProxy> Proxies = UControlRigSequencerEditorLibrary::GetControlRigs(LevelSequence);
