@@ -402,6 +402,10 @@ void HotReloadPackages(TArrayView<const FName> InPackageNames)
 		UPackage* ExistingPackage = FindPackage(nullptr, *PackageName.ToString());
 		if (ExistingPackage)
 		{
+			if (ExistingPackage->HasAnyPackageFlags(PKG_NewlyCreated))
+			{
+				ExistingPackage->ClearPackageFlags(PKG_NewlyCreated);
+			}
 			ExistingPackages.Add(ExistingPackage);
 		}
 	}
