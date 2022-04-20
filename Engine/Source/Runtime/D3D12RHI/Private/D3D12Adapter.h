@@ -380,6 +380,7 @@ public:
 	FD3D12TemporalEffect* GetTemporalEffect(const FName& EffectName);
 
 	FD3D12FastConstantAllocator& GetTransientUniformBufferAllocator();
+	void ReleaseTransientUniformBufferAllocator(FD3D12FastConstantAllocator* InAllocator);
 
 	void BlockUntilIdle();
 
@@ -565,6 +566,9 @@ protected:
 #if WITH_MGPU
 	TMap<FName, FD3D12TemporalEffect> TemporalEffectMap;
 #endif
+
+	TArray<FD3D12FastConstantAllocator*> TransientUniformBufferAllocators;
+	FCriticalSection TransientUniformBufferAllocatorsCS;
 
 	TUniquePtr<IRHITransientMemoryCache> TransientMemoryCache;
 
