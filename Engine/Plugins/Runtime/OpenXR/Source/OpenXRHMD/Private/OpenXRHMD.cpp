@@ -278,7 +278,7 @@ void FOpenXRHMD::GetMotionControllerData(UObject* WorldContext, const EControlle
 
 float FOpenXRHMD::GetWorldToMetersScale() const
 {
-	return IsInRenderingThread() ? PipelinedFrameStateRendering.WorldToMetersScale : PipelinedFrameStateGame.WorldToMetersScale;
+	return IsInActualRenderingThread() ? PipelinedFrameStateRendering.WorldToMetersScale : PipelinedFrameStateGame.WorldToMetersScale;
 }
 
 FVector2D FOpenXRHMD::GetPlayAreaBounds(EHMDTrackingOrigin::Type Origin) const
@@ -610,6 +610,8 @@ void FOpenXRHMD::AdjustViewRect(int32 ViewIndex, int32& X, int32& Y, uint32& Siz
 
 void FOpenXRHMD::SetFinalViewRect(FRHICommandListImmediate& RHICmdList, const int32 ViewIndex, const FIntRect& FinalViewRect)
 {
+	check(IsInRenderingThread());
+
 	if (ViewIndex == INDEX_NONE || !PipelinedLayerStateRendering.ColorImages.IsValidIndex(ViewIndex))
 	{
 		return;
@@ -1027,7 +1029,7 @@ const FOpenXRHMD::FPipelinedFrameState& FOpenXRHMD::GetPipelinedFrameStateForThr
 	// Relying on implicit selection of the RHI struct is hazardous since the RHI thread isn't always present
 	check(!IsInRHIThread());
 
-	if (IsInRenderingThread())
+	if (IsInActualRenderingThread())
 	{
 		return PipelinedFrameStateRendering;
 	}
@@ -1043,7 +1045,7 @@ FOpenXRHMD::FPipelinedFrameState& FOpenXRHMD::GetPipelinedFrameStateForThread()
 	// Relying on implicit selection of the RHI struct is hazardous since the RHI thread isn't always present
 	check(!IsInRHIThread());
 
-	if (IsInRenderingThread())
+	if (IsInActualRenderingThread())
 	{
 		return PipelinedFrameStateRendering;
 	}
