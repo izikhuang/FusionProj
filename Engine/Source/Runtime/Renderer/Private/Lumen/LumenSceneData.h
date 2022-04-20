@@ -526,11 +526,10 @@ public:
 	uint32 GetCardCaptureRefreshNumPages() const;
 	ESurfaceCacheCompression GetPhysicalAtlasCompression() const { return PhysicalAtlasCompression; }
 
-	void UpdateSurfaceCacheFeedback(FVector LumenSceneCameraOrigin, TArray<FSurfaceCacheRequest, SceneRenderingAllocator>& MeshCardsUpdate);
+	void UpdateSurfaceCacheFeedback(const TArray<FVector, TInlineAllocator<2>>& LumenSceneCameraOrigins, TArray<FSurfaceCacheRequest, SceneRenderingAllocator>& MeshCardsUpdate);
 
 	void ProcessLumenSurfaceCacheRequests(
 		const FViewInfo& MainView,
-		FVector LumenSceneCameraOrigin,
 		float MaxCardUpdateDistanceFromCamera,
 		int32 MaxTileCapturesPerFrame,
 		FLumenCardRenderer& LumenCardRenderer,

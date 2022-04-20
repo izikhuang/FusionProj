@@ -3667,6 +3667,19 @@ void FSceneRenderer::SetupMeshPass(FViewInfo& View, FExclusiveDepthStencil::Type
 	}
 }
 
+#if WITH_MGPU
+TArray<FVector> GMultiViewFamilyOrigins;
+#endif
+
+// Unpublished Renderer function to provide an array of view family origins, used to make Lumen LOD calculations multi-view-family aware.
+// Temporary hack fix for Virtual Production project using Lumen UE 5.0 -- in 5.1, scene rendering will be natively multi-view-family aware.
+void RENDERER_API SetMultiViewFamilyOrigins(const TArray<FVector>& ViewOrigins)
+{
+#if WITH_MGPU
+	GMultiViewFamilyOrigins = ViewOrigins;
+#endif
+}
+
 FSceneRenderer* FSceneRenderer::CreateSceneRenderer(const FSceneViewFamily* InViewFamily, FHitProxyConsumer* HitProxyConsumer)
 {
 	EShadingPath ShadingPath = InViewFamily->Scene->GetShadingPath();
@@ -3675,6 +3688,11 @@ FSceneRenderer* FSceneRenderer::CreateSceneRenderer(const FSceneViewFamily* InVi
 	if (ShadingPath == EShadingPath::Deferred)
 	{
 		SceneRenderer = new FDeferredShadingSceneRenderer(InViewFamily, HitProxyConsumer);
+
+#if WITH_MGPU
+		SceneRenderer->MultiViewFamilyOrigins = GMultiViewFamilyOrigins;
+		GMultiViewFamilyOrigins.Empty();
+#endif  // WITH_MGPU
 	}
 	else 
 	{

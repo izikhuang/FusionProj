@@ -1887,6 +1887,11 @@ public:
 	 */
 	uint32 InstancedStereoWidth;
 
+#if WITH_MGPU
+	/** Origins for all the view families being rendered this frame */
+	TArray<FVector> MultiViewFamilyOrigins;
+#endif
+
 public:
 
 	FSceneRenderer(const FSceneViewFamily* InViewFamily,FHitProxyConsumer* HitProxyConsumer);
