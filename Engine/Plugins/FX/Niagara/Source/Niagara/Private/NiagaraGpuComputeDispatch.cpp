@@ -473,7 +473,11 @@ void FNiagaraGpuComputeDispatch::ProcessPendingTicksFlush(FRHICommandListImmedia
 
 			TConstArrayView<FViewInfo> DummyViews = MakeArrayView(DummyView, 1);
 			const bool bAllowGPUParticleUpdate = true;
-			
+
+			// Notify that we are about to begin rendering the 'scene' this is required because some RHIs will ClearState
+			// in the event of submitting commands, i.e. when we write a fence, or indeed perform a manual flush.
+			RHICmdList.BeginScene();
+
 			// Execute all ticks that we can support without invalid simulations
 			FRDGBuilder GraphBuilder(RHICmdList);
 			CreateSystemTextures(GraphBuilder);
@@ -497,6 +501,8 @@ void FNiagaraGpuComputeDispatch::ProcessPendingTicksFlush(FRHICommandListImmedia
 			// Properly clear the reference to ViewUniformBuffer before memstack wipes the memory
 			DummyView->~FViewInfo();
 
+			// We have completed flushing the commands
+			RHICmdList.EndScene();
 			break;
 		}
 
