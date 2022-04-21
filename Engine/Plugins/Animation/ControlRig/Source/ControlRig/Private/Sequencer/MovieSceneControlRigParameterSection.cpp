@@ -2609,6 +2609,9 @@ bool UMovieSceneControlRigParameterSection::LoadAnimSequenceIntoThisSection(UAni
 		// rather than accessing the low level raw tracks.
 		FAnimPoseEvaluationOptions EvaluationOptions;
 		EvaluationOptions.OptionalSkeletalMesh = SkelMeshComp->SkeletalMesh;
+		EvaluationOptions.bShouldRetarget = false;
+		EvaluationOptions.EvaluationType = EAnimDataEvalType::Raw;
+		
 		FAnimPose AnimPose;
 		UAnimPoseExtensions::GetAnimPoseAtTime(AnimSequence, SequenceSecond, EvaluationOptions, AnimPose);
 
