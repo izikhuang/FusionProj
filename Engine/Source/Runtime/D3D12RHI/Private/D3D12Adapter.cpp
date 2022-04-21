@@ -197,6 +197,21 @@ static LONG __stdcall D3DVectoredExceptionHandler(EXCEPTION_POINTERS* InInfo)
 #endif // #if PLATFORM_WINDOWS || PLATFORM_HOLOLENS
 
 
+FTransientUniformBufferAllocator::~FTransientUniformBufferAllocator()
+{
+	if (Adapter)
+	{
+		Adapter->ReleaseTransientUniformBufferAllocator(this);
+	}
+}
+
+void FTransientUniformBufferAllocator::Cleanup()
+{
+	ClearResource();
+	Adapter = nullptr;
+}
+
+
 FD3D12Adapter::FD3D12Adapter(FD3D12AdapterDesc& DescIn)
 	: OwningRHI(nullptr)
 	, bDepthBoundsTestSupported(false)
@@ -1167,10 +1182,11 @@ void FD3D12Adapter::Cleanup()
 	}
 
 	// Release allocation data of all thread local transient uniform buffer allocators
-	for (FD3D12FastConstantAllocator* Allocator : TransientUniformBufferAllocators)
+	for (FTransientUniformBufferAllocator* Allocator : TransientUniformBufferAllocators)
 	{
 		Allocator->Cleanup();
 	}
+	TransientUniformBufferAllocators.Empty();
 
 	// Cleanup resources
 	DeferredDeletionQueue.ReleaseResources(true, true);
@@ -1395,18 +1411,6 @@ FD3D12TemporalEffect* FD3D12Adapter::GetTemporalEffect(const FName& EffectName)
 
 FD3D12FastConstantAllocator& FD3D12Adapter::GetTransientUniformBufferAllocator()
 {
-	class FTransientUniformBufferAllocator : public FD3D12FastConstantAllocator, public TThreadSingleton<FTransientUniformBufferAllocator>
-	{
-	public:
-		FTransientUniformBufferAllocator(FD3D12Adapter* InAdapter, FD3D12Device* Parent, FRHIGPUMask VisibiltyMask) : FD3D12FastConstantAllocator(Parent, VisibiltyMask), Adapter(InAdapter) {}
-		~FTransientUniformBufferAllocator()
-		{
-			Adapter->ReleaseTransientUniformBufferAllocator(this);
-		}
-	private:
-		FD3D12Adapter* Adapter;
-	};
-
 	// Multi-GPU support : is using device 0 always appropriate here?
 	return FTransientUniformBufferAllocator::Get([this]() -> FTransientUniformBufferAllocator*
 	{
@@ -1422,7 +1426,7 @@ FD3D12FastConstantAllocator& FD3D12Adapter::GetTransientUniformBufferAllocator()
 	});
 }
 
-void FD3D12Adapter::ReleaseTransientUniformBufferAllocator(FD3D12FastConstantAllocator* InAllocator)
+void FD3D12Adapter::ReleaseTransientUniformBufferAllocator(FTransientUniformBufferAllocator* InAllocator)
 {
 	FScopeLock Lock(&TransientUniformBufferAllocatorsCS);
 	verify(TransientUniformBufferAllocators.Remove(InAllocator) == 1);
