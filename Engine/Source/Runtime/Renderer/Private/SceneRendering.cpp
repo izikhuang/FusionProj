@@ -3040,7 +3040,7 @@ void FSceneRenderer::ComputeFamilySize()
 	float MaxFamilyX = 0;
 	float MaxFamilyY = 0;
 
-	for (const FViewInfo& View : Views)
+	for (FViewInfo& View : Views)
 	{
 		float FinalViewMaxX = (float)View.ViewRect.Max.X;
 		float FinalViewMaxY = (float)View.ViewRect.Max.Y;
@@ -3069,12 +3069,8 @@ void FSceneRenderer::ComputeFamilySize()
 		MaxFamilyX = FMath::Max(MaxFamilyX, FinalViewMaxX);
 		MaxFamilyY = FMath::Max(MaxFamilyY, FinalViewMaxY);
 
-		InstancedStereoWidth = FPlatformMath::Max(InstancedStereoWidth, static_cast<uint32>(View.ViewRect.Max.X));
-	}
-
-	for (FViewInfo& View : Views)
-	{
-		View.InstancedStereoWidth = InstancedStereoWidth;
+		const FViewInfo* InstancedView = View.GetInstancedView();
+		View.InstancedStereoWidth = InstancedView ? InstancedView->ViewRect.Max.X : View.ViewRect.Max.X;
 	}
 
 	// We render to the actual position of the viewports so with black borders we need the max.
@@ -4861,7 +4857,7 @@ void FSceneRenderer::SetStereoViewport(FRHICommandList& RHICmdList, const FViewI
 		}
 		else
 		{
-			RHICmdList.SetViewport(View.ViewRect.Min.X * ViewportScale, View.ViewRect.Min.Y * ViewportScale, 0.0f, InstancedStereoWidth * ViewportScale, View.ViewRect.Max.Y * ViewportScale, 1.0f);
+			RHICmdList.SetViewport(View.ViewRect.Min.X * ViewportScale, View.ViewRect.Min.Y * ViewportScale, 0.0f, View.InstancedStereoWidth * ViewportScale, View.ViewRect.Max.Y * ViewportScale, 1.0f);
 		}
 	}
 	else
