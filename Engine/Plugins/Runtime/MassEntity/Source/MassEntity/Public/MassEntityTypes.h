@@ -103,14 +103,10 @@ struct FMassEntityHandle
 	}
 };
 
-template struct MASSENTITY_API TScriptStructTypeBitSet<FMassFragment>;
-using FMassFragmentBitSet = TScriptStructTypeBitSet<FMassFragment>;
-template struct MASSENTITY_API TScriptStructTypeBitSet<FMassTag>;
-using FMassTagBitSet = TScriptStructTypeBitSet<FMassTag>;
-template struct MASSENTITY_API TScriptStructTypeBitSet<FMassChunkFragment>;
-using FMassChunkFragmentBitSet = TScriptStructTypeBitSet<FMassChunkFragment>;
-template struct MASSENTITY_API TScriptStructTypeBitSet<FMassSharedFragment>;
-using FMassSharedFragmentBitSet = TScriptStructTypeBitSet<FMassSharedFragment>;
+DECLARE_STRUCTTYPEBITSET_EXPORTED(MASSENTITY_API, FMassFragmentBitSet, FMassFragment);
+DECLARE_STRUCTTYPEBITSET_EXPORTED(MASSENTITY_API, FMassTagBitSet, FMassTag);
+DECLARE_STRUCTTYPEBITSET_EXPORTED(MASSENTITY_API, FMassChunkFragmentBitSet, FMassChunkFragment);
+DECLARE_STRUCTTYPEBITSET_EXPORTED(MASSENTITY_API, FMassSharedFragmentBitSet, FMassSharedFragment);
 
 /** The type summarily describing a composition of an entity or an archetype. It contains information on both the
  *  fragments as well as tags */
