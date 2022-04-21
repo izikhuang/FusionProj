@@ -252,7 +252,6 @@ void UE::PixelStreaming::FStreamer::OnOffer(FPixelStreamingPlayerId PlayerId, co
 		}
 
 		SendAnswer(PlayerId, PeerConnection, TUniquePtr<webrtc::SessionDescriptionInterface>(SessionDesc.release()));
-		ForceKeyFrame();
 	}
 	else
 	{
