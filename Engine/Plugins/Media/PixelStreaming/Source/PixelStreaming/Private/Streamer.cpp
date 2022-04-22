@@ -552,6 +552,11 @@ std::vector<webrtc::RtpEncodingParameters> UE::PixelStreaming::FStreamer::Create
 			LayerEncoding.max_bitrate_bps = SimulcastLayer->MaxBitrate;
 			LayerEncoding.scale_resolution_down_by = SimulcastLayer->Scaling;
 			LayerEncoding.max_framerate = FMath::Max(60, UE::PixelStreaming::Settings::CVarPixelStreamingWebRTCFps.GetValueOnAnyThread());
+
+			// In M84 this will crash with "Attempted to set an unimplemented parameter of RtpParameters".
+			// Try re-enabling this when we upgrade WebRTC versions.
+			//LayerEncoding.network_priority = webrtc::Priority::kHigh;
+
 			EncodingParams.push_back(LayerEncoding);
 		}
 	}
@@ -563,6 +568,7 @@ std::vector<webrtc::RtpEncodingParameters> UE::PixelStreaming::FStreamer::Create
 		encoding.min_bitrate_bps = UE::PixelStreaming::Settings::CVarPixelStreamingWebRTCMinBitrate.GetValueOnAnyThread();
 		encoding.max_framerate = FMath::Max(60, UE::PixelStreaming::Settings::CVarPixelStreamingWebRTCFps.GetValueOnAnyThread());
 		encoding.scale_resolution_down_by.reset();
+		encoding.network_priority = webrtc::Priority::kHigh;
 		EncodingParams.push_back(encoding);
 	}
 
