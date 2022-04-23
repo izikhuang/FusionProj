@@ -53,7 +53,7 @@ namespace CADLibrary
 
 		for (FVector& Vertex : VertexArray)
 		{
-			Vertex *= Context.ImportParams.GetScaleFactor();
+			Vertex *= 0.1; // mm to cm
 		}
 
 		int32 VertexCount = VertexArray.Num();
@@ -341,6 +341,11 @@ namespace CADLibrary
 	void FCADKernelTools::GetBodyTessellation(const CADKernel::FModelMesh& ModelMesh, const CADKernel::FBody& Body, FBodyMesh& OutBodyMesh)
 	{
 		ModelMesh.GetNodeCoordinates(OutBodyMesh.VertexArray);
+
+		for (FVector& Vertex : OutBodyMesh.VertexArray)
+		{
+			Vertex *= 0.1; // mm to cm
+		}
 
 		uint32 FaceSize = Body.FaceCount();
 

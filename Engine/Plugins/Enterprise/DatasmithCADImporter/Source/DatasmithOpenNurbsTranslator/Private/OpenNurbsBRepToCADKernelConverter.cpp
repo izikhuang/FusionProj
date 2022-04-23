@@ -71,41 +71,32 @@ TSharedRef<CADKernel::FSurface> FOpenNurbsBRepToCADKernelConverter::AddSurface(O
 	FillPerAxisInfo(U, OpenNurbsSurface, NurbsData);
 	FillPerAxisInfo(V, OpenNurbsSurface, NurbsData);
 
-	int32 ControlVertexDimension = OpenNurbsSurface.CVSize();
-	NurbsData.HomogeneousPoles.SetNumUninitialized(NurbsData.PoleUCount * NurbsData.PoleVCount * ControlVertexDimension);
-	double* ControlPoints = NurbsData.HomogeneousPoles.GetData();
-	NurbsData.bIsRational = OpenNurbsSurface.IsRational();
-	ON::point_style PointStyle = OpenNurbsSurface.IsRational() ? ON::point_style::euclidean_rational : ON::point_style::not_rational;
-	for (int32 UIndex = 0; UIndex < NurbsData.PoleUCount; ++UIndex)
 	{
-		for (int32 VIndex = 0; VIndex < NurbsData.PoleVCount; ++VIndex, ControlPoints += ControlVertexDimension)
+		int32 ControlVertexDimension = OpenNurbsSurface.CVSize();
+		NurbsData.HomogeneousPoles.SetNumUninitialized(NurbsData.PoleUCount * NurbsData.PoleVCount * ControlVertexDimension);
+		double* ControlPoints = NurbsData.HomogeneousPoles.GetData();
+		NurbsData.bIsRational = OpenNurbsSurface.IsRational();
+		ON::point_style PointStyle = OpenNurbsSurface.IsRational() ? ON::point_style::euclidean_rational : ON::point_style::not_rational;
+		for (int32 UIndex = 0; UIndex < NurbsData.PoleUCount; ++UIndex)
 		{
-			OpenNurbsSurface.GetCV(UIndex, VIndex, PointStyle, ControlPoints);
-		}
-	}
-
-#ifdef REMOVE_NEGATIVE_WEIGHT
-	if (NurbsData.bIsRational)
-	{
-		bool bHasNegativeWeight = false;
-		for (int32 Index = 3; Index < NurbsData.HomogeneousPoles.Num(); Index += 4)
-		{
-			double Weight = ControlPoints[Index];
-			if (Weight < 0.)
+			for (int32 VIndex = 0; VIndex < NurbsData.PoleVCount; ++VIndex, ControlPoints += ControlVertexDimension)
 			{
-				bHasNegativeWeight = true;
-				break;
+				OpenNurbsSurface.GetCV(UIndex, VIndex, PointStyle, ControlPoints);
 			}
 		}
+	}
 
-		if (bHasNegativeWeight)
+	// Scale ControlPoints into mm
+	{
+		int32 Offset = NurbsData.bIsRational ? 4 : 3;
+		double* ControlPoints = NurbsData.HomogeneousPoles.GetData();
+		for (int32 Index = 0; Index < NurbsData.HomogeneousPoles.Num(); Index += Offset)
 		{
-			UInfo.IncreaseDegree();
-			VInfo.IncreaseDegree();
-			BuildHull();
+			ControlPoints[Index + 0] *= ScaleFactor;
+			ControlPoints[Index + 1] *= ScaleFactor;
+			ControlPoints[Index + 2] *= ScaleFactor;
 		}
 	}
-#endif
 
 	return CADKernel::FEntity::MakeShared<CADKernel::FNURBSSurface>(GeometricTolerance, NurbsData);
 }

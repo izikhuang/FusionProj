@@ -9,5 +9,15 @@ class IOpenNurbsBRepConverter
 {
 public:
 	virtual bool AddBRep(ON_Brep& Brep, const ON_3dVector& Offset) = 0;
+	void SetScaleFactor(double NewScaleFactor)
+	{
+		if (!FMath::IsNearlyEqual(NewScaleFactor, 1.) && !FMath::IsNearlyZero(NewScaleFactor))
+		{
+			ScaleFactor = NewScaleFactor;
+		}
+	}
+
+protected:
+	double ScaleFactor = 1; // mm to mm 
 };
 
