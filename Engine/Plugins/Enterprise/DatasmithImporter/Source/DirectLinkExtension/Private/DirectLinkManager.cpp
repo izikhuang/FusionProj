@@ -152,6 +152,8 @@ namespace UE::DatasmithImporter
 #endif //WITH_EDITOR
 	}
 
+	FDirectLinkManager::~FDirectLinkManager() = default;
+
 	void FDirectLinkManager::Clear()
 	{
 		Endpoint->RemoveEndpointObserver(this);
