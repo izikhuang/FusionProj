@@ -385,7 +385,6 @@ void UNiagaraNodeParameterMapGet::SynchronizeDefaultInputPin(UEdGraphPin* Defaul
 	if (ScriptVar) {
 		if (ScriptVar->DefaultMode == ENiagaraDefaultMode::Value)
 		{
-			DefaultPin->BreakAllPinLinks();
 			DefaultPin->bNotConnectable = true;
 			DefaultPin->bDefaultValueIsReadOnly = true;
 		}
