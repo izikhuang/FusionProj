@@ -647,8 +647,9 @@ public:
 			TranslationCache = MakeShared<FTranslationCache>();
 		}
 
-		CADLibrary::FImportParameters ImportParameters(0.001, 0.1, FDatasmithUtils::EModelCoordSystem::ZUp_RightHanded_FBXLegacy);
-		ImportParameters.SwitchOffUVMapScaling();
+		const double IPMetricUnit = 0.001; // CAD Tools works in mm
+		const double IPScaleFactor = 1.; // Default scale set to 1 because BRep are created in mm and modeler unit is assumed to be mm
+		CADLibrary::FImportParameters ImportParameters(IPMetricUnit, IPScaleFactor, FDatasmithUtils::EModelCoordSystem::ZUp_RightHanded_FBXLegacy);
 
 		if (CADLibrary::FImportParameters::bGDisableCADKernelTessellation)
 		{
@@ -2363,7 +2364,7 @@ bool FOpenNurbsTranslatorImpl::Read(ON_BinaryFile& Archive, TSharedRef<IDatasmit
 		bResult = false;
 	}
 
-	double MetricUnit = Settings.m_ModelUnitsAndTolerances.Scale(ON::LengthUnitSystem::Millimeters);
+	const double MetricUnit = Settings.m_ModelUnitsAndTolerances.Scale(ON::LengthUnitSystem::Millimeters);
 	SetMetricUnit(MetricUnit);
 
 	// Step 4: REQUIRED - Read bitmap table (it can be empty)

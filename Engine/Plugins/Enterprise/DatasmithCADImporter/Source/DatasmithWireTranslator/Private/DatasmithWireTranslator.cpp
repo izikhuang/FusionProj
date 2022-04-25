@@ -228,7 +228,7 @@ public:
 		}
 
 		const double MetricUnit = 0.001; // ImportParameters MetricUnit is defined in meter
-		const double ScaleFactor = 0.1;  // MetricUnit to UE unit i.e. cm
+		const double ScaleFactor = 1.;   // Default scale set to 1 because BRep are created in mm and modeler unit is assumed to be mm
 		CADLibrary::FImportParameters ImportParameters(MetricUnit, ScaleFactor);
 		if(CADLibrary::FImportParameters::bGDisableCADKernelTessellation)
 		{
@@ -1892,7 +1892,7 @@ TOptional<FMeshDescription> FWireTranslatorImpl::MeshDagNodeWithExternalMesher(T
 		// All actors of a Alias symmetric layer are defined in the world Reference i.e. they have identity transform. So Mesh actor has to be defined in the world reference.
 		ObjectReference = EAliasObjectReference::WorldReference;
 	}
-	else if (TessellationOptions.StitchingTechnique != EDatasmithCADStitchingTechnique::StitchingSew)
+	else if (TessellationOptions.StitchingTechnique == EDatasmithCADStitchingTechnique::StitchingSew)
 	{
 		// In the case of StitchingSew, AlDagNode children of a GroupNode are merged together. To be merged, they have to be defined in the reference of parent GroupNode.
 		ObjectReference = EAliasObjectReference::ParentReference;

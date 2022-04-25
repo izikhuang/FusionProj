@@ -9,6 +9,7 @@ class IOpenNurbsBRepConverter
 {
 public:
 	virtual bool AddBRep(ON_Brep& Brep, const ON_3dVector& Offset) = 0;
+	
 	void SetScaleFactor(double NewScaleFactor)
 	{
 		if (!FMath::IsNearlyEqual(NewScaleFactor, 1.) && !FMath::IsNearlyZero(NewScaleFactor))
@@ -18,6 +19,11 @@ public:
 	}
 
 protected:
-	double ScaleFactor = 1; // mm to mm 
+
+	/**
+	 * Scale factor between OpenNurbs and the external modeler (CADKernel, TechSoft, ...)
+	 * By default OpenNurbs unit is mm
+	 */
+	double ScaleFactor = 1;
 };
 

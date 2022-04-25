@@ -389,6 +389,14 @@ void FTechSoftFileParser::GenerateBodyMesh(A3DRiRepresentationItem* Representati
 		TechSoftUtils::FillBodyMesh(Representation, CADFileData.GetImportParameters(), Body.BodyUnit, BodyMesh);
 	}
 
+	if (BodyMesh.TriangleCount == 0)
+	{
+		// the mesh of the body is empty, the body is deleted.
+		// Todo (jira UETOOL-5148): add a boolean in Body to flag that the body should not be build
+		Body.ParentId = 0;
+		Body.MeshActorName = 0;
+	}
+
 	// Convert material
 	FCADUUID DefaultColorName = Body.ColorFaceSet.Num() > 0 ? *Body.ColorFaceSet.begin() : 0;
 	FCADUUID DefaultMaterialName = Body.MaterialFaceSet.Num() > 0 ? *Body.MaterialFaceSet.begin() : 0;
@@ -434,9 +442,9 @@ void FTechSoftFileParser::GenerateBodyMesh(A3DRiRepresentationItem* Representati
 		{
 			TSharedPtr<FJsonObject> JsonObject = MakeShared<FJsonObject>();
 
-			// Save file unit and default color and material attributes in a json string
+			// Save body unit and default color and material attributes in a json string
 			// This will be used when the file is reloaded
-			JsonObject->SetNumberField(JSON_ENTRY_FILE_UNIT, Body.BodyUnit);
+			JsonObject->SetNumberField(JSON_ENTRY_BODY_UNIT, Body.BodyUnit);
 			JsonObject->SetNumberField(JSON_ENTRY_COLOR_NAME, DefaultColorName);
 			JsonObject->SetNumberField(JSON_ENTRY_MATERIAL_NAME, DefaultMaterialName);
 
@@ -1262,6 +1270,21 @@ FCadId FTechSoftFileParser::TraversePolyBRepModel(A3DRiPolyBrepModel* PolygonalP
 	if (int32* BodyIndexPtr = RepresentationItemsCache.Find(PolygonalPtr))
 	{
 		return CADFileData.GetBodyAt(*BodyIndexPtr).ObjectId;
+	}
+
+	// if BRep model has not material or color, add part one
+	if (BRepMetaData.MaterialName == 0 && BRepMetaData.ColorName == 0)
+	{
+		if (PartMetaData.MaterialName)
+		{
+			BRepMetaData.MaterialName = PartMetaData.MaterialName;
+			BRepMetaData.MetaData.Add(TEXT("MaterialName"), FString::Printf(TEXT("%u"), PartMetaData.MaterialName));
+		}
+		if (PartMetaData.ColorName)
+		{
+			BRepMetaData.ColorName = PartMetaData.ColorName;
+			BRepMetaData.MetaData.Add(TEXT("ColorName"), FString::Printf(TEXT("%u"), PartMetaData.ColorName));
+		}
 	}
 
 	ExtractSpecificMetaData(PolygonalPtr, BRepMetaData);
