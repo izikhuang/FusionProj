@@ -542,12 +542,4 @@ private:
 	FBitArrayExt StructTypesBitArray;
 };
 
-#define DECLARE_STRUCTTYPEBITSET_EXPORTED(EXPORTED_API, ContainerTypeName, BaseStructType) template<> \
-	FStructTracker TScriptStructTypeBitSet<BaseStructType>::StructTracker; \
-	template struct EXPORTED_API TScriptStructTypeBitSet<BaseStructType>; \
-	using ContainerTypeName = TScriptStructTypeBitSet<BaseStructType>;
-
-#define DECLARE_STRUCTTYPEBITSET(ContainerTypeName, BaseStructType) DECLARE_STRUCTTYPEBITSET_EXPORTED(, ContainerTypeName, BaseStructType)
-
-#define DEFINE_TYPEBITSET(ContainerTypeName) template<> \
-	FStructTracker ContainerTypeName::StructTracker = FStructTracker();
+template<typename TBaseStruct> FStructTracker TScriptStructTypeBitSet<TBaseStruct>::StructTracker;
