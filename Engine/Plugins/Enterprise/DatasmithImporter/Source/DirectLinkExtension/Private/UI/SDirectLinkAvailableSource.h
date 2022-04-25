@@ -6,6 +6,7 @@
 
 #include "Framework/Application/SlateApplication.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Views/SListView.h"
 
 namespace UE::DatasmithImporter
 {
