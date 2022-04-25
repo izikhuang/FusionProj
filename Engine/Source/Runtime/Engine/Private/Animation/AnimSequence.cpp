@@ -54,6 +54,7 @@
 #include "Animation/AnimationPoseData.h"
 #include "ITimeManagementModule.h"
 #include "CommonFrameRates.h"
+#include "Animation/AttributeTypes.h"
 #include "HAL/LowLevelMemTracker.h"
 
 LLM_DEFINE_TAG(SequenceData);
@@ -447,6 +448,11 @@ UAnimSequence::UAnimSequence(const FObjectInitializer& ObjectInitializer)
 		check(IsDataModelValid());
 	}
 #endif
+
+	if (IsDefaultSubobject())
+	{
+		UE::Anim::AttributeTypes::Initialize();
+	}
 }
 
 void UAnimSequence::PostInitProperties()
