@@ -18,6 +18,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "Modules/ModuleManager.h"
 #include "StaticMeshAttributes.h"
 
@@ -484,9 +485,21 @@ bool FUsdGeomXformableTranslator::CollapsesChildren( ECollapsingType CollapsingT
 		}
 		else
 		{
+			static IConsoleVariable* CVar = IConsoleManager::Get().FindConsoleVariable( TEXT( "USD.CombineIdenticalStaticMeshMaterialSlots" ) );
+			bool bCombineMaterialSlots = CVar && CVar->GetBool();
+
+			pxr::TfToken RenderContextToken = pxr::UsdShadeTokens->universalRenderContext;
+			if ( !Context->RenderContext.IsNone() )
+			{
+				RenderContextToken = UnrealToUsd::ConvertToken( *Context->RenderContext.ToString() ).Get();
+			}
+
 			const int32 MaxVertices = 500000;
-			int32 NumMaxExpectedMaterialSlots = 0;
 			int32 NumVertices = 0;
+
+			TSet<UsdUtils::FUsdPrimMaterialSlot> CombinedSlots;
+			int32 NumMaxExpectedMaterialSlots = 0;
+
 			for ( const TUsdStore< pxr::UsdPrim >& ChildPrim : ChildGeomMeshes )
 			{
 				pxr::UsdGeomMesh ChildGeomMesh( ChildPrim.Get() );
@@ -519,8 +532,18 @@ bool FUsdGeomXformableTranslator::CollapsesChildren( ECollapsingType CollapsingT
 				// Don't collapse children if the child meshes have Nanite override opinions but the combined mesh would lead to over 64 material slots.
 				if ( bChildrenWantNanite )
 				{
-					std::vector<pxr::UsdGeomSubset> GeomSubsets = pxr::UsdShadeMaterialBindingAPI( ChildPrim.Get() ).GetMaterialBindSubsets();
-					NumMaxExpectedMaterialSlots += FMath::Max<int32>( 1, GeomSubsets.size() + 1 ); // +1 because we may create an additional slot if it's not properly partitioned
+					if ( bCombineMaterialSlots )
+					{
+						const bool bProvideMaterialIndices = false;
+						UsdUtils::FUsdPrimMaterialAssignmentInfo LocalInfo = UsdUtils::GetPrimMaterialAssignments( ChildPrim.Get(), Context->Time, bProvideMaterialIndices, RenderContextToken );
+						CombinedSlots.Append( LocalInfo.Slots );
+						NumMaxExpectedMaterialSlots = CombinedSlots.Num();
+					}
+					else
+					{
+						std::vector<pxr::UsdGeomSubset> GeomSubsets = pxr::UsdShadeMaterialBindingAPI( ChildPrim.Get() ).GetMaterialBindSubsets();
+						NumMaxExpectedMaterialSlots += FMath::Max<int32>( 1, GeomSubsets.size() + 1 ); // +1 because we may create an additional slot if it's not properly partitioned
+					}
 
 					const int32 MaxNumSections = 64; // There is no define for this, but it's checked for on NaniteBuilder.cpp, FBuilderModule::Build
 					if ( NumMaxExpectedMaterialSlots > MaxNumSections )
