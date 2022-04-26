@@ -874,10 +874,16 @@ namespace VulkanRHI
 			return PoolSize;
 		}
 
+		FRWLock AllBufferAllocationsLock;  // protects against resizing of array (RenderThread<->RHIThread)
 		TArray<FVulkanSubresourceAllocator*> UsedBufferAllocations[(int32)EPoolSizes::SizesCount + 1];
 		TArray<FVulkanSubresourceAllocator*> FreeBufferAllocations[(int32)EPoolSizes::SizesCount + 1];
 		TArray<FVulkanSubresourceAllocator*> AllBufferAllocations;
 		PTRINT AllBufferAllocationsFreeListHead = (PTRINT)-1;
+		inline FVulkanSubresourceAllocator* GetSubresourceAllocator(const uint32 AllocatorIndex)
+		{
+			FRWScopeLock ScopedReadLock(AllBufferAllocationsLock, SLT_ReadOnly);
+			return AllBufferAllocations[AllocatorIndex];
+		}
 
 		uint64 PendingEvictBytes = 0;
 		bool bIsEvicting = false;
