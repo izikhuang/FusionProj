@@ -1133,7 +1133,9 @@ struct FRDGResourceDumpContext
 		{
 			FString DumpFilePath = kResourcesDir / FString::Printf(TEXT("%s.v%016x.bin"), *UniqueResourceName, PtrToUint(bIsOutputResource ? Pass : nullptr));
 
-			if (IsUnsafeToDumpResource(ByteSize, 1.2f))
+			const bool bCopyDataForWrite = FDataDrivenShaderPlatformInfo::GetIsLanguageNintendo(GMaxRHIShaderPlatform);
+			const float MemoryAmountScale = bCopyDataForWrite ? 2.2f : 1.2f;
+			if (IsUnsafeToDumpResource(ByteSize, MemoryAmountScale))
 			{
 				UE_LOG(LogRendererCore, Warning, TEXT("Not dumping %s because of insuficient memory available for staging buffer."), *DumpFilePath);
 				return;
@@ -1146,7 +1148,7 @@ struct FRDGResourceDumpContext
 				RDG_EVENT_NAME("RDG DumpBuffer(%s -> %s)", Buffer->Name, *DumpFilePath),
 				PassParameters,
 				ERDGPassFlags::Readback,
-				[this, DumpFilePath, Buffer, ByteSize](FRHICommandListImmediate& RHICmdList)
+				[this, DumpFilePath, Buffer, ByteSize, bCopyDataForWrite](FRHICommandListImmediate& RHICmdList)
 			{
 				check(IsInRenderingThread());
 				FStagingBufferRHIRef StagingBuffer = RHICreateStagingBuffer();
@@ -1167,8 +1169,19 @@ struct FRDGResourceDumpContext
 				void* Content = RHICmdList.LockStagingBuffer(StagingBuffer, Fence.GetReference(), 0, ByteSize);
 				if (Content)
 				{
-					TArrayView<const uint8> ArrayView(reinterpret_cast<const uint8*>(Content), ByteSize);
-					DumpBinaryToFile(ArrayView, DumpFilePath);
+					if (bCopyDataForWrite)
+					{
+						TArray64<uint8> CopiedData;
+						CopiedData.SetNumUninitialized(ByteSize);
+
+						FPlatformMemory::Memcpy(&CopiedData[0], Content, ByteSize);
+						DumpBinaryToFile(CopiedData, DumpFilePath);
+					}
+					else
+					{
+						TArrayView<const uint8> ArrayView(reinterpret_cast<const uint8*>(Content), ByteSize);
+						DumpBinaryToFile(ArrayView, DumpFilePath);
+					}
 
 					RHICmdList.UnlockStagingBuffer(StagingBuffer);
 				}
