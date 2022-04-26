@@ -84,10 +84,10 @@ void UDMXEntityFixturePatch::RemoveFixturePatchFromLibrary(FDMXEntityFixturePatc
 	{
 		if (UDMXLibrary* DMXLibrary = FixturePatch->GetParentLibrary())
 		{
-			FixturePatch->SetFixtureType(nullptr);
-
 			DMXLibrary->Modify();
 			FixturePatch->Modify();
+
+			FixturePatch->SetFixtureType(nullptr);
 			FixturePatch->Destroy();
 		}
 	}
