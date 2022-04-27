@@ -23,12 +23,11 @@ namespace CADLibrary
 
 namespace TechSoftUtils
 {
+// to avoid changing a public header in 5.0.1. Cleaned in 5.1
+CADINTERFACES_API void RestoreMaterials(const TSharedPtr<FJsonObject>& DefaultValues, CADLibrary::FBodyMesh& BodyMesh);
 
 #ifdef USE_TECHSOFT_SDK
 TSharedPtr<FJsonObject> GetJsonObject(A3DAsmProductOccurrence* ProductOcccurence);
-
-// to avoid changing a public header in 5.0.1. Cleaned in 5.1
-CADINTERFACES_API void RestoreMaterials(const TSharedPtr<FJsonObject>& DefaultValues, CADLibrary::FBodyMesh& BodyMesh);
 
 void SaveModelFileToPrcFile(void* ModelFile, const FString& Filename);
 A3DUns32 CreateRGBColor(FColor& Color);
