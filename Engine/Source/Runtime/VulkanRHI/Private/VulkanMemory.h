@@ -6,6 +6,7 @@
 
 #pragma once 
 
+#include "Misc/ScopeRWLock.h"
 
 //enable to store FILE/LINE, and optionally a stacktrace via r.vulkan.backtrace
 #if !UE_BUILD_SHIPPING
