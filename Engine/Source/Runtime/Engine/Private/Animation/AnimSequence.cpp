@@ -4388,7 +4388,23 @@ void UAnimSequence::EvaluateCurveData(FBlendedCurve& OutCurve, float CurrentTime
 	check(!bForceUseRawData || CanEvaluateRawAnimationData());
 	if (CanEvaluateRawAnimationData() && bEvaluateRawData)
 	{
+#if WITH_EDITOR
+		// Evaluate float curves from the AnimationData Model
+		if (OutCurve.NumValidCurveCount > 0)
+		{
+			for (auto CurveIter = DataModel->GetFloatCurves().CreateConstIterator(); CurveIter; ++CurveIter)
+			{
+				const FFloatCurve& Curve = *CurveIter;
+				if (OutCurve.IsEnabled(Curve.Name.UID))
+				{
+					const float Value = Curve.Evaluate(CurrentTime);
+					OutCurve.Set(Curve.Name.UID, Value);
+				}
+			}
+		}
+#else
 		Super::EvaluateCurveData(OutCurve, CurrentTime, bForceUseRawData);
+#endif
 	}
 	else if(IsCurveCompressedDataValid() && CompressedData.CurveCompressionCodec)
 	{
@@ -5833,10 +5849,11 @@ void UAnimSequence::OnModelModified(const EAnimDataModelNotifyType& NotifyType, 
 		case EAnimDataModelNotifyType::CurveFlagsChanged:
 		case EAnimDataModelNotifyType::CurveScaled:
 		{
+			ClearCompressedCurveData();
+			UpdateRawDataGuid(RegenerateGUID);
+				
 			if (NotifyCollector.IsNotWithinBracket())
-			{
-				UpdateRawDataGuid(RegenerateGUID);
-				ClearCompressedCurveData();
+			{						
 				RecompressAnimationData();
 			}
 
