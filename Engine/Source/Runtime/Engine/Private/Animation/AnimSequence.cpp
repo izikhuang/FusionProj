@@ -5731,6 +5731,8 @@ void UAnimSequence::OnModelModified(const EAnimDataModelNotifyType& NotifyType, 
 		}
 	};
 
+	bool bShouldMarkPackageDirty = true;
+
 	PRAGMA_DISABLE_DEPRECATION_WARNINGS
 	switch (NotifyType)
 	{
@@ -5862,6 +5864,13 @@ void UAnimSequence::OnModelModified(const EAnimDataModelNotifyType& NotifyType, 
 		{
 			const FCurveRenamedPayload& TypedPayload = Payload.GetPayload<FCurveRenamedPayload>();
 			UpdateCompressedCurveName(TypedPayload.Identifier.InternalName.UID, TypedPayload.NewIdentifier.InternalName);
+			if (TypedPayload.Identifier.InternalName.DisplayName == TypedPayload.NewIdentifier.InternalName.DisplayName
+				&& TypedPayload.Identifier.InternalName.UID == SmartName::MaxUID && TypedPayload.NewIdentifier.InternalName.UID != SmartName::MaxUID)
+			{
+				// We are renaming a Curve with a FSmartName::Invalid UID, this means it was just loaded and we are retrieving
+				// its actual UID from its DisplayName. This should *not* mark the package dirty.
+				bShouldMarkPackageDirty = false;
+			}
 			break;
 		}
 		default:
@@ -5871,8 +5880,11 @@ void UAnimSequence::OnModelModified(const EAnimDataModelNotifyType& NotifyType, 
 		}
 	}
 	PRAGMA_ENABLE_DEPRECATION_WARNINGS
-	
-	MarkPackageDirty();
+
+	if (bShouldMarkPackageDirty)
+	{
+		MarkPackageDirty();
+	}
 }
 
 
