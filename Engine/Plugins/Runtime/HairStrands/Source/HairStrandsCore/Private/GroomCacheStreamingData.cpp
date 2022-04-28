@@ -204,7 +204,10 @@ void FGroomCacheStreamingData::UpdateStreamingStatus(bool bAsyncDeletionAllowed)
 						// Propagate the GroomCache archive version to the memory archive for proper serialization
 						{
 							FReadScopeLock Lock(GroomCacheArchiveVersionLock);
-							Ar.SetUEVer(GroomCacheArchiveVersion[GroomCache]);
+							if (FPackageFileVersion* Version = GroomCacheArchiveVersion.Find(GroomCache))
+							{
+								Ar.SetUEVer(*Version);
+							}
 						}
 						AnimData->Serialize(Ar);
 

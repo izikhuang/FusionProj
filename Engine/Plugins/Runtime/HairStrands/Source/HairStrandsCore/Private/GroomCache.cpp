@@ -222,7 +222,10 @@ bool UGroomCache::GetGroomDataAtFrameIndex(int32 FrameIndex, FGroomCacheAnimatio
 		// Propagate the GroomCache archive version to the memory archive for proper serialization
 		{
 			FReadScopeLock Lock(GroomCacheArchiveVersionLock);
-			Ar.SetUEVer(GroomCacheArchiveVersion[this]);
+			if (FPackageFileVersion* Version = GroomCacheArchiveVersion.Find(this))
+			{
+				Ar.SetUEVer(*Version);
+			}
 		}
 		AnimData.Serialize(Ar);
 	}
