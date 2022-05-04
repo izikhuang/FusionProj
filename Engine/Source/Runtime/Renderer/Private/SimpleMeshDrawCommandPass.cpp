@@ -7,6 +7,9 @@
 #include "SimpleMeshDrawCommandPass.h"
 #include "ScenePrivate.h"
 
+// 5.0.2 deadend workaround to avoid changing public headers: InstanceFactor encodes the flag bWasDrawCommandsSetup in the high bit
+constexpr uint32 kWasDrawCommandsSetUpFlag = 1U << 31U;
+
 FSimpleMeshDrawCommandPass::FSimpleMeshDrawCommandPass(const FSceneView& View, FInstanceCullingManager* InstanceCullingManager, bool bEnableStereo) :
 	DynamicPassMeshDrawListContext(DynamicMeshDrawCommandStorage, VisibleMeshDrawCommands, GraphicsMinimalPipelineStateSet, bNeedsInitialization)
 {
@@ -25,6 +28,7 @@ FSimpleMeshDrawCommandPass::FSimpleMeshDrawCommandPass(const FSceneView& View, F
 	ERHIFeatureLevel::Type FeatureLevel = ViewInfo->GetFeatureLevel();
 	InstanceCullingContext = FInstanceCullingContext(FeatureLevel, InstanceCullingManager, ViewIds, nullptr, bUsingStereo ? EInstanceCullingMode::Stereo : EInstanceCullingMode::Normal);
 
+	// 5.0.2 deadend workaround to avoid changing public headers: InstanceFactor encodes the flag bWasDrawCommandsSetup in the high bit, which is cleared here
 	InstanceFactor = static_cast<uint32>(ViewIds.Num());
 }
 
@@ -32,6 +36,9 @@ void FSimpleMeshDrawCommandPass::BuildRenderingCommands(FRDGBuilder& GraphBuilde
 {
 	// NOTE: Everything up to InstanceCullingContext.BuildRenderingCommands could be peeled off into an async task.
 	ApplyViewOverridesToMeshDrawCommands(View, VisibleMeshDrawCommands, DynamicMeshDrawCommandStorage, GraphicsMinimalPipelineStateSet, bNeedsInitialization);
+
+	// 5.0.2 deadend workaround to avoid changing public headers: InstanceFactor encodes the flag bWasDrawCommandsSetup in the high bit, which is cleared here
+	const bool bWasDrawCommandsSetup = (InstanceFactor & kWasDrawCommandsSetUpFlag) != 0U;
 
 	FInstanceCullingResult InstanceCullingResult;
 	VisibleMeshDrawCommands.Sort(FCompareFMeshDrawCommands());
@@ -45,7 +52,9 @@ void FSimpleMeshDrawCommandPass::BuildRenderingCommands(FRDGBuilder& GraphBuilde
 		if (!bWasDrawCommandsSetup)
 		{
 			InstanceCullingContext.SetupDrawCommands(VisibleMeshDrawCommands, true, MaxInstances, VisibleMeshDrawCommandsNum, NewPassVisibleMeshDrawCommandsNum);
-			bWasDrawCommandsSetup = true;
+
+			// 5.0.2 deadend workaround to avoid changing public headers: InstanceFactor encodes the flag bWasDrawCommandsSetup in the high bit, which is cleared here
+			InstanceFactor |= kWasDrawCommandsSetUpFlag;
 		}
 
 		// 2. Run finalize culling commands pass
@@ -69,6 +78,9 @@ void FSimpleMeshDrawCommandPass::SubmitDraw(FRHICommandList& RHICmdList, const F
 {
 	if (VisibleMeshDrawCommands.Num() > 0)
 	{
+		// 5.0.2 deadend workaround to avoid changing public headers: InstanceFactor encodes the flag bWasDrawCommandsSetup in the high bit, which is cleared here
+		uint32 ActualInstanceFactor = InstanceFactor & (~kWasDrawCommandsSetUpFlag);
+
 		if (bSupportsScenePrimitives)
 		{
 			InstanceCullingContext.SubmitDrawCommands(
@@ -77,13 +89,13 @@ void FSimpleMeshDrawCommandPass::SubmitDraw(FRHICommandList& RHICmdList, const F
 				GetMeshDrawCommandOverrideArgs(InstanceCullingDrawParams),
 				0,
 				VisibleMeshDrawCommands.Num(),
-				InstanceFactor,
+				ActualInstanceFactor,
 				RHICmdList);
 		}
 		else
 		{
 			const uint32 PrimitiveIdBufferStride = FInstanceCullingContext::GetInstanceIdBufferStride(InstanceCullingContext.FeatureLevel);
-			SubmitMeshDrawCommandsRange(VisibleMeshDrawCommands, GraphicsMinimalPipelineStateSet, PrimitiveIdVertexBuffer, PrimitiveIdBufferStride, 0, false, 0, VisibleMeshDrawCommands.Num(), InstanceFactor, RHICmdList);
+			SubmitMeshDrawCommandsRange(VisibleMeshDrawCommands, GraphicsMinimalPipelineStateSet, PrimitiveIdVertexBuffer, PrimitiveIdBufferStride, 0, false, 0, VisibleMeshDrawCommands.Num(), ActualInstanceFactor, RHICmdList);
 		}
 	}
 }
