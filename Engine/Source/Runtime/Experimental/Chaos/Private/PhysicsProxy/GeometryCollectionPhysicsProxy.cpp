@@ -1554,6 +1554,14 @@ void FGeometryCollectionPhysicsProxy::SetWorldTransform(const FTransform& WorldT
 {
 	check(IsInGameThread());
 	GameThreadPerFrameData.SetWorldTransform(WorldTransform);
+
+	if (Chaos::FPhysicsSolver* RBDSolver = GetSolver<Chaos::FPhysicsSolver>())
+	{
+		RBDSolver->EnqueueCommandImmediate([this, RBDSolver]()
+		{
+			RBDSolver->AddDirtyProxy(this);
+		});
+	}
 }
 
 void FGeometryCollectionPhysicsProxy::PushStateOnGameThread(Chaos::FPBDRigidsSolver* InSolver)
@@ -1626,6 +1634,7 @@ void FGeometryCollectionPhysicsProxy::SetClusteredParticleKinematicTarget(Chaos:
 		if (Chaos::FPhysicsSolver* RBDSolver = GetSolver<Chaos::FPhysicsSolver>())
 		{
 			RBDSolver->GetEvolution()->SetParticleKinematicTarget(Handle, NewKinematicTarget);
+			RBDSolver->GetEvolution()->DirtyParticle(*Handle);
 		}
 	}
 }
