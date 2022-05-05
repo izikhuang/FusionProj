@@ -2305,9 +2305,6 @@ void USoundWave::FreeResources(bool bStopSoundsUsingThisResource)
 		RawPCMData = nullptr;
 	}
 
-	// Remove the compressed copy of the data
-	RemoveAudioResource();
-
 	// Stat housekeeping
 	DEC_DWORD_STAT_BY(STAT_AudioMemorySize, TrackedMemoryUsage);
 	DEC_DWORD_STAT_BY(STAT_AudioMemory, TrackedMemoryUsage);
