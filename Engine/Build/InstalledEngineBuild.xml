@@ -1025,7 +1025,7 @@
 	</Agent>
 	<Aggregate Name="HostPlatforms_Win64" Label="Builds/Win64" Requires="Make Installed Build Win64" Exclude="Update Version Files"/>
 
-	<Agent Name="Installed Build Group Mac" Type="Mac_Licensee">
+	<Agent Name="Installed Build Group Mac" Type="Mac_Publish_Licensee;Mac_Licensee">
 		<!-- Build up a list of requirements as some can be optional -->
 		<Property Name="UnrealEditor" Value="#UnrealEditor Mac" />
 		<Property Name="UnrealEditor" Value="#UnrealEditor Mac WithExceptions" If="$(CompileDatasmithPlugins)" />
