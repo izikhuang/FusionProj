@@ -1852,7 +1852,7 @@ void FLumenSceneData::CopyBuffersForResample(FRDGBuilder& GraphBuilder, FShaderR
 		GraphBuilder.RHICmdList.Transition(FRHITransitionInfo(LastPageTableBufferForResample.UAV, ERHIAccess::Unknown, ERHIAccess::UAVCompute));
 
 		FMemcpyResourceParams MemcpyParams;
-		MemcpyParams.Count = PageTableBuffer.NumBytes;
+		MemcpyParams.Count = PageTableBuffer.NumBytes / sizeof(uint32);
 		MemcpyParams.SrcOffset = 0;
 		MemcpyParams.DstOffset = 0;
 		MemcpyResource(GraphBuilder.RHICmdList, LastPageTableBufferForResample, PageTableBuffer, MemcpyParams);
