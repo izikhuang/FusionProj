@@ -1920,7 +1920,19 @@ void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder)
 
 	GPU_MESSAGE_SCOPE(GraphBuilder);
 
+	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
+	{
+		FViewInfo& View = Views[ViewIndex];
+		RDG_GPU_MASK_SCOPE(GraphBuilder, View.GPUMask);
+
+		ShaderPrint::BeginView(GraphBuilder, View);
+		ShaderDrawDebug::BeginView(GraphBuilder, View);
+		ShadingEnergyConservation::Init(GraphBuilder, View);
+	}
+	Scene->UpdateAllPrimitiveSceneInfos(GraphBuilder, true);
+
 #if RHI_RAYTRACING
+	// Now that we have updated all the PrimitiveSceneInfos, update the RayTracing mesh commands cache if needed
 	{
 		ERayTracingMeshCommandsMode CurrentMode = ViewFamily.EngineShowFlags.PathTracing ? ERayTracingMeshCommandsMode::PATH_TRACING : ERayTracingMeshCommandsMode::RAY_TRACING;
 		bool bNaniteCoarseMeshStreamingModeChanged = false;
@@ -1947,16 +1959,6 @@ void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder)
 
 	}
 #endif
-	for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++)
-	{
-		FViewInfo& View = Views[ViewIndex];
-		RDG_GPU_MASK_SCOPE(GraphBuilder, View.GPUMask);
-
-		ShaderPrint::BeginView(GraphBuilder, View);
-		ShaderDrawDebug::BeginView(GraphBuilder, View);
-		ShadingEnergyConservation::Init(GraphBuilder, View);
-	}
-	Scene->UpdateAllPrimitiveSceneInfos(GraphBuilder, true);
 
 	FGPUSceneScopeBeginEndHelper GPUSceneScopeBeginEndHelper(Scene->GPUScene, GPUSceneDynamicContext, Scene);
 
