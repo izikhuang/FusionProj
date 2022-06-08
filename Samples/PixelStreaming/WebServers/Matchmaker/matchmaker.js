@@ -16,7 +16,7 @@ const defaultConfig = {
 // Similar to the Signaling Server (SS) code, load in a config.json file for the MM parameters
 const argv = require('yargs').argv;
 
-var configFile = (typeof argv.configFile != 'undefined') ? argv.configFile.toString() : '.\\config.json';
+var configFile = (typeof argv.configFile != 'undefined') ? argv.configFile.toString() : 'config.json';
 console.log(`configFile ${configFile}`);
 const config = require('./modules/config.js').init(configFile, defaultConfig);
 console.log("Config: " + JSON.stringify(config, null, '\t'));

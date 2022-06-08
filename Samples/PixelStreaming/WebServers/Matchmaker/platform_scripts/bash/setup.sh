@@ -90,38 +90,10 @@ function check_and_install() { #dep_name #get_version_string #version_min #insta
  fi
 }
 
-echo "Checking Pixel Streaming Server dependencies."
+echo "Checking Matchmaker dependencies..."
 
-# navigate to SignallingWebServer root
+# navigate to Matchmaker root
 pushd ../.. > /dev/null
-
-
-#command #dep_name #get_version_string #version_min #install command
-coturn_version=$(if command -v turnserver &> /dev/null; then echo 1; else echo 0; fi)
-if [ $coturn_version -eq 0 ]; then
-    if ! command -v apt-get &> /dev/null; then
-        echo "Setup for the scripts is designed for use with distros that use the apt-get package manager" \
-             "if you are seeing this message you will have to update \"${BASH_LOCATION}/setup.sh\" with\n" \
-             "a package manger and the equivalent packages for your distribution. Please follow the\n" \
-            "instructions found at https://pkgs.org/search/?q=coturn to install Coturn for your specific distribution"
-        exit 1
-    else
-		if [ `id -u` -eq 0 ]; then
-	        check_and_install "coturn" "$coturn_version" "1" "apt-get install -y coturn"
-		else
-			check_and_install "coturn" "$coturn_version" "1" "sudo apt-get install -y coturn"
-		fi
-    fi
-fi
-
-#TODO remove this dep as they are technically unrelated to the script
-# IFS="~" read -r -a vulkan_tools_version <<< $(dpkg -s vulkan-tools 2>/dev/null | grep Version | sed -E 's/[^0-9.]//g')
-# vulkan_tools_version=$(get_version $(if [ ! -z "$vulkan_tools_version" ]; then echo $vulkan_tools_version; else echo "0"; fi))
-# check_and_install "vulkan-tools" "$vulkan_tools_version" "1.2.131" "sudo apt-get install -y vulkan-tools"
-
-#TODO remove this dep as they are technically unrelated to the script
-# pulseaudio_version=$(get_version pulseaudio --version)
-# check_and_install "pulseaudio" "$pulseaudio_version" "13.99" "sudo apt-get install -y pulseaudio"
 
 node_version=""
 if [[ -f "${BASH_LOCATION}/node/bin/node" ]]; then
@@ -135,8 +107,8 @@ check_and_install "node" "$node_version" "v16.4.2" "curl https://nodejs.org/dist
 PATH="${BASH_LOCATION}/node/bin:$PATH"
 "${BASH_LOCATION}/node/lib/node_modules/npm/bin/npm-cli.js" install
 
-popd > /dev/null # SignallingWebServer
+popd > /dev/null # Matchmaker
 
 popd > /dev/null # BASH_SOURCE
 
-echo "All Pixel Streaming Server dependencies up to date."
+echo "All Matchmaker dependencies up to date."
