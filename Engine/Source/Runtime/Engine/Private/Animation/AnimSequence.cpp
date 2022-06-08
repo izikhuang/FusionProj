@@ -5850,10 +5850,10 @@ void UAnimSequence::OnModelModified(const EAnimDataModelNotifyType& NotifyType, 
 		case EAnimDataModelNotifyType::CurveScaled:
 		{
 			ClearCompressedCurveData();
-			UpdateRawDataGuid(RegenerateGUID);
 				
 			if (NotifyCollector.IsNotWithinBracket())
 			{						
+				UpdateRawDataGuid(RegenerateGUID);
 				RecompressAnimationData();
 			}
 
