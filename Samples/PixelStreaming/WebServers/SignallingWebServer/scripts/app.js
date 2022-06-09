@@ -75,6 +75,8 @@ let hiddenInput = undefined;
 
 let t0 = Date.now();
 
+let activeKeys = [];
+
 function log(str) {
     console.log(`${Math.floor(Date.now() - t0)}: ` + str);
 }
@@ -1731,6 +1733,15 @@ function registerLockedMouseEvents(playerElement) {
         } else {
             console.log('The pointer lock status is now unlocked');
             document.removeEventListener("mousemove", updatePosition, false);
+
+            // If mouse loses focus, send a key up for all of the currently held-down keys
+            // This is necessary as when the mouse loses focus, the windows stops listening for events and as such
+            // the keyup listener won't get fired
+            [...new Set(activeKeys)].forEach((uniqueKeycode) => {
+                sendInputData(new Uint8Array([MessageType.KeyUp, uniqueKeycode]).buffer);
+            });
+            // Reset the active keys back to nothing
+            activeKeys = [];
         }
     }
 
@@ -1995,6 +2006,7 @@ function registerKeyboardEvents() {
             console.log(`key down ${e.keyCode}, repeat = ${e.repeat}`);
         }
         sendInputData(new Uint8Array([MessageType.KeyDown, getKeyCode(e), e.repeat]).buffer);
+        activeKeys.push(getKeyCode(e));
         // Backspace is not considered a keypress in JavaScript but we need it
         // to be so characters may be deleted in a UE4 text entry field.
         if (e.keyCode === SpecialKeyCodes.BackSpace) {
