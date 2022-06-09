@@ -19,6 +19,7 @@ let is_reconnection = false;
 let ws;
 const WS_OPEN_STATE = 1;
 
+let autoPlayAudio = true;
 let qualityController = false;
 let qualityControlOwnershipCheckBox;
 let matchViewportResolution;
@@ -296,6 +297,7 @@ function setupHtmlEvents() {
     setupToggleWithUrlParams("prefer-sfu-tgl", "preferSFU");
     setupToggleWithUrlParams("use-mic-tgl", "useMic");
     setupToggleWithUrlParams("force-turn-tgl", "ForceTURN");
+    setupToggleWithUrlParams("force-mono-tgl", "ForceMonoAudio")
  
     var streamSelector = document.getElementById('stream-select');
     var trackSelector = document.getElementById('track-select');
@@ -451,15 +453,22 @@ function showTextOverlay(text) {
     setOverlay('textDisplayState', textOverlay);
 }
 
-function playVideoStream() {
-    if (webRtcPlayerObj && webRtcPlayerObj.video) {
-
-        webRtcPlayerObj.video.play().catch(function(onRejectedReason){
-            console.error(onRejectedReason);
-            console.log("Browser does not support autoplaying video without interaction - to resolve this we are going to show the play button overlay.")
-            showPlayOverlay();
-        });
-
+function playStream() {
+    if(webRtcPlayerObj && webRtcPlayerObj.video) {
+        if(webRtcPlayerObj.audio.srcObject && autoPlayAudio) {
+            // Video and Audio are seperate tracks
+            webRtcPlayerObj.audio.play().then(() => {
+                playVideo();
+            }).catch((onRejectedReason) => {
+                console.error(onRejectedReason);
+                console.log("Browser does not support autoplaying audio without interaction - to resolve this we are going to show the play button overlay.")
+                showPlayOverlay();
+            });
+        } else {
+            // Video and audio are combined in the video element
+            playVideo();
+        }
+        
         requestInitialSettings();
         requestQualityControl();
         showFreezeFrameOverlay();
@@ -469,13 +478,24 @@ function playVideoStream() {
     }
 }
 
+function playVideo() {
+    webRtcPlayerObj.video.play().catch((onRejectedReason) => {
+        if(webRtcPlayerObj.audio.srcObject) {
+            webRtcPlayerObj.audio.stop();
+        }
+        console.error(onRejectedReason);
+        console.log("Browser does not support autoplaying video without interaction - to resolve this we are going to show the play button overlay.")
+        showPlayOverlay();
+    });
+}
+
 function showPlayOverlay() {
     let img = document.createElement('img');
     img.id = 'playButton';
     img.src = '/images/Play.png';
     img.alt = 'Start Streaming';
     setOverlay('clickableState', img, event => {
-        playVideoStream();
+        playStream();
     });
     shouldShowPlayOverlay = false;
 }
@@ -588,7 +608,9 @@ let VideoEncoderQP = "N/A";
 
 function setupWebRtcPlayer(htmlElement, config) {
     webRtcPlayerObj = new webRtcPlayer(config);
+    autoPlayAudio = typeof config.autoPlayAudio !== 'undefined' ? config.autoPlayAudio : true;
     htmlElement.appendChild(webRtcPlayerObj.video);
+    htmlElement.appendChild(webRtcPlayerObj.audio);
     htmlElement.appendChild(freezeFrameOverlay);
 
     webRtcPlayerObj.onWebRtcOffer = function(offer) {
@@ -624,7 +646,7 @@ function setupWebRtcPlayer(htmlElement, config) {
             }
             else {
                 resizePlayerStyle();
-                playVideoStream();
+                playStream();
             }
         }
     };
