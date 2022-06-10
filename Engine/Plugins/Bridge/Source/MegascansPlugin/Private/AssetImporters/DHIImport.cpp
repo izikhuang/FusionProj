@@ -27,6 +27,9 @@
 #include "UObject/PackageReload.h"
 #include "Misc/DateTime.h"
 
+#include "Editor/EditorEngine.h"
+#include "Editor.h"
+
 #include "Kismet/GameplayStatics.h"
 #include "JsonObjectConverter.h"
 
@@ -36,6 +39,7 @@
 
 #include "Widgets/Layout/SSeparator.h"
 #include "Widgets/SCompoundWidget.h"
+#include "Widgets/Input/SButton.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 #include "Widgets/Input/SComboBox.h"
