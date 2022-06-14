@@ -36,6 +36,10 @@ DEFINE_STAT(STAT_Binned_NanoMallocPages_WastePeak);
 #define PLAT_SMALL_BLOCK_POOL_SIZE 0
 #endif //PLATFORM_IOS
 
+#if USE_OS_SMALL_BLOCK_ALLOC
+static bool bNanoMallocAvailable;
+#endif
+
 /** Information about a piece of free memory. 16 bytes */
 struct alignas(16) FMallocBinned::FFreeMem
 {
@@ -885,6 +889,7 @@ struct FMallocBinned::Private
 	{
 #if PLATFORM_IOS
 		::free(Ptr);
+		bNanoMallocAvailable = true;
 #else
 		FPlatformMemory::BinnedFreeToOS(Ptr, Size);
 #endif
@@ -1156,6 +1161,7 @@ FMallocBinned::FMallocBinned(uint32 InPageSize, uint64 AddressLimit)
 #if USE_OS_SMALL_BLOCK_ALLOC
 	
 	FPlatformMemory::NanoMallocInit();
+	bNanoMallocAvailable = FPlatformMemory::IsNanoMallocAvailable();
 	
 #if USE_OS_SMALL_BLOCK_GRAB_MEMORY_FROM_OS
 
@@ -1293,10 +1299,11 @@ void* FMallocBinned::Malloc(SIZE_T Size, uint32 Alignment)
 	BINNED_INCREMENT_STATCOUNTER(CurrentAllocs);
 	BINNED_INCREMENT_STATCOUNTER(TotalAllocs);
 	
+	Size = FMath::Max(Size, (SIZE_T)1);
 	FFreeMem* Free = nullptr;
 	bool bUsePools = true;
 #if USE_OS_SMALL_BLOCK_ALLOC && !USE_OS_SMALL_BLOCK_GRAB_MEMORY_FROM_OS
-	if (FPlatformMemory::IsNanoMallocAvailable() && (Size <= Private::SMALL_BLOCK_POOL_SIZE) && (Alignment <= Private::DEFAULT_BINNED_ALLOCATOR_ALIGNMENT))
+	if (bNanoMallocAvailable && (Size <= Private::SMALL_BLOCK_POOL_SIZE) && (Alignment <= Private::DEFAULT_BINNED_ALLOCATOR_ALIGNMENT))
 	{
 		//Make sure we have initialized our hash buckets even if we are using the NANO_MALLOC grabber, as otherwise we can end
 		//up making bad assumptions and trying to grab invalid data during a Realloc of this data.
@@ -1317,6 +1324,7 @@ void* FMallocBinned::Malloc(SIZE_T Size, uint32 Alignment)
 			Private::SmallOSFree(*this, Free, Size);
 			bUsePools = true;
 			Free = nullptr;
+			bNanoMallocAvailable = false;
 		}
 	}
 #endif
@@ -1436,7 +1444,8 @@ void* FMallocBinned::Realloc( void* Ptr, SIZE_T NewSize, uint32 Alignment )
 				// Fall back to UE's allocator
 				Ptr = NewPtr;
 				NewPtr = Malloc(NewSizeUnmodified, Alignment);
-				FMemory::Memcpy(NewPtr, Ptr, NewSize);
+				const SIZE_T OldSize = malloc_size(Ptr);
+				FMemory::Memcpy(NewPtr, Ptr, OldSize);
 				Private::SmallOSFree(*this, Ptr, NewSize);
 			}
 		}
@@ -1521,7 +1530,7 @@ bool FMallocBinned::GetAllocationSize(void *Original, SIZE_T &SizeOut)
 #if USE_OS_SMALL_BLOCK_ALLOC && !USE_OS_SMALL_BLOCK_GRAB_MEMORY_FROM_OS
 	if(FPlatformMemory::PtrIsOSMalloc(Original))
 	{
-		SizeOut = Private::SMALL_BLOCK_POOL_SIZE;
+		SizeOut = malloc_size(Original);
 		return true;
 	}
 #endif
