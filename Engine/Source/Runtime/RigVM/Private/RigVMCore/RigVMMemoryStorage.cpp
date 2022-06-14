@@ -238,6 +238,7 @@ void URigVMMemoryStorageGeneratorClass::Serialize(FArchive& Ar)
 		URigVMMemoryStorageGeneratorClass* AuxStorageClass = NewObject<URigVMMemoryStorageGeneratorClass>(
 			GetTransientPackage(),
 			TEXT("URigVMMemoryStorageGeneratorClass_Auxiliary"));
+		AuxStorageClass->ClassAddReferencedObjects = &this->AddReferencedObjects;
 		AuxStorageClass->Serialize(Ar);
 		return;
 	}
