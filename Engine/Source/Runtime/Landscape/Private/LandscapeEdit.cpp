@@ -79,9 +79,9 @@ DEFINE_LOG_CATEGORY(LogLandscapeBP);
 
 int32 GMobileCompressLandscapeWeightMaps = 0;
 FAutoConsoleVariableRef CVarMobileCompressLanscapeWeightMaps(
-	TEXT("r.Mobile.CompressLandscapeWeightMaps"),
+    TEXT("r.Mobile.CompressLandscapeWeightMaps"),
     GMobileCompressLandscapeWeightMaps,
-	TEXT("Whether to compress the terrain weight maps for mobile."),
+    TEXT("Whether to compress the terrain weight maps for mobile."),
     ECVF_ReadOnly
 );
 
@@ -2418,10 +2418,10 @@ bool ULandscapeInfo::HasUnloadedComponentsInRegion(int32 X1, int32 Y1, int32 X2,
 
 	if (LandscapeActor)
 	{
-	UWorld* World = LandscapeActor->GetWorld();
+		UWorld* World = LandscapeActor->GetWorld();
 
-	int32 ComponentIndexX1, ComponentIndexY1, ComponentIndexX2, ComponentIndexY2;
-	ALandscape::CalcComponentIndicesOverlap(X1, Y1, X2, Y2, ComponentSizeQuads, ComponentIndexX1, ComponentIndexY1, ComponentIndexX2, ComponentIndexY2);
+		int32 ComponentIndexX1, ComponentIndexY1, ComponentIndexX2, ComponentIndexY2;
+		ALandscape::CalcComponentIndicesOverlap(X1, Y1, X2, Y2, ComponentSizeQuads, ComponentIndexX1, ComponentIndexY1, ComponentIndexX2, ComponentIndexY2);
 
 		const UActorPartitionSubsystem::FCellCoord MinCoord = UActorPartitionSubsystem::FCellCoord::GetCellCoord(FIntPoint(ComponentIndexX1 * ComponentSizeQuads, ComponentIndexY1 * ComponentSizeQuads), World->PersistentLevel, LandscapeActor->GridSize);
 		const UActorPartitionSubsystem::FCellCoord MaxCoord = UActorPartitionSubsystem::FCellCoord::GetCellCoord(FIntPoint(ComponentIndexX2 * ComponentSizeQuads, ComponentIndexY2 * ComponentSizeQuads), World->PersistentLevel, LandscapeActor->GridSize);
@@ -2429,21 +2429,21 @@ bool ULandscapeInfo::HasUnloadedComponentsInRegion(int32 X1, int32 Y1, int32 X2,
 		if (UWorldPartition* WorldPartition = World->GetWorldPartition())
 		{
 			FWorldPartitionHelpers::ForEachActorDesc<ALandscapeProxy>(WorldPartition, [this, World, &MinCoord, &MaxCoord, &bResult](const FWorldPartitionActorDesc* ActorDesc)
-	{
+			{
 				FLandscapeActorDesc* LandscapeActorDesc = (FLandscapeActorDesc*)ActorDesc;
 
 				if (LandscapeActorDesc->GridGuid == LandscapeGuid)
-		{
-					const UActorPartitionSubsystem::FCellCoord ActorCoord(LandscapeActorDesc->GridIndexX, LandscapeActorDesc->GridIndexY, LandscapeActorDesc->GridIndexZ, World->PersistentLevel);
-			if (ActorCoord.X >= MinCoord.X && ActorCoord.Y >= MinCoord.Y && ActorCoord.X <= MaxCoord.X && ActorCoord.Y <= MaxCoord.Y)
-			{
-						if (!LandscapeActorDesc->IsLoaded())
 				{
+					const UActorPartitionSubsystem::FCellCoord ActorCoord(LandscapeActorDesc->GridIndexX, LandscapeActorDesc->GridIndexY, LandscapeActorDesc->GridIndexZ, World->PersistentLevel);
+					if (ActorCoord.X >= MinCoord.X && ActorCoord.Y >= MinCoord.Y && ActorCoord.X <= MaxCoord.X && ActorCoord.Y <= MaxCoord.Y)
+					{
+						if (!LandscapeActorDesc->IsLoaded())
+						{
 							bResult = true;
 							return false;
 						}
+					}
 				}
-			}
 
 				return true;
 			});
@@ -3614,9 +3614,12 @@ FIntRect ALandscapeProxy::GetBoundingRect() const
 	if (LandscapeComponents.Num() > 0)
 	{
 		FIntRect Rect(MAX_int32, MAX_int32, MIN_int32, MIN_int32);
-		for (int32 CompIdx = 0; CompIdx < LandscapeComponents.Num(); CompIdx++)
+		for (ULandscapeComponent* Component : LandscapeComponents)
 		{
-			Rect.Include(LandscapeComponents[CompIdx]->GetSectionBase());
+			if (Component != nullptr)
+			{
+				Rect.Include(Component->GetSectionBase());
+			}
 		}
 		Rect.Max += FIntPoint(ComponentSizeQuads, ComponentSizeQuads);
 		Rect -= LandscapeSectionOffset;
@@ -3646,7 +3649,10 @@ bool ULandscapeInfo::GetLandscapeExtent(ALandscapeProxy* LandscapeProxy, FIntRec
 
 	for (ULandscapeComponent* LandscapeComponent : LandscapeProxy->LandscapeComponents)
 	{
-		LandscapeComponent->GetComponentExtent(ProxyExtent.Min.X, ProxyExtent.Min.Y, ProxyExtent.Max.X, ProxyExtent.Max.Y);
+		if (LandscapeComponent != nullptr)
+		{
+			LandscapeComponent->GetComponentExtent(ProxyExtent.Min.X, ProxyExtent.Min.Y, ProxyExtent.Max.X, ProxyExtent.Max.Y);
+		}
 	}
 	
 	return ProxyExtent.Min.X != INT32_MAX;
@@ -3679,7 +3685,10 @@ LANDSCAPE_API void ULandscapeInfo::ForAllLandscapeComponents(TFunctionRef<void(U
 	{
 		for (ULandscapeComponent* Component : Proxy->LandscapeComponents)
 		{
-			Fn(Component);
+			if (Component != nullptr)
+			{
+				Fn(Component);
+			}
 		}
 	});
 }
@@ -3958,7 +3967,10 @@ void ULandscapeInfo::GetUsedPaintLayers(const FGuid& InLayerGuid, TArray<ULandsc
 	{
 		for (ULandscapeComponent* Component : Proxy->LandscapeComponents)
 		{
-			Component->GetUsedPaintLayers(InLayerGuid, OutUsedLayerInfos);
+			if (Component != nullptr)
+			{
+				Component->GetUsedPaintLayers(InLayerGuid, OutUsedLayerInfos);
+			}
 		}
 	});
 }
@@ -4161,9 +4173,9 @@ ULandscapeLayerInfoObject::ULandscapeLayerInfoObject(const FObjectInitializer& O
 	// Assign initial LayerUsageDebugColor
 	if (!IsTemplate())
 	{
-	uint8 Hash[20];
-	FString PathNameString = GetPathName();
-	FSHA1::HashBuffer(*PathNameString, PathNameString.Len() * sizeof(PathNameString[0]), Hash);
+		uint8 Hash[20];
+		FString PathNameString = GetPathName();
+		FSHA1::HashBuffer(*PathNameString, PathNameString.Len() * sizeof(PathNameString[0]), Hash);
 		LayerUsageDebugColor = FLinearColor(float(Hash[0]) / 255.f, float(Hash[1]) / 255.f, float(Hash[2]) / 255.f, 1.f);
 	}
 }
@@ -5137,7 +5149,7 @@ void ALandscapeStreamingProxy::PostRegisterAllComponents()
 	{
 		ULandscapeInfo* LandscapeInfo = GetLandscapeInfo();
 		check(LandscapeInfo);
-		if (GEditor)
+		if (GEditor && !GetWorld()->IsGameWorld())
 		{
 			if (UWorldPartition* WorldPartition = GetWorld()->GetWorldPartition())
 			{
@@ -5149,12 +5161,12 @@ void ALandscapeStreamingProxy::PostRegisterAllComponents()
 					FLandscapeSplineActorDesc* LandscapeSplineActorDesc = (FLandscapeSplineActorDesc*)ActorDesc;
 
 					if (LandscapeSplineActorDesc->LandscapeGuid == LandscapeGuid)
-				{
-						if (Bounds.IntersectXY(ActorDesc->GetBounds()))
 					{
+						if (Bounds.IntersectXY(ActorDesc->GetBounds()))
+						{
 							ActorDescReferences.Add(FWorldPartitionReference(WorldPartition, ActorDesc->GetGuid()));
+						}
 					}
-				}
 					return true;
 				});
 			}
@@ -5231,23 +5243,23 @@ bool ULandscapeInfo::CanDeleteLandscape(FText& OutReason) const
 			FWorldPartitionHelpers::ForEachActorDesc<ALandscapeProxy>(WorldPartition, [this, &UndeletedProxyCount](const FWorldPartitionActorDesc* ActorDesc)
 			{
 				FLandscapeActorDesc* LandscapeActorDesc = (FLandscapeActorDesc*)ActorDesc;
-		
+
 				if (LandscapeActorDesc->GridGuid == LandscapeGuid)
 				{
 					ALandscapeProxy* LandscapeProxy = Cast<ALandscapeProxy>(ActorDesc->GetActor());
 					if (LandscapeProxy != LandscapeActor)
 					{
-		// If LandscapeProxy is null then it is not loaded so not deleted.
-		if (!LandscapeProxy)
-		{
-			++UndeletedProxyCount;
-		}
-		else
-		{
-			// If Actor is loaded it should be Registered and not pending kill (already accounted for) or pending kill (deleted)
-			check(Proxies.Contains(LandscapeProxy) == IsValidChecked(LandscapeProxy));
-		}
-	}
+						// If LandscapeProxy is null then it is not loaded so not deleted.
+						if (!LandscapeProxy)
+						{
+							++UndeletedProxyCount;
+						}
+						else
+						{
+							// If Actor is loaded it should be Registered and not pending kill (already accounted for) or pending kill (deleted)
+							check(Proxies.Contains(LandscapeProxy) == IsValidChecked(LandscapeProxy));
+						}
+					}
 				}
 
 				return true;
@@ -5271,7 +5283,7 @@ bool ULandscapeInfo::CanDeleteLandscape(FText& OutReason) const
 	{
 		UWorld* World = Actor->GetWorld();
 		if (UWorldPartition* WorldPartition = World->GetWorldPartition())
-	{
+		{
 			FWorldPartitionHelpers::ForEachActorDesc<ALandscapeSplineActor>(WorldPartition, [this, &UndeletedSplineCount](const FWorldPartitionActorDesc* ActorDesc)
 			{
 				FLandscapeSplineActorDesc* LandscapeSplineActorDesc = (FLandscapeSplineActorDesc*)ActorDesc;
@@ -5280,17 +5292,17 @@ bool ULandscapeInfo::CanDeleteLandscape(FText& OutReason) const
 				{
 					ALandscapeSplineActor* SplineActor = Cast<ALandscapeSplineActor>(LandscapeSplineActorDesc->GetActor());
 		
-		// If SplineActor is null then it is not loaded/deleted. If it's loaded then it needs to be pending kill.
-		if (!SplineActor)
-		{
-			++UndeletedSplineCount;
-		}
-		else
-		{
-			// If Actor is loaded it should be Registered and not pending kill (already accounted for) or pending kill (deleted)
-			check(SplineActors.Contains(SplineActor) == IsValidChecked(SplineActor));
-		}
-	}
+					// If SplineActor is null then it is not loaded/deleted. If it's loaded then it needs to be pending kill.
+					if (!SplineActor)
+					{
+						++UndeletedSplineCount;
+					}
+					else
+					{
+						// If Actor is loaded it should be Registered and not pending kill (already accounted for) or pending kill (deleted)
+						check(SplineActors.Contains(SplineActor) == IsValidChecked(SplineActor));
+					}
+				}
 
 				return true;
 			});
@@ -6085,10 +6097,12 @@ void ALandscapeProxy::RemoveInvalidWeightmaps()
 		}
 
 		// Remove Unused Weightmaps...
-		for (int32 Idx = 0; Idx < LandscapeComponents.Num(); ++Idx)
+		for (ULandscapeComponent* Component : LandscapeComponents)
 		{
-			ULandscapeComponent* Component = LandscapeComponents[Idx];
-			Component->RemoveInvalidWeightmaps();
+			if (Component != nullptr)
+			{
+				Component->RemoveInvalidWeightmaps();
+			}
 		}
 	}
 }
