@@ -47,6 +47,11 @@
 
 #define LOCTEXT_NAMESPACE "DHIImport"
 
+
+
+
+
+
 //Dialog implementation
 class SOVerwriteDialog : public SCompoundWidget
 {
@@ -304,10 +309,8 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 
 	bool bIsNewCharacter = true;
 
-	FString ProjectUpgradeMessage = TEXT("It looks like this project has UE4 MetaHumans in it, which are incompatible with UE5 MetaHumans and may result in some errors when they’re together in the same project. We highly recommend that you update all MetaHumans to be UE5 MetaHumans.\nTo continue importing this MetaHuman, please close the project and copy the following files from:");
 	FString UpgradeFooter = TEXT("Note: Doing so may result in old MetaHumans to appear broken until they are redownloaded and files overwritten in the current project");
-	//FString ProjectUpgradeMessage = FString::Printf(TEXT("The MetaHuman you are trying to import is from a later version of MetaHuman Creator. Please close Unreal Engine and then drag and drop the MetaHumans folder manually"), *CharacterName);
-
+	
 	FString CharacterOverwriteMessage = TEXT("The MetaHuman you are trying to import already exists in this project. Please close Unreal Engine and then drag and drop the MetaHumans folder manually\nFROM:");
 	//FString CharacterOverwriteMessage = FString::Printf(TEXT("The MetaHuman you are trying to import already exists in this project. Please close UE and overwrite the MetaHumans folder manually with %s and the Common Files\nFROM:"), *CharacterName);
 	FString CharacterOverwriteFooter = TEXT("Note: Replacing files may result in old MetaHumans to appear broken until they are redownloaded and files overwritten in the current project");
@@ -317,13 +320,7 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 	
 	
 
-	if (PlatformFile.DirectoryExists(*CharacterDestination))
-	{
-		bIsNewCharacter = false;
-
-		ShowDialog(SourceMetahumanPath, DestinationMetahumanPath, CharacterOverwriteMessage, CharacterOverwriteFooter);
-		return;
-	}
+	
 	
 	const FString SourceVersionFilePath = FPaths::Combine(FPaths::GetPath( CharacterSourceData->CharacterPath), TEXT("MHAssetVersions.txt"));
 	TArray<FString> AssetsToUpdateList;
@@ -443,11 +440,56 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 
     TArray<FString> IncompatibleCharacters = CheckVersionCompatibilty();
 
+	//FString ProjectUpgradeMessage = TEXT("It looks like this project has UE4 MetaHumans in it, which are incompatible with UE5 MetaHumans and may result in some errors when they’re together in the same project. We highly recommend that you update all MetaHumans to be UE5 MetaHumans.\nTo continue importing this MetaHuman, please close the project and copy the following files from:");
+	FString ProjectUpgradeMessage = TEXT("This project has following UE4 MetaHumans in it: ");
+	
+
+
+	for (FString IncompatibleCharacter : IncompatibleCharacters)
+	{
+		ProjectUpgradeMessage += TEXT("\n") + IncompatibleCharacter.Replace(TEXT("/"), TEXT(""));
+	}
+
+	ProjectUpgradeMessage += TEXT("\nthese are incompatible with UE5 MetaHumans and may result in some errors when they’re together in the same project. We highly recommend that you update all MetaHumans to be UE5 MetaHumans.\nTo continue importing this MetaHuman, please close the project and copy the following files from:");
+
 	if (IncompatibleCharacters.Num() > 0)
 	{
 		ShowDialog(SourceMetahumanPath, DestinationMetahumanPath, ProjectUpgradeMessage, UpgradeFooter);
 		return;
 	}
+
+	if (PlatformFile.DirectoryExists(*CharacterDestination))
+	{
+		bIsNewCharacter = false;
+		if (MHInLevel(BPPath))
+		{
+			EAppReturnType::Type ContinueImport = FMessageDialog::Open(EAppMsgType::Ok, FText(FText::FromString("This MetaHuman already exists in this level. In order to continue, you will need to close the level and import the MetaHuman into a new or different level.\n\nNote: Hair cards will be missing until you restart Unreal Engine.")));
+			return;
+		}
+
+	}
+
+
+	if (PlatformFile.DirectoryExists(*CharacterDestination))
+	{
+		bIsNewCharacter = false;
+		
+		EAppReturnType::Type ContinueImport = FMessageDialog::Open(EAppMsgType::YesNo, FText(FText::FromString("The MetaHuman you are trying to import already exists in this project. Do you want to overwrite them?\n\nNote: Hair cards will be missing until you restart Unreal Engine.")));
+		if (ContinueImport != EAppReturnType::Yes)
+			return;
+		
+		
+	}
+
+	/*if (PlatformFile.DirectoryExists(*CharacterDestination))
+	{
+		bIsNewCharacter = false;
+
+		EAppReturnType::Type ContinueImport = FMessageDialog::Open(EAppMsgType::Ok, FText(FText::FromString("Note: Hair cards will be missing until you restart Unreal Engine.")));
+		
+
+
+	}*/
 
 
     /*if (IncompatibleCharacters.Num() > 0 && bIsCharacterUE5)
@@ -513,6 +555,7 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 	// Add new character
 	if (bIsNewCharacter)
 	{
+		
 		AssetRegistryModule.Get().ScanPathsSynchronous(AssetsBasePath, true);
 
 		PlatformFile.CreateDirectoryTree(*CharacterDestination);
@@ -529,7 +572,8 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 	}
 
 	//Overwrite existing character
-	/*else {
+	else {
+		
 		
 		TArray<FString> SourceCharacterFiles;
 		PlatformFile.FindFilesRecursively(SourceCharacterFiles, *CharacterSourceData->CharacterPath, NULL);
@@ -611,8 +655,8 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 		}	
 
 		SortPackagesForReload(PackagesToReload);
-
-		for (UPackage* CommonPackage : PackagesToReload)
+		UPackageTools::ReloadPackages(PackagesToReload);
+		/*for (UPackage* CommonPackage : PackagesToReload)
 		{
 
 			TArray<UPackage*> PackagesList;
@@ -621,7 +665,7 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 			CharacterLoadprogress.EnterProgressFrame();
 			UPackageTools::ReloadPackages(PackagesList);
 
-		}
+		}*/
 
 		for (auto Package : BPsToReload)
 		{
@@ -636,7 +680,7 @@ void FImportDHI::ImportAsset(TSharedPtr<FJsonObject> AssetImportJson)
 			}
 		}
 
-	}*/
+	}
 	
 	// Write all the incoming assets to the import time file info along wiht the current timestamp.
 	if(!bModificationInfoExists) 
@@ -1164,7 +1208,7 @@ void FImportDHI::ShowDialog(const FString& SourcePath, const FString& Destinatio
 	TSharedRef<SWindow> ModalWindow = SNew(SWindow)
 		.Title(FText::FromString(TEXT("MetaHuman Alert")))
 		.SizingRule(ESizingRule::FixedSize)
-		.ClientSize(FVector2D(750, 320))
+		.ClientSize(FVector2D(1000, 350))
 		.AutoCenter(EAutoCenter::PreferredWorkArea)
 		.HasCloseButton(true)
 		.SupportsMinimize(false)

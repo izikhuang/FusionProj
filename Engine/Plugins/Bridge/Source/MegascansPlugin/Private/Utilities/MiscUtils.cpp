@@ -413,13 +413,19 @@ void AssetUtils::RegisterAsset(const FString& PackagePath)
 
 void AssetUtils::ConvertToVT(FUAssetMeta AssetMetaData)
 {
-
-	static const auto CVarVirtualTexturesEnabled = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.VirtualTextures")); check(CVarVirtualTexturesEnabled);
-	const bool bVirtualTextureEnabled = CVarVirtualTexturesEnabled->GetValueOnAnyThread() != 0;
-	if (bVirtualTextureEnabled)
+	if (IsVTEnabled())
 	{
 		FMaterialBlend::Get()->ConvertToVirtualTextures(AssetMetaData);
 	}
+}
+
+
+bool AssetUtils::IsVTEnabled()
+{
+
+	static const auto CVarVirtualTexturesEnabled = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.VirtualTextures")); check(CVarVirtualTexturesEnabled);
+	const bool bVirtualTextureEnabled = CVarVirtualTexturesEnabled->GetValueOnAnyThread() != 0;
+	return bVirtualTextureEnabled;
 }
 
 void CopyUassetFilesPlants(TArray<FString> FilesToCopy, FString DestinationDirectory, const int8& AssetTier)

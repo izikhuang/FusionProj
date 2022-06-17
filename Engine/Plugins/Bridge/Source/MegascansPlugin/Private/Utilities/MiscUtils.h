@@ -43,6 +43,8 @@ namespace AssetUtils {	//template<typename T>
 	void RegisterAsset(const FString& PackagePath);
 
 	void ConvertToVT(FUAssetMeta AssetMetaData);
+	bool IsVTEnabled();
+
 }
 
 namespace JsonUtils
