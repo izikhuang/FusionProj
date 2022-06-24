@@ -210,10 +210,10 @@ static void RHIDetectAndWarnOfBadDrivers(bool bHasEditorToken)
 				FText Title = NSLOCTEXT("MessageDialog", "TitleVideoCardDriverIssue", "WARNING: Known issues with graphics driver");
 				FMessageDialog::Open(EAppMsgType::Ok, LocalizedMsg, &Title);
 			}
-		}
-		else
-		{
-			UE_LOG(LogRHI, Warning, TEXT("Running with bad GPU drivers but warning dialog will not be shown: IsUnattended=%d, r.WarnOfBadDrivers=%d"), FApp::IsUnattended(), WarnMode);
+			else
+			{
+				UE_LOG(LogRHI, Warning, TEXT("Running with bad GPU drivers but warning dialog will not be shown: IsUnattended=%d, r.WarnOfBadDrivers=%d"), FApp::IsUnattended(), WarnMode);
+			}
 		}
 	}
 }
