@@ -171,7 +171,8 @@ void FBridgeUIManagerImpl::CreateWindow()
 	TSharedPtr<IPlugin> WebBrowserPlugin = IPluginManager::Get().FindPlugin("WebBrowserWidget");
 	if (WebBrowserPlugin.IsValid() && !WebBrowserPlugin->IsEnabled())
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("WebBrowserWidgetPluginNotEnabled", "Web Browser plugin is not enabled. Please enable it in the plugin manager to use Bridge."));
+		const FText Title = FText::FromString(TEXT("Enable Web Browser Plugin"));
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Quixel Bridge requires the “Web Browser” plugin, which is disabled. Go to Edit > Plugins and search for “Web Browser” to enable it.")), &Title);
 		return;
 	}
 #endif
@@ -230,7 +231,8 @@ TSharedRef<SDockTab> FBridgeUIManagerImpl::CreateBridgeTab(const FSpawnTabArgs& 
 	TSharedPtr<IPlugin> WebBrowserPlugin = IPluginManager::Get().FindPlugin("WebBrowserWidget");
 	if (WebBrowserPlugin.IsValid() && !WebBrowserPlugin->IsEnabled())
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("WebBrowserWidgetPluginNotEnabled", "Web Browser plugin is not enabled. Please enable it in the plugin manager to use Bridge."));
+		const FText Title = FText::FromString(TEXT("Enable Web Browser Plugin"));
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Quixel Bridge requires the “Web Browser” plugin, which is disabled. Go to Edit > Plugins and search for “Web Browser” to enable it.")), &Title);
 
 		return SAssignNew(LocalBrowserDock, SDockTab)
 			.TabRole(ETabRole::NomadTab);
@@ -295,7 +297,8 @@ TSharedRef<SDockTab> FBridgeUIManagerImpl::CreateBridgeTab(const FSpawnTabArgs& 
 	}
 	else
 	{
-		FMessageDialog::Open(EAppMsgType::Ok, LOCTEXT("WebBrowserWidgetPluginNotEnabledFailLoad", "Failed to load the plugin. Please enable Web Browser in the plugin manager to use Bridge."));
+		const FText Title = FText::FromString(TEXT("Enable Web Browser Plugin"));
+		FMessageDialog::Open(EAppMsgType::Ok, FText::FromString(TEXT("Quixel Bridge requires the “Web Browser” plugin, which is disabled. Go to Edit > Plugins and search for “Web Browser” to enable it.")), &Title);
 
 		return SAssignNew(LocalBrowserDock, SDockTab)
 			.TabRole(ETabRole::NomadTab);

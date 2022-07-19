@@ -11,7 +11,7 @@
 #include "Misc/FileHelper.h"
 
 #include "TCPServer.h"
-#include "BridgeDragDropUtils.h"
+#include "BridgeDragDropHelper.h"
 
 #include "DragAndDrop/AssetDragDropOp.h"
 #include "IPlacementModeModule.h"
@@ -74,7 +74,7 @@ public:
 	void ShowDialog(FString Type, FString Url);
 
 	UFUNCTION()
-	void DragStarted(TArray<FString> ImageUrl, TArray<FString> IDs);
+	void DragStarted(TArray<FString> ImageUrl, TArray<FString> IDs, TArray<FString> Types);
 
 	UFUNCTION()
 	void ShowLoginDialog(FString LoginUrl, FString ResponseCodeUrl);
@@ -100,10 +100,15 @@ public:
 	UFUNCTION()
 	void OpenMegascansPluginSettings();
 
-	TSharedRef<FBridgeMessageHandler> BridgeMessageHandler = MakeShared<FBridgeMessageHandler>();
+	// Drag and drop
+
 	bool bWasSwitchDragOperation = false;
 	bool bIsDragging = false;
+	bool bIsDropEventBound = false;
+
 	TArray<FAssetData> InAssetData;
-	TMap<FString, AStaticMeshActor*> AssetToSphereMap;
+	TArray<FString> DragDropIDs;
+	TArray<FString> DragDropTypes;
+	TMap<FString, AActor*> AssetToSphereMap;
 	TMap<FString, TArray<FString>> DragOperationToAssetsMap;
 };

@@ -415,7 +415,14 @@ void AssetUtils::ConvertToVT(FUAssetMeta AssetMetaData)
 {
 	if (IsVTEnabled())
 	{
+
 		FMaterialBlend::Get()->ConvertToVirtualTextures(AssetMetaData);
+
+		//Call Master material override maybe to avoid all other steps
+		//Create a new instance of the VT enabled master material based on which original material was used
+		//Plug all the textures to this new material instance
+		//Apply the newly generated material instance to the mesh incase of 3d assets
+
 	}
 }
 
@@ -424,8 +431,17 @@ bool AssetUtils::IsVTEnabled()
 {
 
 	static const auto CVarVirtualTexturesEnabled = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.VirtualTextures")); check(CVarVirtualTexturesEnabled);
+	static const auto CVarVirtualTexturesImportEnabled = IConsoleManager::Get().FindTConsoleVariableDataInt(TEXT("r.VT.EnableAutoImport")); check(CVarVirtualTexturesEnabled);
+
+	
 	const bool bVirtualTextureEnabled = CVarVirtualTexturesEnabled->GetValueOnAnyThread() != 0;
-	return bVirtualTextureEnabled;
+	const bool bVirtualTextureImportEnabled = CVarVirtualTexturesImportEnabled->GetValueOnAnyThread() != 0;
+
+	if (bVirtualTextureEnabled && bVirtualTextureImportEnabled) {
+		return true;
+	}
+
+	return false;
 }
 
 void CopyUassetFilesPlants(TArray<FString> FilesToCopy, FString DestinationDirectory, const int8& AssetTier)

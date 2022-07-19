@@ -31,7 +31,6 @@
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Misc/DateTime.h"
 
-
 TSharedPtr<FMaterialBlend> FMaterialBlend::MaterialBlendInst;
 
 TSharedPtr<FMaterialBlend> FMaterialBlend::Get()
@@ -44,14 +43,9 @@ TSharedPtr<FMaterialBlend> FMaterialBlend::Get()
     return MaterialBlendInst;
 }
 
-
-
 void FMaterialBlend::BlendSelectedMaterials()
 
-
 {
-	
-
 
     const UMaterialBlendSettings *BlendSettings = GetDefault<UMaterialBlendSettings>();
 
@@ -145,7 +139,7 @@ void FMaterialBlend::HandleTextureLoading(FAssetData TextureData)
     TextureAsset->MarkPackageDirty();
     TextureAsset->PostEditChange();
 
-    AssetUtils::SavePackage(TextureAsset);
+    // AssetUtils::SavePackage(TextureAsset);
 }
 
 void FMaterialBlend::ConvertToVirtualTextures(FUAssetMeta AssetMetaData)
