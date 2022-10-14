@@ -1153,6 +1153,15 @@ namespace UnrealBuildTool
 					AppendMacLine(FinalizeAppBundleScript, FormatCopyCommand(TempInfoPlist, String.Format("{0}.app/Contents/Info.plist", ExeName)));
 					AppendMacLine(FinalizeAppBundleScript, "chmod 644 \"{0}.app/Contents/Info.plist\"", ExeName);
 
+					// Also copy it to where Xcode will look for it, now that Xcode 14 requires we have one set up - it can't point into the .app because that
+					// is where it will copy to, so it will error with reading and writing to the same location
+					string IntermediateDirectory = (ProjectFile == null ? Unreal.EngineDirectory : ProjectFile.Directory) + "/Intermediate/Mac";
+					string XcodeInputPListFile = IntermediateDirectory + "/" + ExeName + "-Info.plist";
+					AppendMacLine(FinalizeAppBundleScript, "mkdir -p \"{0}\"", IntermediateDirectory);
+					AppendMacLine(FinalizeAppBundleScript, FormatCopyCommand(TempInfoPlist, XcodeInputPListFile));
+					AppendMacLine(FinalizeAppBundleScript, "chmod 644 \"{0}\"", XcodeInputPListFile);
+
+
 					// Generate PkgInfo file
 					string TempPkgInfo = "$TMPDIR/TempPkgInfo";
 					AppendMacLine(FinalizeAppBundleScript, "echo 'echo -n \"APPL????\"' | bash > \"{0}\"", TempPkgInfo);
