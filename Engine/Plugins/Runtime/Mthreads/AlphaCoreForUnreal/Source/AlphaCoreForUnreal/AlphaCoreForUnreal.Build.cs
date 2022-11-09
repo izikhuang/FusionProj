@@ -12,7 +12,6 @@ public class AlphaCoreForUnreal : ModuleRules
 		var EngineDir = Path.GetFullPath(Target.RelativeEnginePath);
 
 		string CUDAPath = Environment.GetEnvironmentVariable("CUDA_PATH");
-		//string CUDAPath = "C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.4";
 		string AlphaCore = Path.Combine(ModuleDirectory, "Public", "AlphaCore");
 		string AlphaCore3rd = Path.Combine(AlphaCore, "thirdParty");
 		string AlphaCoreEngine = Path.Combine(AlphaCore, "external", "AxCoreEngine");
@@ -23,9 +22,9 @@ public class AlphaCoreForUnreal : ModuleRules
 				Path.Combine(AlphaCore,"include"),
 				Path.Combine(AlphaCore,"include","AccelTree"),
 				Path.Combine(AlphaCore,"include","Collision"),
-				Path.Combine(AlphaCore,"include","Debug/Collision"),
-				Path.Combine(AlphaCore,"include","Debug"),
-				Path.Combine(AlphaCore,"include","Ext"),
+				//Path.Combine(AlphaCore,"include","Debug/Collision"),
+				//Path.Combine(AlphaCore,"include","Debug"),
+				//Path.Combine(AlphaCore,"include","Ext"),
 				Path.Combine(AlphaCore,"include","FluidUtility"),
 				Path.Combine(AlphaCore,"include","Geometric"),
 				Path.Combine(AlphaCore,"include","GridDense"),
@@ -38,6 +37,8 @@ public class AlphaCoreForUnreal : ModuleRules
 				Path.Combine(AlphaCore,"include","Test"),
 				Path.Combine(AlphaCore,"include","Utility"),
 				Path.Combine(AlphaCore,"include","VolumeRender"),
+				//Path.Combine(AlphaCore,"src"),
+
 
 				Path.Combine(AlphaCore, "thirdParty"),
 				Path.Combine(AlphaCore3rd,"spdlog","include"),
@@ -63,14 +64,14 @@ public class AlphaCoreForUnreal : ModuleRules
 			}
 			);
 
-        Definitions.Add("ALPHA_CUDA=1");
-		
-		
+		PublicDefinitions.Add("ALPHA_CUDA=1");
+		PublicDefinitions.Add("ALPHA_UNREAL");
+		PublicDefinitions.Add("USE_AX_LOG");
 
 		PublicAdditionalLibraries.AddRange(
 			new string[] {
-				Path.Combine(AlphaCore, "AlphaCoreLib","Release", "AlphaCore.lib"),
-				Path.Combine(CUDAPath, "lib","x64","cudart_static.lib")
+                Path.Combine(AlphaCore, "AlphaCoreLib","Release", "AlphaCore.lib"),
+                Path.Combine(CUDAPath, "lib","x64","cudart_static.lib")
 			}
 			);
 

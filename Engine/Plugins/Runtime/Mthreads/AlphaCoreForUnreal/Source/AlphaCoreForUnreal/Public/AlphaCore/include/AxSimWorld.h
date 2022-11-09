@@ -83,7 +83,12 @@ public:
 
 	void Render();
 	void StepAndRender(bool render = true);
-
+	void RStep() {
+		AX_WARN("Frame: {}", m_iFrame);
+		AxFp32 deltaTime = 1.0f / (AxFp32)m_iFPS;
+		this->Step(deltaTime);
+		m_fTickTime += deltaTime;
+	}
 	AxSceneObject* GetSceneObject();
 	void SetSceneObject(AxSceneObject* scene);
 	void CreateDefaultSceneObject();
@@ -99,12 +104,12 @@ public:
 
 	//void SetImageResolution(AxInt32 width, AxInt32 height);
 	
-	void RegisterRenderImage(AxInt32 width, AxInt32 height);
+	void RegisterRenderImage(AxInt32 width, AxInt32 height, bool loadDevice = true);
 	void RegisterRenderImageInt8(AxInt32 width, AxInt32 height);
-	void ResizeRenderImage(AxInt32 width, AxInt32 height);
+	void ResizeRenderImage(AxInt32 width, AxInt32 height, bool loadDevice = true);
 	void ResizeRenderImageInt8(AxInt32 width, AxInt32 height);
-	void RegisterDepthImage(AxInt32 width, AxInt32 height);
-	void ResizeDepthImage(AxInt32 width, AxInt32 height);
+	void RegisterDepthImage(AxInt32 width, AxInt32 height, bool loadDevice = true);
+	void ResizeDepthImage(AxInt32 width, AxInt32 height, bool loadDevice = true);
 
 	AxTextureRGBA* GetRenderImage() { return m_OutputImage; };
 	AxTextureRGBA8* GetRenderImageInt8() { return m_OutputImageInt8; };

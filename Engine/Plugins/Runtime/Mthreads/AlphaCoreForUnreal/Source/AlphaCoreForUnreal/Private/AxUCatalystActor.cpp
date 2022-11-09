@@ -10,19 +10,25 @@ AAxUCatalystActor::AAxUCatalystActor()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	//PrimaryActorTick.bCanEverTick = true;
-	catalystObj = new AxCatalystObject();
-	catalystObj->SetName("Catalyst");
+	m_SceneManager = UUAxSceneManager::GetInstance();
 }
 AAxUCatalystActor::~AAxUCatalystActor()
 {
+	m_SceneManager->ClearAndDestory();
 }
 // Called when the game starts or when spawned
 void AAxUCatalystActor::BeginPlay()
 {
 	Super::BeginPlay();
-	UUAxSceneManager* SenceManger = UUAxSceneManager::GetInstance();
-	if (!SenceManger) return;
-	AxSimWorld* world = SenceManger->world;
+	if (!m_SceneManager) {
+		m_SceneManager = UUAxSceneManager::GetInstance();
+	}
+	//UUAxSceneManager* SenceManger 
+	//if (!SenceManger) return;
+	AxSimWorld* world = m_SceneManager->world;
+	m_CatalystObj = new AxCatalystObject();
+	m_CatalystObj->SetName("Catalyst");
+	world->AddObject(m_CatalystObj);
 	world->SetFrame(1);
 	AddVolumeMaterial();
 	LoadEmitterFromJson();
@@ -33,25 +39,24 @@ void AAxUCatalystActor::BeginPlay()
 void AAxUCatalystActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AAxUCatalystActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	SenceManger->ClearAndDestory();
-	AX_WARN("ClearAndDestory SenceManger");
+	//delete m_CatalystObj;
+	//auto SenceManger = UUAxSceneManager::GetInstance();
+	//SenceManger->ClearAndDestory();
+	//AX_WARN("ClearAndDestory SenceManger");
 }
 
 
 
 void AAxUCatalystActor::AddDefaultSceneObj()
 {
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	if (!SenceManger) return;
-	AxSimWorld* world = SenceManger->world;
+	//auto SenceManger = UUAxSceneManager::GetInstance();
+	//if (!SenceManger) return;
+	AxSimWorld* world = m_SceneManager->world;
 	if (world->HasSceneObject()) return;
 
 	// Create And Init RenderScene
@@ -94,7 +99,7 @@ bool AAxUCatalystActor::AddVolumeMaterial()
 	std::memcpy(m_VolumeMaterial.LookUpTableHeat, customColorRamp, 128 * sizeof(AxColorRGBA8));
 	std::memcpy(m_VolumeMaterial.LookUpTableTemperature, greyUCharRamp, 128 * sizeof(AxUChar));
 	m_VolumeMaterial.needUpdate = false;
-	catalystObj->SetRenderMaterial(&m_VolumeMaterial);
+	m_CatalystObj->SetRenderMaterial(&m_VolumeMaterial);
 	return true;
 }
 
@@ -148,7 +153,7 @@ void AAxUCatalystActor::LoadEmitterFromJson()
 		}
 	}
 
-	catalystObj->ResetEmitterGeo(m_Emitter);
+	m_CatalystObj->ResetEmitterGeo(m_Emitter);
 
 	AX_WARN("SetEmitter..");
 }
@@ -156,8 +161,8 @@ void AAxUCatalystActor::LoadEmitterFromJson()
 void AAxUCatalystActor::LoadSimParmsFromJson()
 {
 	std::string jsonPath = TCHAR_TO_UTF8(*SimJson);
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	auto world = SenceManger->world;
+	//auto m_SceneManager = UUAxSceneManager::GetInstance();
+	auto world = m_SceneManager->world;
 
 	std::ifstream in(jsonPath);
 	if (!in.is_open())
@@ -186,95 +191,95 @@ void AAxUCatalystActor::LoadSimParmsFromJson()
 	std::string Arch = taskJson["ComputeArch"].GetString();
 	std::string productJsonRaw = AlphaCore::JsonHelper::RapidJsonToString(productionSolver);
 
-	catalystObj->ParamDeserilizationFromJson(productJsonRaw);
-	catalystObj->SetCreateFrame(start);
+	m_CatalystObj->ParamDeserilizationFromJson(productJsonRaw);
+	m_CatalystObj->SetCreateFrame(start);
 	if (Arch == AlphaCore::AxSPMDBackendName::x86)
 	{
 		world->SetSPMDBackend(AlphaCore::AxBackendAPI::CPUx86);
-		catalystObj->SetSPMDBackendAPI(AlphaCore::AxBackendAPI::CPUx86); // TODO move to object deserilization
+		m_CatalystObj->SetSPMDBackendAPI(AlphaCore::AxBackendAPI::CPUx86); // TODO move to object deserilization
 	}
 	if (Arch == AlphaCore::AxSPMDBackendName::CUDA)
 	{
 		world->SetSPMDBackend(AlphaCore::AxBackendAPI::CUDA);
-		catalystObj->SetSPMDBackendAPI(AlphaCore::AxBackendAPI::CUDA);
+		m_CatalystObj->SetSPMDBackendAPI(AlphaCore::AxBackendAPI::CUDA);
 	}
 
-	AX_INFO("productSo : {}", catalystObj->GetName());
+	AX_INFO("productSo : {}", m_CatalystObj->GetName());
 
 	world->SetFPS(fps);
 	world->SetSubstep(SubSteps);
-	world->AddObject(catalystObj);
-
+	
+	m_CatalystObj->SetSimCacheOutputMark(false);
 	// Add Micro solvers
 	// ComputeArch
-	auto productSvs = AxMicroSolverFactory::GetInstance()->CreateSolverStackFromJsonContent(productJsonRaw);
-	AX_FOR_I(productSvs.size())
-		catalystObj->PushMicroSolver(productSvs[i]);
+	//auto productSvs = AxMicroSolverFactory::GetInstance()->CreateSolverStackFromJsonContent(productJsonRaw);
+	//AX_FOR_I(productSvs.size())
+	//	catalystObj->PushMicroSolver(productSvs[i]);
 }
 
-bool AAxUCatalystActor::ReadVolumeRenderObjectFromFile()
-{
-
-	bool ret = false;
-
-	std::string FieldsPath = TCHAR_TO_UTF8(*AxVolumeFieldsPath);
-	auto geo = AxGeometry::Load(FieldsPath);
-
-	AxScalarFieldF32* density = geo->FindFieldByName<float>("density");
-	AxScalarFieldF32* heat = geo->FindFieldByName<float>("heat");
-	AxScalarFieldF32* temperature = geo->FindFieldByName<float>("density");
-
-	if (density) {
-		density->DeviceMalloc();
-		m_VolumeRenderObject.density = density->GetFiedRAWDescDevice();
-		AX_INFO("density");
-		ret = true;
-	}
-
-	if (heat) {
-		heat->DeviceMalloc();
-		m_VolumeRenderObject.heat = heat->GetFiedRAWDescDevice();
-		AX_INFO("heat");
-		ret = true;
-	}
-
-	if (temperature) {
-		temperature->DeviceMalloc();
-		m_VolumeRenderObject.temperature = temperature->GetFiedRAWDescDevice();
-		AX_INFO("temperature");
-		ret = true;
-	}
-
-
-	/*AlphaCore::GridDense::ReadFields(FieldsPath, m_AxVolumeFileds);
-
-	for (AxScalarFieldF32* vol : m_AxVolumeFileds) {
-
-		if (vol->GetName() == "density") {
-			m_VolumeRenderObject.densityInfo = vol->GetFieldInfo();
-			vol->DeviceMalloc();
-			m_VolumeRenderObject.density = vol->GetRawDataDevice();
-			AX_INFO("Get Density Filed from {}, Load To Device", FieldsPath);
-			ret = true;
-		}
-		else if (vol->GetName() == "heat") {
-			m_VolumeRenderObject.heatInfo = vol->GetFieldInfo();
-			vol->DeviceMalloc();
-			m_VolumeRenderObject.heat = vol->GetRawDataDevice();
-			AX_INFO("Get Heat Filed from {}, Load To Device", FieldsPath);
-			ret = true;
-		}
-		else if (vol->GetName() == "temperature") {
-			m_VolumeRenderObject.tempInfo = vol->GetFieldInfo();
-			vol->DeviceMalloc();
-			m_VolumeRenderObject.temp = vol->GetRawDataDevice();
-			AX_INFO("Get Temperature Filed from {}, Load To Device", FieldsPath);
-			ret = true;
-		}
-	}*/
-	
-	// Get VolumeMaterial
-	m_VolumeRenderObject.material = m_VolumeMaterial;
-
-	return ret;
-}
+//bool AAxUCatalystActor::ReadVolumeRenderObjectFromFile()
+//{
+//
+//	bool ret = false;
+//
+//	std::string FieldsPath = TCHAR_TO_UTF8(*AxVolumeFieldsPath);
+//	auto geo = AxGeometry::Load(FieldsPath);
+//
+//	AxScalarFieldF32* density = geo->FindFieldByName<float>("density");
+//	AxScalarFieldF32* heat = geo->FindFieldByName<float>("heat");
+//	AxScalarFieldF32* temperature = geo->FindFieldByName<float>("density");
+//
+//	if (density) {
+//		density->DeviceMalloc();
+//		m_VolumeRenderObject.density = density->GetFiedRAWDescDevice();
+//		AX_INFO("density");
+//		ret = true;
+//	}
+//
+//	if (heat) {
+//		heat->DeviceMalloc();
+//		m_VolumeRenderObject.heat = heat->GetFiedRAWDescDevice();
+//		AX_INFO("heat");
+//		ret = true;
+//	}
+//
+//	if (temperature) {
+//		temperature->DeviceMalloc();
+//		m_VolumeRenderObject.temperature = temperature->GetFiedRAWDescDevice();
+//		AX_INFO("temperature");
+//		ret = true;
+//	}
+//
+//
+//	/*AlphaCore::GridDense::ReadFields(FieldsPath, m_AxVolumeFileds);
+//
+//	for (AxScalarFieldF32* vol : m_AxVolumeFileds) {
+//
+//		if (vol->GetName() == "density") {
+//			m_VolumeRenderObject.densityInfo = vol->GetFieldInfo();
+//			vol->DeviceMalloc();
+//			m_VolumeRenderObject.density = vol->GetRawDataDevice();
+//			AX_INFO("Get Density Filed from {}, Load To Device", FieldsPath);
+//			ret = true;
+//		}
+//		else if (vol->GetName() == "heat") {
+//			m_VolumeRenderObject.heatInfo = vol->GetFieldInfo();
+//			vol->DeviceMalloc();
+//			m_VolumeRenderObject.heat = vol->GetRawDataDevice();
+//			AX_INFO("Get Heat Filed from {}, Load To Device", FieldsPath);
+//			ret = true;
+//		}
+//		else if (vol->GetName() == "temperature") {
+//			m_VolumeRenderObject.tempInfo = vol->GetFieldInfo();
+//			vol->DeviceMalloc();
+//			m_VolumeRenderObject.temp = vol->GetRawDataDevice();
+//			AX_INFO("Get Temperature Filed from {}, Load To Device", FieldsPath);
+//			ret = true;
+//		}
+//	}*/
+//	
+//	// Get VolumeMaterial
+//	m_VolumeRenderObject.material = m_VolumeMaterial;
+//
+//	return ret;
+//}

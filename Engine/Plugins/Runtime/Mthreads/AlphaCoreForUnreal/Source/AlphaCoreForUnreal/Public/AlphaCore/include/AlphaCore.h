@@ -7,7 +7,7 @@
  *   //==\\  ||     ||======|| ||======||  //==\\   ||       ||    ||  ||=====//  ||====
  *	//    \\ ====== ||         ||      || //    \\  =======  ========  ||     \\  ========
  *
- *  Get started breaking the row ... é˜¿å°”æ³•å†…æ ¸ [ã‚¢ãƒ«ãƒ•ã‚¡ã‚³ã‚¢]
+ *  Get started breaking the row ... °¢¶û·¨ÄÚºË [¥¢¥ë¥Õ¥¡¥³¥¢]
  *
  *-------------------------------------------------------------------------------------------
 */
@@ -41,7 +41,7 @@
 
 #include "MicroSolver/AxMicroSolverFactory.h"
 #include "AxTimeTick.h"
-// For GL
+
 #ifdef ALPHA_GL
 #include "GL/glew.h"
 #include "GL/freeglut.h"
@@ -49,8 +49,7 @@
 #include "GL/freeglut_std.h"
 #endif
 
-
 #include "Catalyst/AxCatalystObject.h"
-
+#include "StormSystem/AxStormSystem.h"
 
 #endif //

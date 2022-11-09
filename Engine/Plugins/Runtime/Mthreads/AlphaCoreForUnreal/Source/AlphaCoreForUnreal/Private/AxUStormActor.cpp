@@ -9,42 +9,45 @@
 AAxUStormActor::AAxUStormActor()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	//PrimaryActorTick.bCanEverTick = true;
-	m_StormSysObj = new AxStormSysObject();
-	m_StormSysObj->SetName("Storm");
+	m_SceneManager = UUAxSceneManager::GetInstance();
 }
 AAxUStormActor::~AAxUStormActor()
 {
+	m_SceneManager->ClearAndDestory();
 }
 
 // Called when the game starts or when spawned
 void AAxUStormActor::BeginPlay()
 {
 	Super::BeginPlay();
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	if (!SenceManger) return;
-	auto world = SenceManger->world;
+	if (!m_SceneManager) {
+		m_SceneManager = UUAxSceneManager::GetInstance();
+	}
+	//auto SenceManger = UUAxSceneManager::GetInstance();
+	//if (!SenceManger) return;
+	AxSimWorld* world = m_SceneManager->world;
+	m_StormSysObj = new AxStormSysObject();
+	m_StormSysObj->SetName("Storm");
+	world->AddObject(m_StormSysObj);
+
 	world->SetFrame(1);
 	AddVolumeMaterial();
-	LoadEmitterFromJson();
 	LoadSimParmsFromJson();
 	AddDefaultSceneObj();
-
 }
 
 void AAxUStormActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void AAxUStormActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	SenceManger->ClearAndDestory();
-	AX_WARN("ClearAndDestory SenceManger");
+	//delete m_StormSysObj;
+	//auto SenceManger = UUAxSceneManager::GetInstance();
+	//SenceManger->ClearAndDestory();
+	//AX_WARN("ClearAndDestory SenceManger");
 }
 
 
@@ -64,71 +67,16 @@ bool AAxUStormActor::AddVolumeMaterial()
 	std::memcpy(m_VolumeMaterial.LookUpTableHeat, customColorRamp, 128 * sizeof(AxColorRGBA8));
 	std::memcpy(m_VolumeMaterial.LookUpTableTemperature, greyUCharRamp, 128 * sizeof(AxUChar));
 	m_VolumeMaterial.needUpdate = false;
-	//m_StormSysObj->SetRenderMaterial(&m_VolumeMaterial);
+	m_StormSysObj->SetRenderMaterial(&m_VolumeMaterial);
 	return true;
-}
-
-void AAxUStormActor::LoadEmitterFromJson()
-{
-	std::string emitter = TCHAR_TO_UTF8(*EmitterJson);
-	std::ifstream in(emitter);
-	if (!in.is_open())
-	{
-		AX_WARN("Fail to read Emitter json file");
-		return;
-	}
-
-	std::string jsonContent((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-	in.close();
-
-	rapidjson::Document doc;
-	if (doc.Parse(jsonContent.c_str()).HasParseError())
-		return;
-
-	m_Emitter = new AxGeometry();
-	auto& volumes = doc["volumes"];
-	assert(volumes.IsArray());
-	AX_FOR_I(int(volumes.Size()))
-	{
-		auto name = volumes[i]["name"].GetString();
-		int rx = volumes[i]["nx"].GetInt();
-		int ry = volumes[i]["ny"].GetInt();
-		int rz = volumes[i]["nz"].GetInt();
-		float voxelsizex = volumes[i]["voxelSize"][0].GetFloat();
-		float voxelsizey = volumes[i]["voxelSize"][1].GetFloat();
-		float voxelsizez = volumes[i]["voxelSize"][2].GetFloat();
-		float px = volumes[i]["pivot"][0].GetFloat();
-		float py = volumes[i]["pivot"][1].GetFloat();
-		float pz = volumes[i]["pivot"][2].GetFloat();
-		// auto data = volumes[i]["data"].GetString();
-
-		AxVector3 fieldPivot = { px, py, pz };
-		AxVector3UI fieldRes = { rx, ry, rz };
-		AxVector3 fieldSize = { voxelsizex * float(rx),
-						  voxelsizey * float(ry),
-						  voxelsizez * float(rz) };
-
-		AxVector3UI res = MakeVector3UI(rx, ry, rz);
-
-		m_Emitter->AddField<AxFp32>(name, true, fieldSize, fieldPivot, fieldRes);
-		AxScalarFieldF32* filed = m_Emitter->FindFieldByName<AxFp32>(name);
-		AX_FOR_J(int(filed->GetNumVoxels()))
-		{
-			filed->SetValue(j, volumes[i]["data"][j].GetFloat());
-		}
-	}
-
-	//m_StormSysObj->ResetEmitterGeo(m_Emitter);
-
-	AX_WARN("SetEmitter..");
 }
 
 void AAxUStormActor::LoadSimParmsFromJson()
 {
 	std::string jsonPath = TCHAR_TO_UTF8(*SimTaskJson);
 
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	auto world = SenceManger->world;
+	//auto SenceManger = UUAxSceneManager::GetInstance();
+	auto world = m_SceneManager->world;
 
 	std::ifstream in(jsonPath);
 	if (!in.is_open())
@@ -172,10 +120,11 @@ void AAxUStormActor::LoadSimParmsFromJson()
 
 	AX_INFO("productSo : {}", m_StormSysObj->GetName());
 
-	world->AddObject(m_StormSysObj);
-	world->SetFPS(fps);
-	world->SetSubstep(SubSteps);
+	m_StormSysObj->SetSimCacheOutputMark(false);
+	//world->SetFPS(fps);
+	//world->SetSubstep(SubSteps);
 	
+
 
 	// Add Micro solvers
 	// ComputeArch
@@ -188,9 +137,9 @@ void AAxUStormActor::LoadSimParmsFromJson()
 void AAxUStormActor::AddDefaultSceneObj()
 {
 	
-	auto SenceManger = UUAxSceneManager::GetInstance();
-	if (!SenceManger) return;
-	auto world = SenceManger->world;
+	//auto SenceManger = UUAxSceneManager::GetInstance();
+	//if (!SenceManger) return;
+	auto world = m_SceneManager->world;
 	if (world->HasSceneObject()) return;
 
 	// Create And Init RenderScene

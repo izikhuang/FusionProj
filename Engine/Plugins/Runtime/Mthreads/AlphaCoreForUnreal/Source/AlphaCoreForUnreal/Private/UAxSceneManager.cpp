@@ -4,8 +4,6 @@
 #include "AlphaCoreForUnreal.h"
 
 
-
-
 UUAxSceneManager::UUAxSceneManager(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer)
 {
@@ -22,7 +20,8 @@ UUAxSceneManager* UUAxSceneManager::GetInstance()
 	if (m_Instance == nullptr)
 	{
 		m_Instance = NewObject<UUAxSceneManager>();
-		UE_LOG(LogTemp, Warning, TEXT("Create UUAxSceneManager Object | Address: %p"), m_Instance);
+		//UE_LOG(LogTemp, Warning, TEXT("Create UUAxSceneManager Object | Address: %p"), m_Instance);
+		AX_WARN("Create UUAxSceneManager Object| ");
 	}
 	
 	return m_Instance;
@@ -32,13 +31,14 @@ void UUAxSceneManager::ClearAndDestory()
 {
 	if (m_Instance != nullptr) {
 		//AxVolumeRenderObjects().swap(m_AxVolumeRenderDatas);
-		//world->~AxSimWorld();
+
+		delete world;
+		world = nullptr;
 		m_Instance = nullptr;
 	}
 }
 
 UUAxSceneManager::~UUAxSceneManager() {
-	// 销毁，由于UE4完善的垃圾回收功能，所以将全部引用指针置为nullptr即可由UE4自动回收掉
 	//AxVolumeRenderObjects().swap(m_AxVolumeRenderDatas);
 	m_Instance = nullptr;
 	AX_WARN("UUAxSceneManager::~~~UUAxSceneManager ");

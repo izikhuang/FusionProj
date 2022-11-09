@@ -128,8 +128,9 @@ public:
 	void FormJson(std::string simObjectDesc);
 
 	// Render
-	void RegisterImage(AxUInt32 width, AxUInt32 height);
+	void RegisterImage(AxUInt32 width, AxUInt32 height, bool LoadToDevice = true);
 	void RegisterImageInt8(AxUInt32 width, AxUInt32 height);
+	void ResizeImage(AxUInt32 width, AxUInt32 height, bool LoadToDevice = true);
 	void Render();
 
 	AxTextureRGBA*	GetRenderImage();

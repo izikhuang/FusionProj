@@ -210,9 +210,8 @@ namespace RenderAlphaCore
 		auto SceneManager = UUAxSceneManager::GetInstance();
 
 
-		if (SceneManager->world->GetSimObjectNum() == 0) { return; }
-		if (!SceneManager->world->HasSceneObject()) { return; }
-
+		if (SceneManager->world->GetSimObjectNum() == 0) return; 
+		if (!SceneManager->world->HasSceneObject()) return; 
 
 
 		FRDGTextureRef WorldPosTexture = nullptr;
@@ -305,6 +304,7 @@ namespace RenderAlphaCore
 			{
 				bool debug = false;
 				FRHITexture* WorldPosTex = TryGetRHI(WorldPosTexture);
+				auto a = WorldPosTex->GetTexture2D()->GetSizeXY();
 				int ImageWidth = View.ViewRect.Width();
 				int ImageHeight = View.ViewRect.Height();
 				FReadSurfaceDataFlags readPixelFlags(RCM_UNorm);
@@ -316,14 +316,12 @@ namespace RenderAlphaCore
 				AX_WARN("Width,Height    : {}, {}", ImageWidth, ImageHeight);
 
 				/////////////////////////////////
-				/// Get AxSimWorld And Step
+				/// AlphaCore Sim world
 				/////////////////////////////////
+				AxTimeTick::GetInstance()->StartTick("RenderAll");
 				auto SceneManager = UUAxSceneManager::GetInstance();
 				AxSimWorld* world = SceneManager->world;
-
-
-				AxTimeTick::GetInstance()->StartTick("RenderAll");
-
+				
 				/////////////////////////////////
 				/// Get Light Info and Camera
 				/////////////////////////////////
@@ -335,38 +333,9 @@ namespace RenderAlphaCore
 				{
 					UELightDirection = DirectionalLightSceneInfo->Proxy->GetDirection().GetSafeNormal();
 					UELightColor = DirectionalLightSceneInfo->Proxy->GetColor();
-					AX_WARN("Get UELightDirection");
-					AX_WARN("UELightPivot    : {}, {}, {}", UELightDirection.X, UELightDirection.Y, UELightDirection.Z);
+					//AX_WARN("Get UELightDirection");
+					//AX_WARN("UELightPivot    : {}, {}, {}", UELightDirection.X, UELightDirection.Y, UELightDirection.Z);
 				}
-				/*
-				AxVector3 LightPivot = {
-					LightDirection.X * (-100000), 
-					LightDirection.Y * (-100000), 
-					LightDirection.Z * (-100000)
-				};
-				AxVector3 CamPivot = { 
-					ViewVoxelizeParameters.WorldCameraOrigin.X,
-					ViewVoxelizeParameters.WorldCameraOrigin.Y,
-					ViewVoxelizeParameters.WorldCameraOrigin.Z };
-				AxVector3 CamForward = {
-					ViewVoxelizeParameters.ViewForward.X,
-					ViewVoxelizeParameters.ViewForward.Y,
-					ViewVoxelizeParameters.ViewForward.Z };
-				AxVector3 UpVector = { 
-					ViewVoxelizeParameters.ViewUp.X,
-					ViewVoxelizeParameters.ViewUp.Y,
-					ViewVoxelizeParameters.ViewUp.Z };
-				float Near = ViewVoxelizeParameters.NearPlane;
-				float Fov = ViewVoxelizeParameters.FieldOfViewWideAngles.X * 180.f / 3.1415926f;
-				AX_WARN("LightPivot      : {}, {}, {}", LightPivot.x, LightPivot.y, LightPivot.z);
-				AX_WARN("LightColor      : {}, {}, {}, {}", LightColor.R, LightColor.G, LightColor.B, (LightColor.R + LightColor.G + LightColor.B) / 3);
-				AX_WARN("LightIntensity  : {}", LightIntensity);
-				AX_WARN("camInfo.Pivot   : {}, {}, {}", CamPivot.x, CamPivot.y, CamPivot.z);
-				AX_WARN("camInfo.Forward : {}, {}, {}", CamForward.x, CamForward.y, CamForward.z);
-				AX_WARN("camInfo.UpVector: {}, {}, {}", UpVector.x, UpVector.y, UpVector.z);
-				AX_WARN("camInfo.Near    : {}", Near);
-				AX_WARN("camInfo.Fov     : {}", Fov);
-				*/
 
 				// Get UE Parameters
 				FVector LightDir = UELightDirection.RotateAngleAxis(-90, FVector::ZAxisVector).
@@ -386,71 +355,35 @@ namespace RenderAlphaCore
 				FVector UECamUp = FVector(-CamUp.X, -CamUp.Y, -CamUp.Z);
 
 				// Convert to AxParameters
-				AxVector3 LightPivot = {
-					UELightDir.X * (-1000.f),
-					UELightDir.Y * (-1000.f),
-					UELightDir.Z * (-1000.f)
-				};
-				AxVector3 CamPivot = {
-					UECameraOrigin.X,
-					UECameraOrigin.Y,
-					UECameraOrigin.Z };
-				AxVector3 CamForward = {
-					UECamForward.X,
-					UECamForward.Y,
-					UECamForward.Z };
-				AxVector3 UpVector = {
-					UECamUp.X,
-					UECamUp.Y,
-					UECamUp.Z };
+				AxVector3 LightPivot	= { UELightDir.X * (-1000.f),UELightDir.Y * (-1000.f),UELightDir.Z * (-1000.f) };
+				AxVector3 CamPivot		= { UECameraOrigin.X,UECameraOrigin.Y,UECameraOrigin.Z };
+				AxVector3 CamForward	= { UECamForward.X,UECamForward.Y,UECamForward.Z };
+				AxVector3 UpVector		= { UECamUp.X,UECamUp.Y,UECamUp.Z };
 
-				AxColorRGBA LightColor = { UELightColor.R / UELightColor.A, 
-					UELightColor.G / UELightColor.A, 
-					UELightColor.B / UELightColor.A, 1.f };
+				AxColorRGBA LightColor = { UELightColor.R / UELightColor.A, UELightColor.G / UELightColor.A, UELightColor.B / UELightColor.A, 1.f };
 				float LightIntensity = UELightColor.A;
 
 				float Near = ViewVoxelizeParameters.NearPlane;
 				float Fov = ViewVoxelizeParameters.FieldOfViewWideAngles.X * 180.f / 3.1415926f;
 				
-				AX_WARN("FieldOfViewWideAngles: {}", ViewVoxelizeParameters.FieldOfViewWideAngles.X);
-
-				/*
-				{
-					AX_WARN("LightPivot      : {}, {}, {}", LightPivot.x, LightPivot.y, LightPivot.z);
-					AX_WARN("LightColor      : {}, {}, {}, {}", UELightColor.R, UELightColor.G, UELightColor.B, UELightColor.A);
-					AX_WARN("LightIntensity  : {}", LightIntensity);
-					AX_WARN("camInfo.Pivot   : {}, {}, {}", CamPivot.x, CamPivot.y, CamPivot.z);
-					AX_WARN("camInfo.Forward : {}, {}, {}", CamForward.x, CamForward.y, CamForward.z);
-					AX_WARN("camInfo.UpVector: {}, {}, {}", UpVector.x, UpVector.y, UpVector.z);
-					AX_WARN("camInfo.Near    : {}", Near);
-					AX_WARN("camInfo.Fov     : {}", Fov);
-
-					AxSceneRenderDesc  sceneRenderDesc;
-					sceneRenderDesc.lightInfo[0].Pivot = LightPivot;
-					sceneRenderDesc.lightInfo[0].Intensity = LightIntensity;
-					sceneRenderDesc.lightInfo[0].LightColor = LightColor;
-					sceneRenderDesc.lightNum = 1;
-					sceneRenderDesc.camInfo.Pivot = CamPivot;
-					sceneRenderDesc.camInfo.Forward = CamForward;
-					sceneRenderDesc.camInfo.UpVector = UpVector;
-					sceneRenderDesc.camInfo.Near = Near;
-					sceneRenderDesc.camInfo.Fov = Fov; 
-				}
-				*/
+				//AX_WARN("FieldOfViewWideAngles: {}", ViewVoxelizeParameters.FieldOfViewWideAngles.X);
 
 				AlphaCore::Desc::AxPointLightInfo pointLight;
-				pointLight.Pivot = LightPivot;
-				pointLight.Intensity = LightIntensity;
-				pointLight.LightColor = LightColor;
-				pointLight.Active = true;
+				pointLight.Pivot		= LightPivot;
+				pointLight.Intensity	= LightIntensity;
+				pointLight.LightColor	= LightColor;
+				pointLight.Active		= true;
 
 				AlphaCore::Desc::AxCameraInfo camInfo;
-				camInfo.Pivot = CamPivot;
-				camInfo.Forward = CamForward;
-				camInfo.UpVector = UpVector;
-				camInfo.Near = 0.01f;
-				camInfo.Fov = Fov;
+				camInfo.Pivot		= CamPivot;
+				camInfo.Forward		= CamForward;
+				camInfo.UpVector	= UpVector;
+				camInfo.Near		= 0.01f;
+				camInfo.Fov			= Fov;
 				
+				world->SetSceneCamera(camInfo);
+				world->SetSceneLight(0, &pointLight);
+
 				AX_WARN("LightPivot      : {}, {}, {}", LightPivot.x, LightPivot.y, LightPivot.z);
 				AX_WARN("LightColor      : {}, {}, {}, {}", UELightColor.R, UELightColor.G, UELightColor.B, UELightColor.A);
 				AX_WARN("LightIntensity  : {}", LightIntensity);
@@ -461,17 +394,9 @@ namespace RenderAlphaCore
 				AX_WARN("camInfo.Fov     : {}", Fov);
 
 
-				AxSceneObject* AxSceneObj = world->GetSceneObject();
-				AxSceneObj->SetCamera(camInfo);
-				AxSceneObj->SetLightByIndex(0, pointLight);
-
-				world->SetSceneObject(AxSceneObj);
-
-				//world->StepAndRender();
-
-
-				//AxSceneRenderDesc* scnDesc = AxSceneObj->GetSceneDesc();
-
+				/////////////////////////////////
+				/// Render in AlphaCore
+				/////////////////////////////////
 				if (debug)
 				{
 					AxTextureRGBA8 depthTex(ImageWidth, ImageHeight);
@@ -487,140 +412,34 @@ namespace RenderAlphaCore
 					}
 					AlphaCore::Image::SaveAsTga("D:/assets/boxdepth.tga", &depthTex);
 				}
-
-				AxTimeTick::GetInstance()->StartTick("depthTexBuf LoadToDevice");
-
-				if (!world->GetDepthImage()) {
-					world->RegisterDepthImage(ImageWidth, ImageHeight);
-				}
-				world->ResizeDepthImage(ImageWidth, ImageHeight);
-
-				for (int r = 0; r < ImageHeight * ImageWidth; ++r)
-				{
-					world->GetDepthImage()->SetValue(r, float(WorldPosData[r].A));
-				}
-
-				world->GetDepthImage()->LoadToDevice();
-
-				//AxTextureR32* tempDepth = new AxTextureR32(ImageWidth, ImageHeight,"depth");
-				//AxTextureR32 depthTexBuf(ImageWidth, ImageHeight);
-				//for (int r = 0; r < ImageHeight; ++r)
-				//{
-				//	for (int c = 0; c < ImageWidth; ++c)
-				//	{
-				//		world->GetDepthImage()->SetValue(r * ImageWidth + c,float(WorldPosData[r * ImageWidth + c].A));
-				//	}
-				//}
-
-				AxTimeTick::GetInstance()->EndTick("depthTexBuf LoadToDevice", true);
-
-
-
-				/////////////////////////////////
-				/// Get Fields Info
-				/////////////////////////////////
-				//auto obj = world->GetObjectByIndex(0);
-				//
-				//AX_WARN("Obj Name : {}", obj->GetName());
-				//AxCatalystObject* catalystObj = (AxCatalystObject*)(world->GetObjectByIndex(0));
-				//catalystObj->UpdateRenderData();
-				//auto renderObj = catalystObj->GetRenderObj();
-				//AxTimeTick::GetInstance()->EndTick("Get Light Info and Camera", true);
-				////auto geo = AxGeometry::Load("E:/a137District/Catalyst/combustion/Catalyst_Solver1/CatalystField.v001.0152.axc");
-				////auto heat = geo->FindFieldByName<float>("heat");
-				////auto density = geo->FindFieldByName<float>("density");
-				////auto temperature = geo->FindFieldByName<float>("temperature");
-				////heat->DeviceMalloc();
-				////density->DeviceMalloc();
-				////temperature->DeviceMalloc();
-				////renderObj.density = density->GetFiedRAWDescDevice();
-				////renderObj.heat = heat->GetFiedRAWDescDevice();
-				////renderObj.temperature = temperature->GetFiedRAWDescDevice();
-
-
-				/////////////////////////////////
-				/// Get Depth and Load to Device
-				/////////////////////////////////
-				//if (debug)
-				//{
-				//	AxTextureRGBA8 depthTex(ImageWidth, ImageHeight);
-				//	for (int r = 0; r < ImageHeight; ++r)
-				//	{
-				//		for (int c = 0; c < ImageWidth; ++c)
-				//		{
-				//			depthTex.SetValue(r * ImageWidth + c, MakeColorRGBA8(Byte(WorldPosData[r * ImageWidth + c].A),
-				//				Byte(WorldPosData[r * ImageWidth + c].A),
-				//				Byte(WorldPosData[r * ImageWidth + c].A),
-				//				Byte(WorldPosData[r * ImageWidth + c].A)));
-				//		}
-				//	}
-				//	AlphaCore::Image::SaveAsTga("D:/assets/boxdepth.tga", &depthTex);
-				//}
-
-				//AxTimeTick::GetInstance()->StartTick("depthTexBuf LoadToDevice");
-
-				//if (!world->GetDepthImage()) {
-				//	world->RegisterDepthImage(ImageWidth, ImageHeight);
-				//}
-				//world->ResizeDepthImage(ImageWidth, ImageHeight);
-
-				//AxTextureR32* depthTexBuf = world->GetDepthImage();
-
-				////AxTextureR32 depthTexBuf(ImageWidth, ImageHeight);
-
-				//for (int r = 0; r < ImageHeight; ++r)
-				//{
-				//	for (int c = 0; c < ImageWidth; ++c)
-				//	{
-				//		depthTexBuf->SetValue(
-				//			//(ImageHeight - 1 - r) * ImageWidth + ImageWidth - c - 1,
-				//			r* ImageWidth + c,
-				//			float(WorldPosData[r * ImageWidth + c].A));
-				//			//0.f);
-				//		//AX_WARN("depthTexBuf {}/{} : {}", c,r,float(WorldPosData[r * ImageWidth + c].A));
-				//	}
-				//}
-				//depthTexBuf->LoadToDevice();
-				////depthTexBuf.DeviceMalloc();
-				//AxTimeTick::GetInstance()->EndTick("depthTexBuf LoadToDevice", true);
-
-
-
-				/////////////////////////////////
-				/// Render in AlphaCore
-				/////////////////////////////////
-				//AxTimeTick::GetInstance()->StartTick("Image Resize");
-				if (!world->GetRenderImage()) {
-					world->RegisterRenderImage(ImageWidth, ImageHeight);
-				}
+				// image resize
+				if (!world->GetRenderImage()) { world->RegisterRenderImage(ImageWidth, ImageHeight);}
 				world->ResizeRenderImage(ImageWidth, ImageHeight);
 
-				world->StepAndRender();
+				// depthTexture
+				if (!world->GetDepthImage()) { world->RegisterDepthImage(ImageWidth, ImageHeight); }
+				world->ResizeDepthImage(ImageWidth, ImageHeight);
+				for (int r = 0; r < ImageHeight; ++r)
+				{
+					for (int c = 0; c < ImageWidth; ++c)
+					{
+						world->GetDepthImage()->SetValue(
+							r * ImageWidth + c,
+							float(WorldPosData[r * ImageWidth + c].A));
+					}
+				}
+				world->GetDepthImage()->LoadToDevice();
 
+				// step and render
+				
+				world->RStep();
+				world->Render();
+				// post render 
 				AxTextureRGBA* image = world->GetRenderImage();
-				//image->LoadToDevice();
-
-				//if (!image->GetRawDataDevice()) {
-				//	AX_WARN("GetRawDataDevice Error");
-				//	return;
-				//}
 
 				if (image->GetResolution().x != ImageWidth || image->GetResolution().y != ImageHeight) return;
-
-				//AxTextureRGBA image(ImageWidth, ImageHeight);
-				//image.SetToZero();
-				//image.DeviceMalloc();
-				AxTimeTick::GetInstance()->EndTick("Image Resize",true);
-				// TODO Multy Image Add
-				//AlphaCore::VolumeRender::CUDA::GasVolumeRenderInUE(renderObj, *scnDesc, image, depthTexBuf,
-				//			ImageWidth, ImageHeight);
-
-				//AX_WARN("Frame: {}",world->GetFrame());
-				
-
-				AxTimeTick::GetInstance()->StartTick("Image LoadToHost");
 				image->LoadToHost();
-				AxTimeTick::GetInstance()->EndTick("Image LoadToHost", true);
+
 				TArray<FLinearColor> OutputData;
 				OutputData.AddDefaulted(ImageWidth * ImageHeight);
 				AxColorRGBA* ImageData = image->GetRawData();
@@ -642,11 +461,8 @@ namespace RenderAlphaCore
 					}
 					AlphaCore::Image::SaveAsTga("D:/assets/box.tga", &out);
 				}
-				AxTimeTick::GetInstance()->StartTick("FMemory::Memcpy");
 
 				FMemory::Memcpy(OutputData.GetData(), ImageData, ImageHeight * ImageWidth * 4 * sizeof(float));
-
-				AxTimeTick::GetInstance()->EndTick("FMemory::Memcpy", true);
 
 				FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
 				FUpdateTextureRegion2D TempRegion(View.ViewRect.Min.X, View.ViewRect.Min.Y, View.ViewRect.Min.X, View.ViewRect.Min.Y, ImageWidth, ImageHeight);
