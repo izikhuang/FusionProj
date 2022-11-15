@@ -10,7 +10,6 @@
 
 #include "Render/RenderAlphaCore.h"
 #include "UAxSceneManager.h"
-#include "AxUCatalystActor.h"
 #include "AlphaCoreForUnreal.h"
 #include <Utility/AxTimeTick.h>
 // UE4 public interfaces
@@ -176,9 +175,7 @@ END_SHADER_PARAMETER_STRUCT()
 
 namespace RenderAlphaCore
 {
-	//class AAxUCatalystActor;
     FDelegateHandle RenderAlphaCoreHandle;
-	//static std::vector<AxVolumeRenderObject> AxVolumeRenderDatas;
 
     void Startup()
     {
@@ -207,18 +204,14 @@ namespace RenderAlphaCore
 		///////////////////////////////
 		// Get AxRenderData
 		///////////////////////////////
-		auto SceneManager = UUAxSceneManager::GetInstance();
-
-
-		if (SceneManager->world->GetSimObjectNum() == 0) return; 
-		if (!SceneManager->world->HasSceneObject()) return; 
+		auto SceneManager = AxSceneManager::GetInstance();
+		if (SceneManager->GetWorld()->GetSimObjectNum() == 0) return;
 
 
 		FRDGTextureRef WorldPosTexture = nullptr;
 		FRDGTextureRef SimOutput = nullptr;
 		FRDGTextureRef DepthTexture = nullptr;
 		FRDGTextureRef SceneColorTexture = GraphBuilder.RegisterExternalTexture(Resources.SceneColor);
-
 
 		{
 			FRDGTextureDesc Desc = FRDGTextureDesc::Create2D(
@@ -299,12 +292,12 @@ namespace RenderAlphaCore
 			RDG_EVENT_NAME("SimParameters"),
 			ApplyLightingPassParameters,
 			PassFlags,
-			[/*AxVolumeRenderDatas,*/ ApplyLightingPassParameters, GlobalShaderMap, VertexShader, PixelShader, WorldPosTexture, SimOutput, &View, DirectionalLightSceneInfo]
+			[ApplyLightingPassParameters, GlobalShaderMap, VertexShader, PixelShader, WorldPosTexture, SimOutput, &View, DirectionalLightSceneInfo]
 		(FRHICommandListImmediate& RHICmdList)
 			{
 				bool debug = false;
 				FRHITexture* WorldPosTex = TryGetRHI(WorldPosTexture);
-				auto a = WorldPosTex->GetTexture2D()->GetSizeXY();
+
 				int ImageWidth = View.ViewRect.Width();
 				int ImageHeight = View.ViewRect.Height();
 				FReadSurfaceDataFlags readPixelFlags(RCM_UNorm);
@@ -313,28 +306,29 @@ namespace RenderAlphaCore
 				//RHICmdList.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 				GDynamicRHI->RHIReadSurfaceFloatData_RenderThread(RHICmdList, WorldPosTex, IntRect, WorldPosData, CubeFace_PosX, 0, 0);
 				FViewUniformShaderParameters ViewVoxelizeParameters = *View.CachedViewUniformShaderParameters;
-				AX_WARN("Width,Height    : {}, {}", ImageWidth, ImageHeight);
+				
 
 				/////////////////////////////////
 				/// AlphaCore Sim world
 				/////////////////////////////////
-				AxTimeTick::GetInstance()->StartTick("RenderAll");
-				auto SceneManager = UUAxSceneManager::GetInstance();
-				AxSimWorld* world = SceneManager->world;
-				
+				auto SceneManager = AxSceneManager::GetInstance();
+				if (SceneManager->GetSimWorldStatus() == 1) return;
+
+				AxSimWorld* world = SceneManager->GetWorld();
+				if (!world) return;
+				if (world->GetSimObjectNum() == 0) return;
+
+				SceneManager->SetSimWorldStepStarted();
 				/////////////////////////////////
 				/// Get Light Info and Camera
 				/////////////////////////////////
 
-				AxTimeTick::GetInstance()->StartTick("Get Light Info and Camera");
 				FVector UELightDirection;
 				FLinearColor UELightColor;
 				if (DirectionalLightSceneInfo)
 				{
 					UELightDirection = DirectionalLightSceneInfo->Proxy->GetDirection().GetSafeNormal();
 					UELightColor = DirectionalLightSceneInfo->Proxy->GetColor();
-					//AX_WARN("Get UELightDirection");
-					//AX_WARN("UELightPivot    : {}, {}, {}", UELightDirection.X, UELightDirection.Y, UELightDirection.Z);
 				}
 
 				// Get UE Parameters
@@ -353,7 +347,7 @@ namespace RenderAlphaCore
 				FVector CamUp = ViewVoxelizeParameters.ViewUp.RotateAngleAxis(-90, FVector::ZAxisVector).
 					RotateAngleAxis(90, FVector::XAxisVector);
 				FVector UECamUp = FVector(-CamUp.X, -CamUp.Y, -CamUp.Z);
-
+				//auto a = 
 				// Convert to AxParameters
 				AxVector3 LightPivot	= { UELightDir.X * (-1000.f),UELightDir.Y * (-1000.f),UELightDir.Z * (-1000.f) };
 				AxVector3 CamPivot		= { UECameraOrigin.X,UECameraOrigin.Y,UECameraOrigin.Z };
@@ -366,8 +360,6 @@ namespace RenderAlphaCore
 				float Near = ViewVoxelizeParameters.NearPlane;
 				float Fov = ViewVoxelizeParameters.FieldOfViewWideAngles.X * 180.f / 3.1415926f;
 				
-				//AX_WARN("FieldOfViewWideAngles: {}", ViewVoxelizeParameters.FieldOfViewWideAngles.X);
-
 				AlphaCore::Desc::AxPointLightInfo pointLight;
 				pointLight.Pivot		= LightPivot;
 				pointLight.Intensity	= LightIntensity;
@@ -378,20 +370,21 @@ namespace RenderAlphaCore
 				camInfo.Pivot		= CamPivot;
 				camInfo.Forward		= CamForward;
 				camInfo.UpVector	= UpVector;
-				camInfo.Near		= 0.01f;
+				camInfo.Near		= Near;
 				camInfo.Fov			= Fov;
+				
 				
 				world->SetSceneCamera(camInfo);
 				world->SetSceneLight(0, &pointLight);
 
-				AX_WARN("LightPivot      : {}, {}, {}", LightPivot.x, LightPivot.y, LightPivot.z);
-				AX_WARN("LightColor      : {}, {}, {}, {}", UELightColor.R, UELightColor.G, UELightColor.B, UELightColor.A);
-				AX_WARN("LightIntensity  : {}", LightIntensity);
-				AX_WARN("camInfo.Pivot   : {}, {}, {}", CamPivot.x, CamPivot.y, CamPivot.z);
-				AX_WARN("camInfo.Forward : {}, {}, {}", CamForward.x, CamForward.y, CamForward.z);
-				AX_WARN("camInfo.UpVector: {}, {}, {}", UpVector.x, UpVector.y, UpVector.z);
-				AX_WARN("camInfo.Near    : {}", Near);
-				AX_WARN("camInfo.Fov     : {}", Fov);
+				//AX_WARN("LightPivot      : {}, {}, {}", LightPivot.x, LightPivot.y, LightPivot.z);
+				//AX_WARN("LightColor      : {}, {}, {}, {}", UELightColor.R, UELightColor.G, UELightColor.B, UELightColor.A);
+				//AX_WARN("LightIntensity  : {}", LightIntensity);
+				//AX_WARN("camInfo.Pivot   : {}, {}, {}", CamPivot.x, CamPivot.y, CamPivot.z);
+				//AX_WARN("camInfo.Forward : {}, {}, {}", CamForward.x, CamForward.y, CamForward.z);
+				//AX_WARN("camInfo.UpVector: {}, {}, {}", UpVector.x, UpVector.y, UpVector.z);
+				//AX_WARN("camInfo.Near    : {}", Near);
+				//AX_WARN("camInfo.Fov     : {}", Fov);
 
 
 				/////////////////////////////////
@@ -412,6 +405,7 @@ namespace RenderAlphaCore
 					}
 					AlphaCore::Image::SaveAsTga("D:/assets/boxdepth.tga", &depthTex);
 				}
+
 				// image resize
 				if (!world->GetRenderImage()) { world->RegisterRenderImage(ImageWidth, ImageHeight);}
 				world->ResizeRenderImage(ImageWidth, ImageHeight);
@@ -431,9 +425,7 @@ namespace RenderAlphaCore
 				world->GetDepthImage()->LoadToDevice();
 
 				// step and render
-				
-				world->RStep();
-				world->Render();
+				world->StepAndRender();
 				// post render 
 				AxTextureRGBA* image = world->GetRenderImage();
 
@@ -463,6 +455,7 @@ namespace RenderAlphaCore
 				}
 
 				FMemory::Memcpy(OutputData.GetData(), ImageData, ImageHeight * ImageWidth * 4 * sizeof(float));
+				SceneManager->SetSimWorldStepFinished();
 
 				FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
 				FUpdateTextureRegion2D TempRegion(View.ViewRect.Min.X, View.ViewRect.Min.Y, View.ViewRect.Min.X, View.ViewRect.Min.Y, ImageWidth, ImageHeight);
@@ -489,11 +482,6 @@ namespace RenderAlphaCore
 				SetShaderParameters(RHICmdList, PixelShader, PixelShader.GetPixelShader(), *ApplyLightingPassParameters);
 
 				RHICmdList.DrawPrimitive(0, 1, 1);
-
-				AxTimeTick::GetInstance()->EndTick("RenderAll", true);
-
-
-				//AxTimeTick::GetInstance()->StartTick("RenderAll");
 			});
 	}
 

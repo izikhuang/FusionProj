@@ -18,8 +18,8 @@ public:
     AxCatalystEmitterSimData()
     {
         this->m_CatalystEmitterGeometry = nullptr;
-        this->Fuel = nullptr;
-        this->Density = nullptr;
+        this->Fuel      = nullptr;
+        this->Density   = nullptr;
         this->Temprature = nullptr;
         this->Divergence = nullptr;
         this->Vel = new AxVecFieldF32();
@@ -341,6 +341,9 @@ private:
     AxPossionCGSolver m_CGPressureSolver;
 
     AxVolumeRenderObject m_RenderObj;
+    //AxScalarFieldUInt8 *m_Density = nullptr;
+    //AxScalarFieldUInt8 *m_Heat = nullptr;
+    //AxScalarFieldUInt8 *m_Temperature = nullptr;
     AxScalarFieldF32* m_Density = nullptr;
     AxScalarFieldF32* m_Heat = nullptr;
     AxScalarFieldF32* m_Temperature = nullptr;

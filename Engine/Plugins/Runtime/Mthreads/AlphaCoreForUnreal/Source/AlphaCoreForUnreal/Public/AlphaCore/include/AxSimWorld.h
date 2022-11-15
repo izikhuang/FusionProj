@@ -61,10 +61,10 @@ public:
 		return this->GetCurrentSubStep() == this->GetSubSteps();
 	}
 	void SetFrame(AxInt32 frame) { m_iFrame = frame; }
-
+	void clearSimObjects();
 protected:
 	void runSimulationTask(AxInt32 startFrame,AxInt32 endFrame);
-	void clearSimObjects();
+	//void clearSimObjects();
 
 private:
 
@@ -83,12 +83,7 @@ public:
 
 	void Render();
 	void StepAndRender(bool render = true);
-	void RStep() {
-		AX_WARN("Frame: {}", m_iFrame);
-		AxFp32 deltaTime = 1.0f / (AxFp32)m_iFPS;
-		this->Step(deltaTime);
-		m_fTickTime += deltaTime;
-	}
+
 	AxSceneObject* GetSceneObject();
 	void SetSceneObject(AxSceneObject* scene);
 	void CreateDefaultSceneObject();

@@ -2,7 +2,8 @@
 
 
 #include "AxUCatalystActor.h"
-#include <MicroSolver/AxMicroSolverFactory.h>
+#include "Render/RenderAlphaCore.h"
+#include "MicroSolver/AxMicroSolverFactory.h"
 
 
 // Sets default values
@@ -10,7 +11,7 @@ AAxUCatalystActor::AAxUCatalystActor()
 {
 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	//PrimaryActorTick.bCanEverTick = true;
-	m_SceneManager = UUAxSceneManager::GetInstance();
+	m_SceneManager = AxSceneManager::GetInstance();
 }
 AAxUCatalystActor::~AAxUCatalystActor()
 {
@@ -20,16 +21,13 @@ AAxUCatalystActor::~AAxUCatalystActor()
 void AAxUCatalystActor::BeginPlay()
 {
 	Super::BeginPlay();
-	if (!m_SceneManager) {
-		m_SceneManager = UUAxSceneManager::GetInstance();
-	}
-	//UUAxSceneManager* SenceManger 
-	//if (!SenceManger) return;
-	AxSimWorld* world = m_SceneManager->world;
+	if (!m_SceneManager) {m_SceneManager = AxSceneManager::GetInstance();}
+
+	AxSimWorld* world = m_SceneManager->GetWorld();
 	m_CatalystObj = new AxCatalystObject();
 	m_CatalystObj->SetName("Catalyst");
 	world->AddObject(m_CatalystObj);
-	world->SetFrame(1);
+	world->SetFrame(2);
 	AddVolumeMaterial();
 	LoadEmitterFromJson();
 	LoadSimParmsFromJson();
@@ -44,19 +42,16 @@ void AAxUCatalystActor::Tick(float DeltaTime)
 void AAxUCatalystActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
-	//delete m_CatalystObj;
-	//auto SenceManger = UUAxSceneManager::GetInstance();
-	//SenceManger->ClearAndDestory();
-	//AX_WARN("ClearAndDestory SenceManger");
+	if (m_SceneManager) {
+		m_SceneManager->ClearAndDestory();
+	}
 }
 
 
 
 void AAxUCatalystActor::AddDefaultSceneObj()
 {
-	//auto SenceManger = UUAxSceneManager::GetInstance();
-	//if (!SenceManger) return;
-	AxSimWorld* world = m_SceneManager->world;
+	AxSimWorld* world = m_SceneManager->GetWorld();
 	if (world->HasSceneObject()) return;
 
 	// Create And Init RenderScene
@@ -93,7 +88,6 @@ bool AAxUCatalystActor::AddVolumeMaterial()
 	m_VolumeMaterial.minMaxInputDensity = { InputDensityMinMax.X, InputDensityMinMax.Y };
 	m_VolumeMaterial.minMaxInputHeat = { InputHeatMinMax.X,InputHeatMinMax.Y };
 	m_VolumeMaterial.minMaxInputTemperature = { InputTemperatureMinMax.X,InputTemperatureMinMax.Y };
-	//m_VolumeMaterial.minMaxOuputTemperature = { 0,1 };
 	std::memcpy(m_VolumeMaterial.lookUpTableDensity, greyUCharRamp, 128 * sizeof(AxUChar));
 	std::memcpy(m_VolumeMaterial.lookUpTableDensityColor, greyColorRamp, 128 * sizeof(AxColorRGBA8));
 	std::memcpy(m_VolumeMaterial.LookUpTableHeat, customColorRamp, 128 * sizeof(AxColorRGBA8));
@@ -162,7 +156,7 @@ void AAxUCatalystActor::LoadSimParmsFromJson()
 {
 	std::string jsonPath = TCHAR_TO_UTF8(*SimJson);
 	//auto m_SceneManager = UUAxSceneManager::GetInstance();
-	auto world = m_SceneManager->world;
+	auto world = m_SceneManager->GetWorld();
 
 	std::ifstream in(jsonPath);
 	if (!in.is_open())

@@ -2,45 +2,37 @@
 
 #pragma once
 #include <vector>
-#include "CoreMinimal.h"
+#include <memory>
+#include <mutex>
+//#include "CoreMinimal.h"
 #include "AlphaCoreForUnreal.h"
-//#include "AxUCatalystActor.h"
-#include "UObject/NoExportTypes.h"
-#include "Tickable.h"
-#include "UAxSceneManager.generated.h"
+//#include "UObject/NoExportTypes.h"
+//#include "Tickable.h"
+//#include "UAxSceneManager.generated.h"
 
-/**
- * 
- */
 
-//typedef std::map<int, string> mapStudent
-class AAxUCatalystActor;
-
-typedef std::vector<AxVolumeRenderObject*> AxVolumeRenderObjects;
-
-UCLASS(Blueprintable, BlueprintType)
-class ALPHACOREFORUNREAL_API UUAxSceneManager : public UObject/*, public FTickableGameObject*/
+//UCLASS(Blueprintable, BlueprintType)
+class AxSceneManager/* : public UObject*//*, public FTickableGameObject*/
 {
-	GENERATED_BODY()
+	//GENERATED_BODY()
 
 public:
-	virtual ~UUAxSceneManager();
 
-	void ClearAndDestory(); 
-
-	static UUAxSceneManager* GetInstance();
-
-	//void AddAxVolumeRenderData(AxVolumeRenderObject* VolumeRenderData);
-
-	//AxVolumeRenderObjects GetAxVolumeRenderDatas() { return m_AxVolumeRenderDatas; };
-	//AxVolumeRenderObjects m_AxVolumeRenderDatas;
-	//AxVolumeRenderObject* m_AxVolumeRenderDatas[32];
-
-	AxSimWorld* world;
-private:
-
-	UUAxSceneManager();
-	UUAxSceneManager(const FObjectInitializer& ObjectInitializer);
-	static UUAxSceneManager* m_Instance;
+	static AxSceneManager* GetInstance();
+	static void ClearAndDestory(); 
+	AxSimWorld* GetWorld();
 	
+	void SetSimWorldNotStarted();
+	void SetSimWorldStepStarted();
+	void SetSimWorldStepFinished();
+	int GetSimWorldStatus();
+private:
+	int m_SimWorldStatus = 0;
+	AxSceneManager();
+	~AxSceneManager();
+
+	AxSimWorld* m_World;
+	static AxSceneManager* m_Instance;
+	static std::mutex m_Mutex;
+	std::mutex m_MutexWorld;
 };

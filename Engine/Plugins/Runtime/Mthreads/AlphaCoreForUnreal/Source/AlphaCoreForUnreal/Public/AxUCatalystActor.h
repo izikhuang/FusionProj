@@ -46,7 +46,7 @@ public:
 	AxGeometry* m_Emitter;
 
 private:
-	UUAxSceneManager* m_SceneManager;
+	AxSceneManager* m_SceneManager;
 
 
 protected:

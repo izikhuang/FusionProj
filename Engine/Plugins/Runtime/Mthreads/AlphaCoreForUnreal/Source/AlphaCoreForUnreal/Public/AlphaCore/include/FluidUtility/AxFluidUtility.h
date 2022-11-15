@@ -26,13 +26,15 @@ namespace AlphaCore
 class AxParticleFluidEmitter
 {
 public:
+	
 	AxParticleFluidEmitter(
-		AxVector3 dir = MakeVector3(0.0f, 0.0f, 1.0f),
-		AxVector3 up = MakeVector3(0.0f, 1.0f, 0.0f),
-		AxVector3 size = MakeVector3(1.0f, 1.0f, 0.0f),
+		AxVector3 dir	= MakeVector3(0.0f, 0.0f, 1.0f),
+		AxVector3 up	= MakeVector3(0.0f, 1.0f, 0.0f),
+		AxVector3 size	= MakeVector3(1.0f, 1.0f, 0.0f),
 		AxVector3 pivot = MakeVector3(0.0f, 0.0f, 0.0f),
-		AxFp32 rad = 0.1f,
-		AxFp32 speed = 1.0f);
+		AxFp32 rad		= 0.1f,
+		AxFp32 speed	= 1.0f);
+
 	~AxParticleFluidEmitter();
 
 	struct RAWDesc
@@ -275,6 +277,14 @@ AxFp32 windSpeed,
 AxFp32 windIntensity,
 AxFp32 deltaTime) ;
 
+ALPHA_SPMD_FUNC void VecFieldDrivenAlign (
+AxVecFieldF32* velFieldTarget,
+AxVecFieldF32* velFieldSrc,
+AxInt32 drivenType,/*0 : Wind 1 : Force*/
+AxFp32 windSpeed,
+AxFp32 scale,
+AxFp32 deltaTime) ;
+
   }
 
 namespace FluidUtility  
@@ -397,6 +407,15 @@ AxVecFieldF32* velField,
 AxVector3 windDir,
 AxFp32 windSpeed,
 AxFp32 windIntensity,
+AxFp32 deltaTime,
+AxUInt32 blockSize = 512) ;
+
+ALPHA_SPMD_FUNC void VecFieldDrivenAlign (
+AxVecFieldF32* velFieldTarget,
+AxVecFieldF32* velFieldSrc,
+AxInt32 drivenType,/*0 : Wind 1 : Force*/
+AxFp32 windSpeed,
+AxFp32 scale,
 AxFp32 deltaTime,
 AxUInt32 blockSize = 512) ;
 
@@ -526,6 +545,15 @@ AxVecFieldF32* velField,
 AxVector3 windDir,
 AxFp32 windSpeed,
 AxFp32 windIntensity,
+AxFp32 deltaTime,
+AxUInt32 blockSize = 512) ;
+
+ALPHA_SPMD_FUNC void VecFieldDrivenAlign (
+AxVecFieldF32* velFieldTarget,
+AxVecFieldF32* velFieldSrc,
+AxInt32 drivenType,/*0 : Wind 1 : Force*/
+AxFp32 windSpeed,
+AxFp32 scale,
 AxFp32 deltaTime,
 AxUInt32 blockSize = 512) ;
 

@@ -22,9 +22,6 @@ public class AlphaCoreForUnreal : ModuleRules
 				Path.Combine(AlphaCore,"include"),
 				Path.Combine(AlphaCore,"include","AccelTree"),
 				Path.Combine(AlphaCore,"include","Collision"),
-				//Path.Combine(AlphaCore,"include","Debug/Collision"),
-				//Path.Combine(AlphaCore,"include","Debug"),
-				//Path.Combine(AlphaCore,"include","Ext"),
 				Path.Combine(AlphaCore,"include","FluidUtility"),
 				Path.Combine(AlphaCore,"include","Geometric"),
 				Path.Combine(AlphaCore,"include","GridDense"),
@@ -34,12 +31,9 @@ public class AlphaCoreForUnreal : ModuleRules
 				Path.Combine(AlphaCore,"include","PBD"),
 				Path.Combine(AlphaCore,"include","ProceduralContent"),
 				Path.Combine(AlphaCore,"include","SolidUtility"),
-				Path.Combine(AlphaCore,"include","Test"),
+				//Path.Combine(AlphaCore,"include","Test"),
 				Path.Combine(AlphaCore,"include","Utility"),
 				Path.Combine(AlphaCore,"include","VolumeRender"),
-				//Path.Combine(AlphaCore,"src"),
-
-
 				Path.Combine(AlphaCore, "thirdParty"),
 				Path.Combine(AlphaCore3rd,"spdlog","include"),
 				Path.Combine(AlphaCoreEngine,"include"),
@@ -66,9 +60,9 @@ public class AlphaCoreForUnreal : ModuleRules
 
 		PublicDefinitions.Add("ALPHA_CUDA=1");
 		PublicDefinitions.Add("ALPHA_UNREAL");
-		PublicDefinitions.Add("USE_AX_LOG");
+        PublicDefinitions.Add("USE_AX_LOG");
 
-		PublicAdditionalLibraries.AddRange(
+        PublicAdditionalLibraries.AddRange(
 			new string[] {
                 Path.Combine(AlphaCore, "AlphaCoreLib","Release", "AlphaCore.lib"),
                 Path.Combine(CUDAPath, "lib","x64","cudart_static.lib")

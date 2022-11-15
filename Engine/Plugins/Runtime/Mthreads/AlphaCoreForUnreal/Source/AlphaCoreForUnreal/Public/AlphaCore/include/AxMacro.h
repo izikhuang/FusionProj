@@ -123,9 +123,9 @@ namespace AlphaProperty
 		"   //    \\\\ ====== ||         ||      || //    \\\\  =======  ========  ||     \\\\  =========	\n"
 		"																							\n"
 		" \n"
-		"                       °¢¶û·¨ÄÚºË  ¥¢¥ë¥Õ¥¡¥³¥¢  [ version alpha 0.0.1 ]						\n"
+		"                 alpha 137  Fine Structural Constant Inside [ version alpha 0.0.1 ]						\n"
 		"  \n"
-		"                             Get started breaking the row ...								\n"
+		"                           Get started breaking the row ...								\n"
 		" 																							\n"
 		" --------------------------------------------------------------------------------------------\n"
 		"\n";

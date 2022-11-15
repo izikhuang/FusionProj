@@ -12,11 +12,10 @@
 
 FSA_CLASS class AxStormSysSimData : AxISimData
 {
-
 public:
     AxStormSysSimData()
     {
-        this->m_CatalystFieldsGeometry = nullptr;
+        this->m_StormSysFieldsGeometry = nullptr;
         this->Density = nullptr;
         this->Vel = new AxVecFieldF32();
         this->Vel2 = new AxVecFieldF32();
@@ -28,14 +27,16 @@ public:
         this->Pressure = nullptr;
         this->VelDiv = nullptr;
         this->AdvectTmp2 = nullptr;
+        this->HeightField = nullptr;
+        this->CollisionMaskField = nullptr;
      }
 
     ~AxStormSysSimData()
     {
-        if (m_CatalystFieldsGeometry != nullptr)
+        if (m_StormSysFieldsGeometry != nullptr)
         {
-            m_CatalystFieldsGeometry->ClearAndDestory();
-            m_CatalystFieldsGeometry = nullptr;
+            m_StormSysFieldsGeometry->ClearAndDestory();
+            m_StormSysFieldsGeometry = nullptr;
         }
     }
 
@@ -50,7 +51,9 @@ public:
     AxScalarFieldF32* Pressure;
     AxScalarFieldF32* VelDiv;
     AxScalarFieldF32* AdvectTmp2;
- 
+    AxScalarFieldI8* CollisionMaskField;
+    AxScalarFieldF32* HeightField;
+
     struct RAWData
     {
         ///###FSA_SIMDATA_RAW_DATA
@@ -65,7 +68,11 @@ public:
     {
         if (geo0 == nullptr)
             return;
-        this->m_CatalystFieldsGeometry = geo0;
+        this->m_StormSysFieldsGeometry = geo0;
+
+        if (geo1 == nullptr)
+            return;
+        this->HeightField = geo1->FindFieldByName<AxFp32>("height");
     }
 
     virtual void LoadToDevice()
@@ -92,6 +99,10 @@ public:
             Vel2->DeviceMalloc();
         if (CurlField->IsValid() && !CurlField->AllFieldHashDeviceData())
             CurlField->DeviceMalloc();
+        if (HeightField != nullptr)
+            HeightField->DeviceMalloc();
+        if (CollisionMaskField != nullptr)
+            CollisionMaskField->DeviceMalloc();
     }
 
     virtual void LoadToHost()
@@ -118,6 +129,7 @@ public:
             Vel2->LoadToHost();
         if (CurlField->IsValid() && !CurlField->AllFieldHashDeviceData())
             CurlField->LoadToHost();
+
     }
 
     virtual void Init() {};
@@ -135,24 +147,27 @@ public:
             res.z * voxelSize);
 
         bool buildPrim = false;
-        this->Density = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::DensityField, buildPrim, fieldSize, pivot, res);
-        this->Temprature = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::TempratureField, buildPrim, fieldSize, pivot, res);
-        this->AdvectTemp = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::AdvectTmp, buildPrim, fieldSize, pivot, res);
-        this->AdvectTmp2 = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::AdvectTmp2, buildPrim, fieldSize, pivot, res);
-        this->Divergence = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::DivregenceField, buildPrim, fieldSize, pivot, res);
+        this->Density = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::DensityField, buildPrim, fieldSize, pivot, res);
+        this->Temprature = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::TempratureField, buildPrim, fieldSize, pivot, res);
+        this->AdvectTemp = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::AdvectTmp, buildPrim, fieldSize, pivot, res);
+        this->AdvectTmp2 = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::AdvectTmp2, buildPrim, fieldSize, pivot, res);
+        this->Divergence = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::DivregenceField, buildPrim, fieldSize, pivot, res);
         // this->Pressure2 = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::PressureField2, buildPrim, fieldSize, pivot, res);
-        this->Pressure = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::PressureField, buildPrim, fieldSize, pivot, res);
-        this->VelDiv = m_CatalystFieldsGeometry->AddField<AxFp32>(AlphaProperty::VelDivField, buildPrim, fieldSize, pivot, res);
+        this->Pressure = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::PressureField, buildPrim, fieldSize, pivot, res);
+        this->VelDiv = m_StormSysFieldsGeometry->AddField<AxFp32>(AlphaProperty::VelDivField, buildPrim, fieldSize, pivot, res);
+        this->CollisionMaskField = m_StormSysFieldsGeometry->AddField<AxInt8>(AlphaProperty::VelDivField, buildPrim, fieldSize, pivot, res);
 
-        auto vxField = m_CatalystFieldsGeometry->AddField<AxFp32>("vel.x", buildPrim, fieldSize, pivot, res);
-        auto vyField = m_CatalystFieldsGeometry->AddField<AxFp32>("vel.y", buildPrim, fieldSize, pivot, res);
-        auto vzField = m_CatalystFieldsGeometry->AddField<AxFp32>("vel.z", buildPrim, fieldSize, pivot, res);
+        auto vxField = m_StormSysFieldsGeometry->AddField<AxFp32>("vel.x", buildPrim, fieldSize, pivot, res);
+        auto vyField = m_StormSysFieldsGeometry->AddField<AxFp32>("vel.y", buildPrim, fieldSize, pivot, res);
+        auto vzField = m_StormSysFieldsGeometry->AddField<AxFp32>("vel.z", buildPrim, fieldSize, pivot, res);
         Vel->Set(vxField, vyField, vzField);
 
-        auto vxField2 = m_CatalystFieldsGeometry->AddField<AxFp32>("vel2.x", buildPrim, fieldSize, pivot, res);
-        auto vyField2 = m_CatalystFieldsGeometry->AddField<AxFp32>("vel2.y", buildPrim, fieldSize, pivot, res);
-        auto vzField2 = m_CatalystFieldsGeometry->AddField<AxFp32>("vel2.z", buildPrim, fieldSize, pivot, res);
+        auto vxField2 = m_StormSysFieldsGeometry->AddField<AxFp32>("vel2.x", buildPrim, fieldSize, pivot, res);
+        auto vyField2 = m_StormSysFieldsGeometry->AddField<AxFp32>("vel2.y", buildPrim, fieldSize, pivot, res);
+        auto vzField2 = m_StormSysFieldsGeometry->AddField<AxFp32>("vel2.z", buildPrim, fieldSize, pivot, res);
         Vel2->Set(vxField2, vyField2, vzField2);
+
+
 
         // auto cxField = m_CatalystFieldsGeometry->AddField<AxFp32>("curl.x", buildPrim, fieldSize, pivot, res);
         // auto cyField = m_CatalystFieldsGeometry->AddField<AxFp32>("curl.y", buildPrim, fieldSize, pivot, res);
@@ -166,11 +181,13 @@ public:
 
     void SetCloseBoundary(bool x, bool _x, bool y, bool _y, bool z, bool _z);
 
-    AxGeometry* GetOwnGeometry() { return m_CatalystFieldsGeometry; };
+    AxGeometry* GetOwnGeometry() { return m_StormSysFieldsGeometry; };
 
 protected:
 private:
-    AxGeometry* m_CatalystFieldsGeometry;
+    AxGeometry* m_StormSysFieldsGeometry;
+
+
 };
 
 
@@ -213,6 +230,7 @@ protected:
     AlphaCore::LinearSolver getPressureMethod();
 private:
 
+    AxGeometry* m_HeightFieldGeometry;
     AxPossionCGSolver m_CGPressureSolver;
     AxVolumeRenderObject m_RenderObj;
     std::vector< AxMicroSolverBase*> m_PostSimCallstack;

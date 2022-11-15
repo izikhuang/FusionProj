@@ -14,14 +14,14 @@ void FAlphaCoreForUnrealModule::StartupAlphaCore()
 {
 	AlphaCore::ActiveUELog();
 	AlphaCoreEngine::GetInstance()->LaunchEngine();
-	AlphaCore::Logger::GetInstance()->SetLogPath("D:/log/");
+	//AlphaCore::Logger::GetInstance()->SetLogPath("D:/log/");
 	AX_WARN("AlphaCoreForUnreal Launched!");
 	RenderAlphaCore::Startup();
 }
 
 void FAlphaCoreForUnrealModule::ShutdownAlphaCore()
 {
-	//RenderAlphaCore::Shutdown();
+	RenderAlphaCore::Shutdown();
 }
 
 void FAlphaCoreForUnrealModule::StartupModule()

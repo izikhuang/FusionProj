@@ -1167,6 +1167,31 @@ public:
 		bool IsStaggeredGrid;
 	};
 
+	static RAWDesc GetRAWDesc(AxVectorField3DBase<T>* field)
+	{
+		RAWDesc desc;
+		desc.Active = false;
+		desc.VoxelDataX = nullptr;
+		desc.VoxelDataY = nullptr;
+		desc.VoxelDataZ = nullptr;
+
+		if (field == nullptr)
+			return desc;
+		return field->GetFiedRAWDesc();
+	}
+
+	static RAWDesc GetRAWDescDevice(AxVectorField3DBase<T>* field)
+	{
+		RAWDesc desc;
+		desc.Active = false;
+		desc.VoxelDataX = nullptr;
+		desc.VoxelDataY = nullptr;
+		desc.VoxelDataZ = nullptr;
+		if (field == nullptr)
+			return desc;
+		return field->GetFiedRAWDescDevice();
+	}
+
 	void Init()
 	{
 		AxVector3 pivot = MakeVector3();
@@ -1300,7 +1325,7 @@ public:
 	bool IsValid() {
 
 		//std::cout << ((this->FieldX != nullptr) && (this->FieldY != nullptr) && (this->FieldZ != nullptr))<< std::endl;
-		return ((this->FieldX != nullptr) && (this->FieldY != nullptr) && (this->FieldZ != nullptr));
+		return ((this->FieldX != nullptr) || (this->FieldY != nullptr) || (this->FieldZ != nullptr));
 	}
 
 	void PrintInfo()

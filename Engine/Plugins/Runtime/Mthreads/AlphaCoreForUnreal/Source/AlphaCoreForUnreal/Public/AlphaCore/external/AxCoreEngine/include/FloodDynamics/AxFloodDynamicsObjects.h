@@ -309,6 +309,7 @@ protected:
 
 
 	void deserilizationEmitterList(std::string jsonStr);
+	void deserilizationParticleForceList(std::string jsonStr);
 	void updateEmitterParam();
 
 
@@ -362,5 +363,6 @@ protected:
 	
 
 private:
-
+	//op
+	std::vector< AxMicroSolverBase*> m_VelControlCallstack;
 };
