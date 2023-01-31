@@ -1,0 +1,567 @@
+// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+#include "UAxSceneManager.h"
+#include "AlphaCoreForUnreal.h"
+#include <AxCatalystObject.h>
+#include "AxUCatalystActor.generated.h"
+
+
+
+
+UCLASS()
+class ALPHACOREFORUNREAL_API AAxUCatalystActor : public AActor
+{
+	GENERATED_BODY()
+	
+public:	
+	// Sets default values for this actor's properties
+	AAxUCatalystActor();
+	~AAxUCatalystActor();
+
+
+
+
+
+	bool AddVolumeMaterial();
+	void LoadEmitterFromJson();
+	void LoadSimParmsFromJson();
+	void AddDefaultSceneObj();
+	bool ReadVolumeRenderObjectFromFile();
+	AxGasVolumeMaterial m_VolumeMaterial;
+	AxVolumeRenderObject m_VolumeRenderObject;
+	std::vector<AxScalarFieldF32*> m_AxVolumeFileds;
+
+	// Called every frame
+
+//virtual void TickActor(float DeltaSeconds, ELevelTick TickType, FActorTickFunction& ThisTickFunction) override;
+//virtual bool ShouldTickIfViewportsOnly() const override;
+	
+
+
+	AxCatalystObject* m_CatalystObj;
+	AxGeometry* m_Emitter;
+
+private:
+	AxSceneManager* m_SceneManager;
+
+
+protected:
+	// Called when the game starts or when spawned
+	virtual void BeginPlay() override;
+
+	virtual void Tick(float DeltaTime) override;
+
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason);
+
+public:	
+
+	// Properties
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Basic);
+	bool EditorTick = false;
+
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Basic);
+	//FString AxVolumeFieldsPath;
+	// Sim Json
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxSimulation);
+	FString SimJson = "";
+
+	// Emitter
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxSimulation);
+	FString EmitterJson = "";
+
+	// Render Property
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxFileds);
+	//bool DensityFiled = false;
+
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxFileds);
+	//bool HeatFiled = false;
+
+	//UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxFileds);
+	//bool TemperatureFiled = false;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	float StepSize = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	bool usePhase = true;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	float Phase = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	float DensityScale = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	float ShadowScale = 1.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	FVector2D InputDensityMinMax = FVector2D(0.f, 12.f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	FVector2D InputHeatMinMax = FVector2D(0.f, 10.f);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = AxMaterial);
+	FVector2D InputTemperatureMinMax = FVector2D(0.f, 5.f);
+
+
+
+	// Simulation Property
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float buoyancyScale = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableCombustion = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableDissipation = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float visualDensityItensity = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float emitscale = 1.9;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float emitcdtemperature0 = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString sourceDivergenceFieldName = "divergence";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float fuelAdvectSpeed = 0.1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableUltraTurbFire = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ignitionTemperature = 0.1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool cdrangeoverride = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlNoiseIntensity = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector buoyancyDirection = FVector(0.0, 1.0, 0.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float fireColdDownTime = 2.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString shred_control_field = "density";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float shred_control_influence = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D conf_control_range = FVector2D(0.0, 1.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlNoiseWeight = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float vorticityConfinementWeight = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool emitrangeoverride = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int cdpreset = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float distortionScale = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float burnRate = 0.9;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlNoiseClampBelow = 0.01;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString cdfield = "density";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString sourceVelFieldName = "v";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector windDirection = FVector(0.0, 0.0, 0.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int emitrampmode = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString emitfield = "temperature";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float sourceVelScale = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float windSpeed = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString dissipation_control_field = "temperature";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int fPS = 24;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString curlNoiseMaskFieldName = "density";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString visDensityFieldName = "density";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool yBoundary2 = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D taskFrameRange = FVector2D(1, 240);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlNoiseScale = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float explosion = 15.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool remap_control_field = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float dissipationScale = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float emitcdburn = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlNoiseSeed = 0.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D emitrange = FVector2D(0.0, 1.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float sourceDensityScale = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float heatRate = 0.25;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int pressureIterations = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float sourceTemperatureScale = 0.2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D turb_control_range = FVector2D(0.0, 1.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbSmokeThreshold = 0.15;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float sourceFuelScale = 0.0023171602479;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString executeCommand = "D:/gitrepo/AlphaCoreGit/AlphaCore/build/Debug/AlphaCoreExed.exe";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool zBoundary2 = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int cdrampmode = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int emitcdrampmode = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float fireUltraTurbScale = 0.2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool xBoundary2 = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString emitterCacheReadFilePath = "E:/a137District/Catalyst/combustion/Catalyst_Solver1/emitter.Static.axc";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int emitpreset = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString emitcdfield = "heat";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int curlNoiseTurbulence = 2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbSmokeRampWeight = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D dissipation_control_range = FVector2D(0.0, 1.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float smokeAmount = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float distortionThreshold = 0.75;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float windIntensity = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableClosedBoundary = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool emitcdtonemap = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlSwirlSize = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableUltraTurbDensity = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbFireRampWeight = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool use_dissipation_control_field = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float curlTimeFrequency = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int substeps = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D shred_control_range = FVector2D(0.0, 1.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float fuelReactionRate = 0.1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString cacheOutFilePath = "E:/a137District/Catalyst/combustion/Catalyst_Solver1/CatalystField.v001.####.vdb";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector pivot = FVector(0.0, 35.8580627441, 0.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector size = FVector(20.0, 74.51612854, 20.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableDistortionClipGradient = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableEmitDivergence = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableDistortion = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbFireThreshold = 0.15;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float emitcdtemperature = 5000.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableEmitDensity = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableEmitFuel = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableCurlNoiseMaskField = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString fireCoolingMaskField = "temperature";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableVorticityConfinementMaskField = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float distorntionClipValue = 7.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int curlNoiseCore = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float distortionClampBelow = 0.1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float emitcdfieldscale = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int fuelCreateSmokeSourceField = 1;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableCurlNoise = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D cdrange = FVector2D(0.0, 1.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableCurlNoiseRamp = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool useKernelFuse = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int reflectionType = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float visualShadowItensity = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool fuelCreateSmoke = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float voxelSize = 0.15;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int fieldBuildType = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float timeScale = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector2D emitcdrange = FVector2D(0.0, 5.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FVector sourceVelAddition = FVector(0.0, 1.0, 0.0);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int solverMehtodCore = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableAdvectFuel = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool xBoundary = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString alphaCommand = "";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbSizeFire = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float vorticityConfinementScale = 4.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool useFireCoolingRamp = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableEmitTemperature = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbScaleDensity = 0.2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float reflectionAmount = 0.95;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float distortionPull = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool emitcdrangeoverride = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString sourceDensityFieldName = "density";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float sourceDivergenceScale = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int sourcingType = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString sourceFuelFieldName = "fuel";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableEmitVelocity = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float ultraTurbSizeSmoke = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool zBoundary = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool yBoundary = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float distortionPush = 1.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float emitcdadaptation = 0.15;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableVorticityConfinement = true;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float heatCutoff = 0.2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool enableVorticityConfinementMaskRamp = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int computeArch = 2;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float coolingRate = 0.45;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	bool shred_use_control_field = false;;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString sourceTemperatureFieldName = "temperature";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString vorticityConfinementMaskFieldName = "density";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float gSIterations = 50.0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float temperatureDiffusion = 0.5;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	int emitcdpreset = 0;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	FString workSpace = "E:/a137District/Catalyst/combustion/Catalyst_Solver1/";
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "CatalystRFS");
+	float blend = 0.2;
+
+
+	float greyFloatRamp[128] = { 0.000000, 0.007874, 0.015748, 0.023622, 0.031496, 0.039370, 0.047244, 0.055118, 0.062992, 0.070866,
+							0.078740, 0.086614, 0.094488, 0.102362, 0.110236, 0.118110, 0.125984, 0.133858, 0.141732, 0.149606,
+							0.157480, 0.165354, 0.173228, 0.181102, 0.188976, 0.196850, 0.204724, 0.212598, 0.220472, 0.228346,
+							0.236220, 0.244094, 0.251969, 0.259843, 0.267717, 0.275591, 0.283465, 0.291339, 0.299213, 0.307087,
+							0.314961, 0.322835, 0.330709, 0.338583, 0.346457, 0.354331, 0.362205, 0.370079, 0.377953, 0.385827,
+							0.393701, 0.401575, 0.409449, 0.417323, 0.425197, 0.433071, 0.440945, 0.448819, 0.456693, 0.464567,
+							0.472441, 0.480315, 0.488189, 0.496063, 0.503937, 0.511811, 0.519685, 0.527559, 0.535433, 0.543307,
+							0.551181, 0.559055, 0.566929, 0.574803, 0.582677, 0.590551, 0.598425, 0.606299, 0.614173, 0.622047,
+							0.629921, 0.637795, 0.645669, 0.653543, 0.661417, 0.669291, 0.677165, 0.685039, 0.692913, 0.700787,
+							0.708661, 0.716535, 0.724409, 0.732283, 0.740157, 0.748031, 0.755906, 0.763780, 0.771654, 0.779528,
+							0.787402, 0.795276, 0.803150, 0.811024, 0.818898, 0.826772, 0.834646, 0.842520, 0.850394, 0.858268,
+							0.866142, 0.874016, 0.881890, 0.889764, 0.897638, 0.905512, 0.913386, 0.921260, 0.929134, 0.937008,
+							0.944882, 0.952756, 0.960630, 0.968504, 0.976378, 0.984252, 0.992126, 1.000000 };
+
+	AxUChar greyUCharRamp[128] = { 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46, 48, 50, 52, 54, 56, 58, 60,
+								  62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 96, 98, 100, 102, 104, 106, 108, 110, 112,
+								  114, 116, 118, 120, 122, 124, 126, 128, 130, 132, 134, 136, 138, 140, 142, 144, 146, 148, 150, 152, 154, 156,
+								  158, 160, 162, 164, 166, 168, 170, 172, 174, 176, 178, 180, 182, 184, 186, 188, 190, 192, 194, 196, 198, 200,
+								  202, 204, 206, 208, 210, 212, 214, 216, 218, 220, 222, 224, 226, 228, 230, 232, 234, 236, 238, 240, 242, 244,
+								  246, 248, 250, 252, 255 };
+
+	AxColorRGBA8 rgbColorRamp[128] = { {255, 0, 0, 255}, {250, 4, 0, 255}, {246, 8, 0, 255}, {242, 12, 0, 255}, {238, 16, 0, 255}, {234, 20, 0, 255}, {230, 24, 0, 255}, {226, 28, 0, 255}, {222, 32, 0, 255}, {218, 36, 0, 255}, {214, 40, 0, 255}, {210, 44, 0, 255}, {206, 48, 0, 255}, {202, 52, 0, 255}, {198, 56, 0, 255}, {194, 60, 0, 255}, {190, 64, 0, 255}, {186, 68, 0, 255}, {182, 72, 0, 255}, {178, 76, 0, 255}, {174, 80, 0, 255}, {170, 84, 0, 255}, {166, 88, 0, 255}, {162, 92, 0, 255}, {158, 96, 0, 255}, {154, 100, 0, 255}, {150, 104, 0, 255}, {146, 108, 0, 255}, {142, 112, 0, 255}, {138, 116, 0, 255}, {134, 120, 0, 255}, {130, 124, 0, 255}, {126, 128, 0, 255}, {122, 132, 0, 255}, {118, 136, 0, 255}, {114, 140, 0, 255}, {110, 144, 0, 255}, {106, 148, 0, 255}, {102, 152, 0, 255}, {98, 156, 0, 255}, {94, 160, 0, 255}, {90, 164, 0, 255}, {86, 168, 0, 255}, {82, 172, 0, 255}, {78, 176, 0, 255}, {74, 180, 0, 255}, {70, 184, 0, 255}, {66, 188, 0, 255}, {62, 192, 0, 255}, {58, 196, 0, 255}, {54, 200, 0, 255}, {50, 204, 0, 255}, {46, 208, 0, 255}, {42, 212, 0, 255}, {38, 216, 0, 255}, {34, 220, 0, 255}, {30, 224, 0, 255}, {26, 228, 0, 255}, {22, 232, 0, 255}, {18, 236, 0, 255}, {14, 240, 0, 255}, {10, 244, 0, 255}, {6, 248, 0, 255}, {2, 252, 0, 255}, {0, 252, 2, 255}, {0, 248, 6, 255}, {0, 244, 10, 255}, {0, 240, 14, 255}, {0, 236, 18, 255}, {0, 232, 22, 255}, {0, 228, 26, 255}, {0, 224, 30, 255}, {0, 220, 34, 255}, {0, 216, 38, 255}, {0, 212, 42, 255}, {0, 208, 46, 255}, {0, 204, 50, 255}, {0, 200, 54, 255}, {0, 196, 58, 255}, {0, 192, 62, 255}, {0, 188, 66, 255}, {0, 184, 70, 255}, {0, 180, 74, 255}, {0, 176, 78, 255}, {0, 172, 82, 255}, {0, 168, 86, 255}, {0, 164, 90, 255}, {0, 160, 94, 255}, {0, 156, 98, 255}, {0, 152, 102, 255}, {0, 148, 106, 255}, {0, 144, 110, 255}, {0, 140, 114, 255}, {0, 136, 118, 255}, {0, 132, 122, 255}, {0, 128, 126, 255}, {0, 124, 130, 255}, {0, 120, 134, 255}, {0, 116, 138, 255}, {0, 112, 142, 255}, {0, 108, 146, 255}, {0, 104, 150, 255}, {0, 100, 154, 255}, {0, 96, 158, 255}, {0, 92, 162, 255}, {0, 88, 166, 255}, {0, 84, 170, 255}, {0, 80, 174, 255}, {0, 76, 178, 255}, {0, 72, 182, 255}, {0, 68, 186, 255}, {0, 64, 190, 255}, {0, 60, 194, 255}, {0, 56, 198, 255}, {0, 52, 202, 255}, {0, 48, 206, 255}, {0, 44, 210, 255}, {0, 40, 214, 255}, {0, 36, 218, 255}, {0, 32, 222, 255}, {0, 28, 226, 255}, {0, 24, 230, 255}, {0, 20, 234, 255}, {0, 16, 238, 255}, {0, 12, 242, 255}, {0, 8, 246, 255}, {0, 4, 250, 255}, {0, 0, 255, 255} };
+
+	AxColorRGBA8 greyColorRamp[128] = { {0, 0, 0, 255}, {2, 2, 2, 255}, {4, 4, 4, 255}, {6, 6, 6, 255}, {8, 8, 8, 255}, {10, 10, 10, 255}, {12, 12, 12, 255}, {14, 14, 14, 255}, {16, 16, 16, 255}, {18, 18, 18, 255}, {20, 20, 20, 255}, {22, 22, 22, 255}, {24, 24, 24, 255}, {26, 26, 26, 255}, {28, 28, 28, 255}, {30, 30, 30, 255}, {32, 32, 32, 255}, {34, 34, 34, 255}, {36, 36, 36, 255}, {38, 38, 38, 255}, {40, 40, 40, 255}, {42, 42, 42, 255}, {44, 44, 44, 255}, {46, 46, 46, 255}, {48, 48, 48, 255}, {50, 50, 50, 255}, {52, 52, 52, 255}, {54, 54, 54, 255}, {56, 56, 56, 255}, {58, 58, 58, 255}, {60, 60, 60, 255}, {62, 62, 62, 255}, {64, 64, 64, 255}, {66, 66, 66, 255}, {68, 68, 68, 255}, {70, 70, 70, 255}, {72, 72, 72, 255}, {74, 74, 74, 255}, {76, 76, 76, 255}, {78, 78, 78, 255}, {80, 80, 80, 255}, {82, 82, 82, 255}, {84, 84, 84, 255}, {86, 86, 86, 255}, {88, 88, 88, 255}, {90, 90, 90, 255}, {92, 92, 92, 255}, {94, 94, 94, 255}, {96, 96, 96, 255}, {98, 98, 98, 255}, {100, 100, 100, 255}, {102, 102, 102, 255}, {104, 104, 104, 255}, {106, 106, 106, 255}, {108, 108, 108, 255}, {110, 110, 110, 255}, {112, 112, 112, 255}, {114, 114, 114, 255}, {116, 116, 116, 255}, {118, 118, 118, 255}, {120, 120, 120, 255}, {122, 122, 122, 255}, {124, 124, 124, 255}, {126, 126, 126, 255}, {128, 128, 128, 255}, {130, 130, 130, 255}, {132, 132, 132, 255}, {134, 134, 134, 255}, {136, 136, 136, 255}, {138, 138, 138, 255}, {140, 140, 140, 255}, {142, 142, 142, 255}, {144, 144, 144, 255}, {146, 146, 146, 255}, {148, 148, 148, 255}, {150, 150, 150, 255}, {152, 152, 152, 255}, {154, 154, 154, 255}, {156, 156, 156, 255}, {158, 158, 158, 255}, {160, 160, 160, 255}, {162, 162, 162, 255}, {164, 164, 164, 255}, {166, 166, 166, 255}, {168, 168, 168, 255}, {170, 170, 170, 255}, {172, 172, 172, 255}, {174, 174, 174, 255}, {176, 176, 176, 255}, {178, 178, 178, 255}, {180, 180, 180, 255}, {182, 182, 182, 255}, {184, 184, 184, 255}, {186, 186, 186, 255}, {188, 188, 188, 255}, {190, 190, 190, 255}, {192, 192, 192, 255}, {194, 194, 194, 255}, {196, 196, 196, 255}, {198, 198, 198, 255}, {200, 200, 200, 255}, {202, 202, 202, 255}, {204, 204, 204, 255}, {206, 206, 206, 255}, {208, 208, 208, 255}, {210, 210, 210, 255}, {212, 212, 212, 255}, {214, 214, 214, 255}, {216, 216, 216, 255}, {218, 218, 218, 255}, {220, 220, 220, 255}, {222, 222, 222, 255}, {224, 224, 224, 255}, {226, 226, 226, 255}, {228, 228, 228, 255}, {230, 230, 230, 255}, {232, 232, 232, 255}, {234, 234, 234, 255}, {236, 236, 236, 255}, {238, 238, 238, 255}, {240, 240, 240, 255}, {242, 242, 242, 255}, {244, 244, 244, 255}, {246, 246, 246, 255}, {248, 248, 248, 255}, {250, 250, 250, 255}, {252, 252, 252, 255}, {255, 255, 255, 255} };
+
+	AxColorRGBA8 customColorRamp[128] = { {0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, {0, 0, 0, 255}, {1, 0, 0, 255}, {1, 0, 0, 255}, {1, 0, 0, 255}, {1, 0, 0, 255}, {2, 0, 0, 255}, {2, 0, 0, 255}, {2, 0, 0, 255}, {2, 0, 0, 255}, {3, 0, 0, 255}, {3, 0, 0, 255}, {3, 0, 0, 255}, {3, 0, 0, 255}, {4, 0, 0, 255}, {4, 0, 0, 255}, {4, 0, 0, 255}, {4, 0, 0, 255}, {5, 0, 0, 255}, {5, 0, 0, 255}, {5, 0, 0, 255}, {5, 0, 0, 255}, {6, 0, 0, 255}, {6, 0, 0, 255}, {6, 0, 0, 255}, {6, 0, 0, 255}, {7, 0, 0, 255}, {7, 0, 0, 255}, {7, 0, 0, 255}, {7, 0, 0, 255}, {8, 0, 0, 255}, {8, 0, 0, 255}, {8, 0, 0, 255}, {8, 0, 0, 255}, {9, 0, 0, 255}, {9, 0, 0, 255}, {9, 0, 0, 255}, {9, 0, 0, 255}, {10, 0, 0, 255}, {10, 0, 0, 255}, {10, 0, 0, 255}, {10, 0, 0, 255}, {12, 0, 0, 255}, {14, 0, 0, 255}, {16, 0, 0, 255}, {18, 0, 0, 255}, {21, 0, 0, 255}, {23, 0, 0, 255}, {25, 0, 0, 255}, {28, 0, 0, 255}, {30, 0, 0, 255}, {32, 0, 0, 255}, {35, 0, 0, 255}, {37, 0, 0, 255}, {39, 0, 0, 255}, {42, 0, 0, 255}, {44, 0, 0, 255}, {46, 0, 0, 255}, {49, 0, 0, 255}, {52, 0, 0, 255}, {54, 0, 0, 255}, {57, 0, 0, 255}, {60, 0, 0, 255}, {63, 0, 0, 255}, {66, 0, 0, 255}, {69, 0, 0, 255}, {72, 0, 0, 255}, {75, 0, 0, 255}, {78, 0, 0, 255}, {81, 0, 0, 255}, {84, 0, 0, 255}, {87, 0, 0, 255}, {90, 0, 0, 255}, {93, 0, 0, 255}, {96, 0, 0, 255}, {99, 0, 0, 255}, {102, 0, 0, 255}, {105, 0, 0, 255}, {108, 0, 0, 255}, {111, 0, 0, 255}, {114, 0, 0, 255}, {117, 0, 0, 255}, {120, 0, 0, 255}, {123, 0, 0, 255}, {126, 0, 0, 255}, {129, 1, 0, 255}, {133, 4, 0, 255}, {137, 7, 0, 255}, {141, 10, 0, 255}, {145, 14, 0, 255}, {149, 17, 0, 255}, {153, 20, 0, 255}, {157, 23, 0, 255}, {161, 26, 0, 255}, {165, 29, 0, 255}, {169, 32, 0, 255}, {173, 35, 0, 255}, {177, 39, 0, 255}, {181, 42, 0, 255}, {185, 45, 0, 255}, {189, 48, 0, 255}, {193, 51, 0, 255}, {197, 54, 0, 255}, {201, 57, 0, 255}, {205, 60, 0, 255}, {209, 64, 0, 255}, {213, 67, 0, 255}, {217, 70, 0, 255}, {221, 73, 0, 255}, {225, 76, 0, 255}, {229, 79, 0, 255}, {233, 82, 0, 255}, {237, 85, 0, 255}, {240, 90, 3, 255}, {241, 99, 15, 255}, {243, 107, 26, 255}, {244, 116, 38, 255}, {245, 125, 49, 255}, {246, 133, 61, 255}, {247, 142, 73, 255}, {249, 150, 84, 255}, {250, 159, 96, 255}, {251, 168, 107, 255}, {252, 176, 119, 255}, {253, 185, 130, 255}, {255, 193, 142, 255} };
+
+	AxColorRGBA8 customDensityColor[128] = { {127, 127, 127}, {128, 128, 128}, {129, 129, 129}, {130, 130, 130}, {131, 131, 131}, {131, 131, 131}, {132, 132, 132}, {133, 133, 133}, {134, 134, 134}, {135, 135, 135}, {136, 136, 136}, {137, 137, 137}, {138, 138, 138}, {138, 138, 138}, {139, 139, 139}, {140, 140, 140}, {141, 141, 141}, {142, 142, 142}, {143, 143, 143}, {144, 144, 144}, {145, 145, 145}, {145, 145, 145}, {146, 146, 146}, {147, 147, 147}, {148, 148, 148}, {149, 149, 149}, {150, 150, 150}, {151, 151, 151}, {152, 152, 152}, {152, 152, 152}, {153, 153, 153}, {154, 154, 154}, {155, 155, 155}, {156, 156, 156}, {157, 157, 157}, {158, 158, 158}, {159, 159, 159}, {159, 159, 159}, {160, 160, 160}, {161, 161, 161}, {162, 162, 162}, {163, 163, 163}, {164, 164, 164}, {165, 165, 165}, {166, 166, 166}, {166, 166, 166}, {167, 167, 167}, {168, 168, 168}, {169, 169, 169}, {170, 170, 170}, {171, 171, 171}, {172, 172, 172}, {173, 173, 173}, {174, 174, 174}, {174, 174, 174}, {175, 175, 175}, {176, 176, 176}, {177, 177, 177}, {178, 178, 178}, {179, 179, 179}, {180, 180, 180}, {181, 181, 181}, {181, 181, 181}, {182, 182, 182}, {183, 183, 183}, {184, 184, 184}, {185, 185, 185}, {186, 186, 186}, {187, 187, 187}, {188, 188, 188}, {188, 188, 188}, {189, 189, 189}, {190, 190, 190}, {191, 191, 191}, {192, 192, 192}, {193, 193, 193}, {194, 194, 194}, {195, 195, 195}, {195, 195, 195}, {196, 196, 196}, {197, 197, 197}, {198, 198, 198}, {199, 199, 199}, {200, 200, 200}, {201, 201, 201}, {202, 202, 202}, {202, 202, 202}, {203, 203, 203}, {204, 204, 204}, {205, 205, 205}, {206, 206, 206}, {207, 207, 207}, {208, 208, 208}, {209, 209, 209}, {209, 209, 209}, {210, 210, 210}, {211, 211, 211}, {212, 212, 212}, {213, 213, 213}, {214, 214, 214}, {215, 215, 215}, {216, 216, 216}, {216, 216, 216}, {217, 217, 217}, {218, 218, 218}, {219, 219, 219}, {220, 220, 220}, {221, 221, 221}, {222, 222, 222}, {223, 223, 223}, {224, 224, 224}, {224, 224, 224}, {225, 225, 225}, {226, 226, 226}, {227, 227, 227}, {228, 228, 228}, {229, 229, 229}, {230, 230, 230}, {231, 231, 231}, {231, 231, 231}, {232, 232, 232}, {233, 233, 233}, {234, 234, 234}, {235, 235, 235}, {236, 236, 236}, {237, 237, 237}, {238, 238, 238}, {238, 238, 238} };
+
+};
