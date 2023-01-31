@@ -254,6 +254,11 @@ static TAutoConsoleVariable<float> CVarNaniteViewMeshLODBiasMin(
 	TEXT("Minimum LOD offset for rasterizing Nanite meshes for the main viewport (Default = -2)."),
 	ECVF_RenderThreadSafe);
 
+static TAutoConsoleVariable<bool> CVarRenderAlphaCorePluginEnable(
+	TEXT("r.AlphaCore.RenderPlugin"),
+	true,
+	TEXT("Whether to use a plugin for alpha core libary (default = true)"),
+	ECVF_RenderThreadSafe);
 
 namespace Lumen
 {
@@ -334,6 +339,12 @@ FGlobalIlluminationPluginDelegates::FRenderDiffuseIndirectVisualizations& FGloba
 	return GIPluginRenderDiffuseIndirectVisualizationsDelegate;
 }
 #endif //!(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+
+static FAlphaCorePluginDelegates::FRenderAlphaCore RenderAlphaCoreDelegate;
+FAlphaCorePluginDelegates::FRenderAlphaCore& FAlphaCorePluginDelegates::RenderAlphaCoreEffect()
+{
+	return RenderAlphaCoreDelegate;
+}
 
 const TCHAR* GetDepthPassReason(bool bDitheredLODTransitionsUseStencil, EShaderPlatform ShaderPlatform)
 {
@@ -3012,6 +3023,23 @@ void FDeferredShadingSceneRenderer::Render(FRDGBuilder& GraphBuilder)
 	{
 		SCOPE_CYCLE_COUNTER(STAT_FDeferredShadingSceneRenderer_RenderSkyAtmosphere);
 		RenderSkyAtmosphere(GraphBuilder, SceneTextures);
+	}
+
+	if (CVarRenderAlphaCorePluginEnable.GetValueOnRenderThread())
+	{
+		// Get the resources and call the GI plugin's rendering function delegate
+		FGlobalIlluminationPluginResources GIPluginResources;
+		GIPluginResources.GBufferA = SceneTextures.GBufferA;
+		GIPluginResources.GBufferB = SceneTextures.GBufferB;
+		GIPluginResources.GBufferC = SceneTextures.GBufferC;
+		GIPluginResources.LightingChannelsTexture = LightingChannelsTexture;
+		GIPluginResources.SceneDepthZ = SceneTextures.Depth.Resolve;
+		GIPluginResources.SceneColor = SceneTextures.Color.Target;
+		for (FViewInfo& View : Views)
+		{
+			FAlphaCorePluginDelegates::FRenderAlphaCore& Delegate = FAlphaCorePluginDelegates::RenderAlphaCoreEffect();
+			Delegate.Broadcast(*Scene, View, GraphBuilder, GIPluginResources);
+		}
 	}
 
 	// Draw fog.
