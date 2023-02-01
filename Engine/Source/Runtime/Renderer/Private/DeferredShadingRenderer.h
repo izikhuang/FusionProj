@@ -71,31 +71,6 @@ public:
 	}
 };
 
-/**
- * Encapsulates the resources and render targets used by global illumination plugins.
- */
-class RENDERER_API FGlobalIlluminationPluginResources : public FRenderResource
-
-{
-public:
-	FRDGTextureRef GBufferA;
-	FRDGTextureRef GBufferB;
-	FRDGTextureRef GBufferC;
-	FRDGTextureRef SceneDepthZ;
-	FRDGTextureRef SceneColor;
-	FRDGTextureRef LightingChannelsTexture;
-};
-
-/**
- * Delegate callback used by global illumination plugins (experimental).
- */
-class RENDERER_API FAlphaCorePluginDelegates
-{
-public:
-	DECLARE_MULTICAST_DELEGATE_FourParams(FRenderAlphaCore, const FScene& /*Scene*/, const FViewInfo& /*View*/, FRDGBuilder& /*GraphBuilder*/, FGlobalIlluminationPluginResources& /*Resources*/);
-
-	static FRenderAlphaCore& RenderAlphaCoreEffect();
-};
 
 /** Encapsulation of the pipeline state of the renderer that have to deal with very large number of dimensions
  * and make sure there is no cycle dependencies in the dimensions by setting them ordered by memory offset in the structure.
@@ -212,6 +187,17 @@ public:
 	DECLARE_MULTICAST_DELEGATE_FourParams(FRenderDiffuseIndirectVisualizations, const FScene& /*Scene*/, const FViewInfo& /*View*/, FRDGBuilder& /*GraphBuilder*/, FGlobalIlluminationPluginResources& /*Resources*/);
 	static FRenderDiffuseIndirectVisualizations& RenderDiffuseIndirectVisualizations();
 #endif //!(UE_BUILD_SHIPPING || UE_BUILD_TEST)
+};
+
+/**
+ * Delegate callback used by global illumination plugins (experimental).
+ */
+class RENDERER_API FAlphaCorePluginDelegates
+{
+public:
+	DECLARE_MULTICAST_DELEGATE_FourParams(FRenderAlphaCore, const FScene& /*Scene*/, const FViewInfo& /*View*/, FRDGBuilder& /*GraphBuilder*/, FGlobalIlluminationPluginResources& /*Resources*/);
+
+	static FRenderAlphaCore& RenderAlphaCoreEffect();
 };
 
 /**
