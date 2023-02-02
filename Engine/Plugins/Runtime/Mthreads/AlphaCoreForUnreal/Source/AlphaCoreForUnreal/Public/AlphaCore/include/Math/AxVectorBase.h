@@ -70,6 +70,7 @@ typedef AxVector3T<float>		AxVector3;
 typedef AxVector3T<double>		AxVector3D;
 typedef AxVector3T<int>			AxVector3I;
 typedef AxVector3T<AxUInt32>	AxVector3UI;
+typedef AxVector3T<AxFp16>		AxVector3S;
 
 typedef AxVector4T<int>			AxVector4I;
 typedef AxVector4T<AxUInt32>	AxVector4UI;

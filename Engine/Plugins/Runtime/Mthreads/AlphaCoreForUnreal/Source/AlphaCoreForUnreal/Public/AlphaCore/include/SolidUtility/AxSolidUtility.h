@@ -72,7 +72,7 @@ namespace AlphaCore
 			AxBufferV3* outHResPosBuf,              //init To Displacement
 			AxBuffer2UI* hResPrimList2IBuf,
 			AxBufferUInt32* hResTopologyIndicesBuf,
-			AxBuffer2UI* hResPt2PrimMap,
+			AxBufferArray* hResPt2PrimMap,
 			AxBufferUInt32* hResPt2PrimIndicesBuf,
 			AxBufferV3* hRes2CoarseUVBuf,           //link to coarse mesh UV
 			AxBufferUInt32* hRes2CoarsePrimIdBuf,   //link to coarse mesh PrimId
@@ -86,7 +86,7 @@ namespace AlphaCore
 			AxBufferV3* hResPosBuf,
 			AxBuffer2UI* hResPrimList2IBuf,
 			AxBufferUInt32* hResTopologyIndicesBuf, //hResMesh
-			AxBuffer2UI* hResPt2PrimMap,
+			AxBufferArray* hResPt2PrimMap,
 			AxBufferUInt32* hResPt2PrimIndicesBuf,
 			AxBufferV3* outPtDisplacementBuf,
 			AxBufferV3* retargetingPosBuf);

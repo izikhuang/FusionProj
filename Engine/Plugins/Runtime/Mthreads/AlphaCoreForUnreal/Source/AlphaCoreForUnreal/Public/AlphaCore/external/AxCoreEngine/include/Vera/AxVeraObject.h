@@ -61,6 +61,7 @@ public:
 	AxIntParam ContactSmoothIterations;
 	AxIntParam FPS;
 	AxVector3FParam WindDirection;
+	AxFloatParam WindDrag;
 	AxIntParam VelSmoothIterations;
 	AxStringParam ColliderFilePath;
 	AxIntParam ContactSet;
@@ -78,6 +79,8 @@ public:
 	AxToggleParam HasAttachGeo;
 
 	AxToggleParam UseGroundCollision;
+	AxToggleParam UpdatePointNormal;
+
 	AxVector3FParam GroundPosition;
 
 	AxToggleParam AddDebugCapulse;
@@ -97,6 +100,11 @@ public:
 	AxIntParam CoarseMeshType;
 	AxStringParam CoarseMeshFilePath;
 	AxToggleParam ActiveHResMesh;
+
+	AxToggleParam SaveCollisionDetectionData;
+	AxToggleParam SaveCollisionDetectionDataPost;
+	AxToggleParam SavePBDCollisionResolveHistory;
+	AxToggleParam SaveContact;
 
 	void FromJson(std::string jsonRawCode);
 
@@ -153,10 +161,21 @@ public:
 
 	virtual void ParamDeserilizationFromJson(std::string jsonPath);
 	virtual void PrintRFSInfo();
-	void SetSolverParameter(VeraSolverParamter veraParam);
-
-
+	void SetSolverParameter(VeraSolverParamter& veraParam);
+ 
 	static AxSimObject* ObjectConstructor();
+
+	//by_hy
+	void veraPluginInit();
+	void printData();
+	void clearAtachGeoData();
+	void clearColliderGeoData();
+	void setconstraintGeo(AxSimObject* hou_constraintGeo);
+	void setcolliderGeo(AxSimObject* hou_colliderGeo);
+	void setattachGeo(AxSimObject* hou_attachGeo);
+	void setUseExeBool(AxUInt32 useExeBool) { m_useExe = useExeBool; };
+	//by_hy
+
 protected:
 
 	void _init();
@@ -197,6 +216,8 @@ protected:
 	//TODO:WindSOA
 	AxVeraWindShape windShapeData;
 	AxIdxMapUI32 m_P2PMapIdx;
+	AxIdxMapUI32 m_Point2PrimIdxMap;
+	AxBufferV3* m_PrimNormalBuffer;
 	AxBVHTree m_SelfTree;
 	AxBVHTree m_ColliderTree;
 	AxSPMDTick m_ContactTick;
@@ -204,11 +225,13 @@ protected:
 	AxGeometry* m_TargetDeformMesh;
 
 	AxVeraHResSimData m_HResMeshData;
+	//by_hy
+	AxUInt32 m_useExe;
+	//by_hy
 
 private:
 	void updateSceneGeometry(AxFp32 dt);
 	void updateSceneGeometryDevice(AxFp32 dt);
-
 
 	void postDebugCallback();
 	void postDebugCallbackDevice();
@@ -230,6 +253,10 @@ private:
 	std::vector<std::string> m_AttachmentUpdateProperties;
 
 	std::vector<std::string> m_CoarseMeshUpdateProperties;
+
+
+	void _collisionDetectionDebugDataIO(std::string collisionStateName, AxUInt32 collisionPassesToken, AxUInt32 numContacts);
+
 };
 
 #endif

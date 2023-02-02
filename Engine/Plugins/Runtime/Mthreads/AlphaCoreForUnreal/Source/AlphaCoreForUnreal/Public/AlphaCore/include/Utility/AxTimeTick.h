@@ -12,7 +12,7 @@ struct AxTimer
 	AxFp64 Total;
 };
 
-class AxTimeTick
+class ALPHA_CLASS AxTimeTick
 {
 public:
 	static AxTimeTick* GetInstance();

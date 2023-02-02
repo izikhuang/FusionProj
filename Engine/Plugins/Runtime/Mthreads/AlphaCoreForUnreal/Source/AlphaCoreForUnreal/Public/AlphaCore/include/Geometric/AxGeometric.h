@@ -12,23 +12,23 @@ namespace AlphaCore {
 			AxBufferMat3x3F* xformsBuf,
 			AxBufferV3* restPosBuf,
 			AxBufferV3* dynamicPosBuf,
-			AxBuffer2UI* p2pMapBuf,
+			AxBufferArray* p2pMapBuf,
 			AxBufferUInt32* p2pIndicesBuf);
 
 		ALPHA_SPMD_FUNC void PointDeformer(AxBufferV3* targetPosBuf,
 			AxBufferV3* restPosBuf,
 			AxBufferV3* dynamicPosBuf,
-			AxBuffer2UI* linkedPtsMapBuf,
+			AxBufferArray* linkedPtsMapBuf,
 			AxBufferUInt32* linkedPtsIndicesBuf,
 			AxBufferF* linkedWeightsBuf,
 			AxBufferMat3x3F* xformsBuf,
-			AxBuffer2UI* p2pMapBuf,
+			AxBufferArray* p2pMapBuf,
 			AxBufferUInt32* p2pIndicesBuf);
 
 		ALPHA_SPMD_FUNC void DeformerByMatrix(AxBufferV3* targetPosBuf,
 			AxBufferV3* restPosBuf,
 			AxBufferV3* dynamicPosBuf,
-			AxBuffer2UI* linkedPtsMapBuf,
+			AxBufferArray* linkedPtsMapBuf,
 			AxBufferUInt32* linkedPtsIndicesBuf,
 			AxBufferF* linkedWeightsBuf,
 			AxBufferMat3x3F* xformsBuf);
@@ -40,7 +40,7 @@ namespace AlphaCore {
 			AxBufferV3* primNormalBuf);
 
 		ALPHA_SPMD_FUNC void IntegratePointNormal(
-			AxBuffer2UI* point2PrimMapBuf,
+			AxBufferArray* point2PrimMapBuf,
 			AxBufferUInt32* point2PrimIndicesBuf,
 			AxBufferV3* primNormalBuf,
 			AxBufferV3* pointNormalBuf);
@@ -51,7 +51,7 @@ namespace AlphaCore {
 				AxBufferMat3x3F* xformsBuf,
 				AxBufferV3* restPosBuf,
 				AxBufferV3* dynamicPosBuf,
-				AxBuffer2UI* p2pMapBuf,
+				AxBufferArray* p2pMapBuf,
 				AxBufferUInt32* p2pIndicesBuf,
 				AxUInt32 blockSize = 512);
 
@@ -59,18 +59,18 @@ namespace AlphaCore {
 				AxBufferV3* targetPosBuf,
 				AxBufferV3* restPosBuf,
 				AxBufferV3* dynamicPosBuf,
-				AxBuffer2UI* linkedPtsMapBuf,
+				AxBufferArray* linkedPtsMapBuf,
 				AxBufferUInt32* linkedPtsIndicesBuf,
 				AxBufferF* linkedWeightsBuf,
 				AxBufferMat3x3F* xformsBuf,
-				AxBuffer2UI* p2pMapBuf,
+				AxBufferArray* p2pMapBuf,
 				AxBufferUInt32* p2pIndicesBuf,
 				AxUInt32 blockSize = 512);
 
 			ALPHA_SPMD_FUNC void DeformerByMatrix(AxBufferV3* targetPosBuf,
 				AxBufferV3* restPosBuf,
 				AxBufferV3* dynamicPosBuf,
-				AxBuffer2UI* linkedPtsMapBuf,
+				AxBufferArray* linkedPtsMapBuf,
 				AxBufferUInt32* linkedPtsIndicesBuf,
 				AxBufferF* linkedWeightsBuf,
 				AxBufferMat3x3F* xformsBuf,
@@ -85,7 +85,7 @@ namespace AlphaCore {
 				AxUInt32 blockSize = 512);
 
 			ALPHA_SPMD_FUNC void IntegratePointNormal(
-				AxBuffer2UI* point2PrimMapBuf,
+				AxBufferArray* point2PrimMapBuf,
 				AxBufferUInt32* point2PrimIndicesBuf,
 				AxBufferV3* primNormalBuf,
 				AxBufferV3* pointNormalBuf,

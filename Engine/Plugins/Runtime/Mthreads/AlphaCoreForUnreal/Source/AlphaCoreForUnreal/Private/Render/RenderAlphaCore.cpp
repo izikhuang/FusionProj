@@ -9,9 +9,9 @@
 */
 
 #include "Render/RenderAlphaCore.h"
-#include "UAxSceneManager.h"
+//#include "UAxSceneManager.h"
 #include "AlphaCoreForUnreal.h"
-#include <Utility/AxTimeTick.h>
+//#include <Utility/AxTimeTick.h>
 // UE4 public interfaces
 #include "CoreMinimal.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -201,12 +201,6 @@ namespace RenderAlphaCore
 			return;
 		}
 
-		///////////////////////////////
-		// Get AxRenderData
-		///////////////////////////////
-		auto SceneManager = AxSceneManager::GetInstance();
-		if (SceneManager->GetWorld()->GetSimObjectNum() == 0) return;
-
 
 		FRDGTextureRef WorldPosTexture = nullptr;
 		FRDGTextureRef SimOutput = nullptr;
@@ -295,7 +289,6 @@ namespace RenderAlphaCore
 			[ApplyLightingPassParameters, GlobalShaderMap, VertexShader, PixelShader, WorldPosTexture, SimOutput, &View, DirectionalLightSceneInfo]
 		(FRHICommandListImmediate& RHICmdList)
 			{
-				bool debug = false;
 				FRHITexture* WorldPosTex = TryGetRHI(WorldPosTexture);
 
 				int ImageWidth = View.ViewRect.Width();
@@ -311,151 +304,24 @@ namespace RenderAlphaCore
 				/////////////////////////////////
 				/// AlphaCore Sim world
 				/////////////////////////////////
-				auto SceneManager = AxSceneManager::GetInstance();
-				if (SceneManager->GetSimWorldStatus() == 1) return;
+				//auto SceneManager = AxSceneManager::GetInstance();
+				//if (SceneManager->GetSimWorldStatus() == 1) return;
 
-				AxSimWorld* world = SceneManager->GetWorld();
-				if (!world) return;
-				if (world->GetSimObjectNum() == 0) return;
+				//AxSimWorld* world = SceneManager->GetWorld();
+				//if (!world) return;
+				//if (world->GetSimObjectNum() == 0) return;
 
-				SceneManager->SetSimWorldStepStarted();
+				//SceneManager->SetSimWorldStepStarted();
 				/////////////////////////////////
 				/// Get Light Info and Camera
 				/////////////////////////////////
 
-				FVector UELightDirection;
-				FLinearColor UELightColor;
-				if (DirectionalLightSceneInfo)
-				{
-					UELightDirection = DirectionalLightSceneInfo->Proxy->GetDirection().GetSafeNormal();
-					UELightColor = DirectionalLightSceneInfo->Proxy->GetColor();
-				}
-
-				// Get UE Parameters
-				FVector LightDir = UELightDirection.RotateAngleAxis(-90, FVector::ZAxisVector).
-					RotateAngleAxis(90, FVector::XAxisVector);
-				FVector UELightDir = FVector(-LightDir.X, -LightDir.Y, -LightDir.Z);
-
-				FVector3f CameraOrigin = ViewVoxelizeParameters.TranslatedWorldCameraOrigin.RotateAngleAxis(-90, FVector3f::ZAxisVector).
-					RotateAngleAxis(90, FVector3f::XAxisVector);
-				FVector UECameraOrigin = FVector(-CameraOrigin.X, -CameraOrigin.Y, -CameraOrigin.Z);
-
-				FVector3f CamForw = ViewVoxelizeParameters.ViewForward.RotateAngleAxis(-90, FVector3f::ZAxisVector).
-					RotateAngleAxis(90, FVector3f::XAxisVector);
-				FVector UECamForward = FVector(-CamForw.X, -CamForw.Y, -CamForw.Z);
-
-				FVector3f CamUp = ViewVoxelizeParameters.ViewUp.RotateAngleAxis(-90, FVector3f::ZAxisVector).
-					RotateAngleAxis(90, FVector3f::XAxisVector);
-				FVector UECamUp = FVector(-CamUp.X, -CamUp.Y, -CamUp.Z);
-				//auto a = 
-				// Convert to AxParameters
-				AxVector3 LightPivot	= { UELightDir.X * (-1000.f),UELightDir.Y * (-1000.f),UELightDir.Z * (-1000.f) };
-				AxVector3 CamPivot		= { UECameraOrigin.X,UECameraOrigin.Y,UECameraOrigin.Z };
-				AxVector3 CamForward	= { UECamForward.X,UECamForward.Y,UECamForward.Z };
-				AxVector3 UpVector		= { UECamUp.X,UECamUp.Y,UECamUp.Z };
-
-				AxColorRGBA LightColor = { UELightColor.R / UELightColor.A, UELightColor.G / UELightColor.A, UELightColor.B / UELightColor.A, 1.f };
-				float LightIntensity = UELightColor.A;
-
-				float Near = ViewVoxelizeParameters.NearPlane;
-				float Fov = ViewVoxelizeParameters.FieldOfViewWideAngles.X * 180.f / 3.1415926f;
-				
-				AlphaCore::Desc::AxPointLightInfo pointLight;
-				pointLight.Pivot		= LightPivot;
-				pointLight.Intensity	= LightIntensity;
-				pointLight.LightColor	= LightColor;
-				pointLight.Active		= true;
-
-				AlphaCore::Desc::AxCameraInfo camInfo;
-				camInfo.Pivot		= CamPivot;
-				camInfo.Forward		= CamForward;
-				camInfo.UpVector	= UpVector;
-				camInfo.Near		= Near;
-				camInfo.Fov			= Fov;
-				
-				
-				world->SetSceneCamera(camInfo);
-				world->SetSceneLight(0, &pointLight);
-
-				//AX_WARN("LightPivot      : {}, {}, {}", LightPivot.x, LightPivot.y, LightPivot.z);
-				//AX_WARN("LightColor      : {}, {}, {}, {}", UELightColor.R, UELightColor.G, UELightColor.B, UELightColor.A);
-				//AX_WARN("LightIntensity  : {}", LightIntensity);
-				//AX_WARN("camInfo.Pivot   : {}, {}, {}", CamPivot.x, CamPivot.y, CamPivot.z);
-				//AX_WARN("camInfo.Forward : {}, {}, {}", CamForward.x, CamForward.y, CamForward.z);
-				//AX_WARN("camInfo.UpVector: {}, {}, {}", UpVector.x, UpVector.y, UpVector.z);
-				//AX_WARN("camInfo.Near    : {}", Near);
-				//AX_WARN("camInfo.Fov     : {}", Fov);
-
-
-				/////////////////////////////////
-				/// Render in AlphaCore
-				/////////////////////////////////
-				if (debug)
-				{
-					AxTextureRGBA8 depthTex(ImageWidth, ImageHeight);
-					for (int r = 0; r < ImageHeight; ++r)
-					{
-						for (int c = 0; c < ImageWidth; ++c)
-						{
-							depthTex.SetValue(r * ImageWidth + c, MakeColorRGBA8(Byte(WorldPosData[r * ImageWidth + c].A),
-								Byte(WorldPosData[r * ImageWidth + c].A),
-								Byte(WorldPosData[r * ImageWidth + c].A),
-								Byte(WorldPosData[r * ImageWidth + c].A)));
-						}
-					}
-					AlphaCore::Image::SaveAsTga("D:/assets/boxdepth.tga", &depthTex);
-				}
-
-				// image resize
-				if (!world->GetRenderImage()) { world->RegisterRenderImage(ImageWidth, ImageHeight);}
-				world->ResizeRenderImage(ImageWidth, ImageHeight);
-
-				// depthTexture
-				if (!world->GetDepthImage()) { world->RegisterDepthImage(ImageWidth, ImageHeight); }
-				world->ResizeDepthImage(ImageWidth, ImageHeight);
-				for (int r = 0; r < ImageHeight; ++r)
-				{
-					for (int c = 0; c < ImageWidth; ++c)
-					{
-						world->GetDepthImage()->SetValue(
-							r * ImageWidth + c,
-							float(WorldPosData[r * ImageWidth + c].A));
-					}
-				}
-				world->GetDepthImage()->LoadToDevice();
-
-				// step and render
-				world->StepAndRender();
-				// post render 
-				AxTextureRGBA* image = world->GetRenderImage();
-
-				if (image->GetResolution().x != ImageWidth || image->GetResolution().y != ImageHeight) return;
-				image->LoadToHost();
 
 				TArray<FLinearColor> OutputData;
 				OutputData.AddDefaulted(ImageWidth * ImageHeight);
-				AxColorRGBA* ImageData = image->GetRawData();
 
-				if(debug)
-				{
-					AxTextureRGBA8 out(ImageWidth, ImageHeight);
-					for (int r = 0; r < ImageHeight; ++r)
-					{
-						for (int c = 0; c < ImageWidth; ++c)
-						{
-							out.SetValue((ImageHeight - r-1) * ImageWidth + ImageWidth - c - 1, MakeColorRGBA8(
-								Byte(ImageData[r * ImageWidth + c].r * 255.0f),
-								Byte(ImageData[r * ImageWidth + c].g * 255.0f),
-								Byte(ImageData[r * ImageWidth + c].b * 255.0f),
-								Byte(ImageData[r * ImageWidth + c].a * 255.0f)
-							));
-						}
-					}
-					AlphaCore::Image::SaveAsTga("D:/assets/box.tga", &out);
-				}
-
-				FMemory::Memcpy(OutputData.GetData(), ImageData, ImageHeight * ImageWidth * 4 * sizeof(float));
-				SceneManager->SetSimWorldStepFinished();
+				//FMemory::Memcpy(OutputData.GetData(), ImageData, ImageHeight * ImageWidth * 4 * sizeof(float));
+				//SceneManager->SetSimWorldStepFinished();
 
 				FRHITexture* SimOutputTex = TryGetRHI(SimOutput);
 				FUpdateTextureRegion2D TempRegion(View.ViewRect.Min.X, View.ViewRect.Min.Y, View.ViewRect.Min.X, View.ViewRect.Min.Y, ImageWidth, ImageHeight);

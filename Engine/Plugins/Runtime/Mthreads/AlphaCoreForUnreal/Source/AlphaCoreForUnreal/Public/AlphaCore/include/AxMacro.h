@@ -82,18 +82,18 @@
 #define AX_PI 3.14159265358979f
 
 #define A137_API  extern "C" __declspec(dllexport)
-#define FSA_CLASS
+#define FSA_CLASS __declspec(dllexport)
 
 #define AX_INT_MENU enum
 
 #define A137FUNCTION(...)
 #define A137_FSA_FUNCTION
+
 //
 // AlphaCore use the 'dynamic properties' architecture design 
 //
-//
 
-#define ALPHA_CLASS
+#define ALPHA_CLASS __declspec(dllexport)
 #define AX_CACHE_HEAD_TOKEN 128
 #include <omp.h>
 
@@ -101,6 +101,11 @@
 #define AX_KERNEL_DEBUG_LAST_ERROR 1
 #define AX_KERNEL_DEBUG_FORCE_SYNC_CUDA 1
 #define AX_KERNEL_DEBUG_PARAM_SAVE_FLUIDUTILITY 0
+
+
+#define DevObjectRET(x)\
+	return AxInt32(x);\
+	AX_INFO("{} return {}",__FUNCTION__, AxInt32(x));
 
 namespace AlphaCore
 {
@@ -228,6 +233,8 @@ namespace AlphaProperty
 	static const char* SortedPtId = "sortedPtId";
 	static const char* Pt2CellId = "pt2CellId";
 
+	static const char* LinkedTriangles = "LinkedTriangles";
+
 	namespace Collision
 	{
 		static const char* ContactPtFixVec4 = "ctxFix4";
@@ -244,6 +251,8 @@ namespace AlphaProperty
 	{
 		static const char* Cell2PtStart = "cell2PtStart";
 		static const char* Cell2PtEnd = "cell2PtEnd";
+		static const char* CCD_Pos0 = "CCD_Pos0";
+		static const char* CCD_Pos1 = "CCD_Pos1";
 	}
 
 	namespace Constraint

@@ -3,12 +3,13 @@
 
 #include "AxOP_FieldSource.ProtocolData.h"
 #include "FluidUtility/AxFluidUtility.DataType.h"
+#include "include/Atmosphere/AxAtmosphere.h"
 
-enum AxFieldSourceGeoType
-{
-    kFieldGeometrySource,
-    kProceduralGeometrySource
-};
+ enum AxFieldSourceGeoType
+ {
+     kBox,
+     kPlane,
+ };
 
 class AxOP_FieldSource :public AxMicroSolverBase
 {
@@ -65,6 +66,12 @@ protected:
     void setEmitterGeometry(AxGeometry* emitterGeo, bool readyDeviceData = false);
     AxGeometry* getEmitterGeometry();
 
+    void sourceEmitterStorm(AxFp32 dt);
+    void sourceEmitterStormDevice(AxFp32 dt);
+
+    void transferNoiseTo2DField(AxCurlNoiseParam noiseParam);
+    void transferNoiseTo2DFieldDevice(AxCurlNoiseParam noiseParam);
+
     //#BIND_GEO_DATA#
     AxFieldSourceSimParam simParam;
 
@@ -75,12 +82,14 @@ protected:
     AxScalarFieldF32* m_TemperatureField;
     AxVecFieldF32 m_VelField;
 
+    AxGeometry* m_simGeo;
     AxGeometry* m_EmitterGeo;
     AxScalarFieldF32* m_DivergenceEmitter;
     AxScalarFieldF32* m_DensityEmitter;
     AxScalarFieldF32* m_FuelEmitter;
     AxScalarFieldF32* m_TemperatureEmitter;
     AxVecFieldF32 m_VelEmitter;
+    
 
     AxVector3 m_EulerRotate;
     AxMatrix3x3 m_RotateMatrix;
@@ -88,6 +97,14 @@ protected:
 
 
     AxFieldSourceGeoType m_SouorceGeoType;
+
+    AxScalarFieldF32* m_noiseField = new AxScalarFieldF32();
+
+    AxAABB box;
+
+
+
+    //void FieldProcSourcing(AxFp32 dt);
 
 };
 #endif

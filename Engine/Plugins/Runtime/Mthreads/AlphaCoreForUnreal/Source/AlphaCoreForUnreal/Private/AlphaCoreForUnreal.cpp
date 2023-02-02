@@ -6,6 +6,11 @@
 #include "Render/RenderAlphaCore.h"
 #include "Misc/Paths.h"
 #include "ShaderCore.h"
+
+#include "Storm/StormDetailsProp.h"
+#include "Storm/StormActor.h"
+#include "Modules/ModuleInterface.h"
+
 #include "AxUE4Log.h"
 
 #define LOCTEXT_NAMESPACE "FAlphaCoreForUnrealModule"
@@ -14,14 +19,34 @@ void FAlphaCoreForUnrealModule::StartupAlphaCore()
 {
 	AlphaCore::ActiveUELog();
 	AlphaCoreEngine::GetInstance()->LaunchEngine();
-	//AlphaCore::Logger::GetInstance()->SetLogPath("D:/log/");
+	////AlphaCore::Logger::GetInstance()->SetLogPath("D:/log/");
 	AX_WARN("AlphaCoreForUnreal Launched!");
 	RenderAlphaCore::Startup();
+
+
+
+	// Register Custom Detail Layout
+	FPropertyEditorModule& PropertyModule = FModuleManager::LoadModuleChecked<FPropertyEditorModule>("PropertyEditor");
+	PropertyModule.RegisterCustomClassLayout(
+		AStormActor::StaticClass()->GetFName(),
+		FOnGetDetailCustomizationInstance::CreateStatic(&FStormDetailsProp::MakeInstance));
+	PropertyModule.NotifyCustomizationModuleChanged();
+
 }
 
 void FAlphaCoreForUnrealModule::ShutdownAlphaCore()
 {
 	RenderAlphaCore::Shutdown();
+
+
+
+	// UnRegister Custom Detail Layout
+	if (FModuleManager::Get().IsModuleLoaded("PropertyEditor"))
+	{
+		FPropertyEditorModule& PropertyModule = FModuleManager::GetModuleChecked<FPropertyEditorModule>("PropertyEditor");
+		PropertyModule.UnregisterCustomClassLayout("StormActor");
+		PropertyModule.NotifyCustomizationModuleChanged();
+	}
 }
 
 void FAlphaCoreForUnrealModule::StartupModule()

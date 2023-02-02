@@ -39,6 +39,100 @@ struct AxPropertyDictInfo
 	AlphaCore::AxGeoNodeType Type[5];
 };
 
+
+struct AxPrimitiveHandle
+{
+	
+	AxUInt32 Points;
+	AxUInt32 VertexStart;
+	template <typename T>
+	ALPHA_SHARE_FUNC void LoadOwnPointsProperty(AxBufferHandle<T, void>& prop, T* rawBuffer)
+	{
+		AX_FOR_I(Points)
+			rawBuffer[i] = prop[Indices[i]];
+	}
+	//TODO ArrayHandle
+	AxUInt32* Indices;
+};
+
+
+struct AxTriangleElementHandle
+{
+	ALPHA_SHARE_FUNC AxTriangleElementHandle()
+	{
+		Valid = false;
+		Index = 0;
+	}
+	bool Valid;
+	AxUInt32 Index;
+	AxBufferHandleV3F32 PosHandle;
+	AxBufferHandleV3F32 PrdPHandle;
+	AxVector3UI ID3;
+	AxFp32 Thickness;
+	AxUChar RTriangleToken;
+	AxAABB BoundingBox;
+
+	ALPHA_SHARE_FUNC void UpdateBoundingBox()
+	{
+		auto box = AlphaCore::AccelTree::MakeAABB();
+		AlphaCore::AccelTree::ExtAABB(box, PosHandle[ID3.x]);
+		AlphaCore::AccelTree::ExtAABB(box, PosHandle[ID3.y]);
+		AlphaCore::AccelTree::ExtAABB(box, PosHandle[ID3.z]);
+		AlphaCore::AccelTree::ExtAABB(box, PrdPHandle[ID3.x]);
+		AlphaCore::AccelTree::ExtAABB(box, PrdPHandle[ID3.y]);
+		AlphaCore::AccelTree::ExtAABB(box, PrdPHandle[ID3.z]);
+		BoundingBox = AlphaCore::AccelTree::MakeAABB(box.Min, box.Max, Thickness);
+	}
+
+};
+
+
+struct AxGeoDesc
+{
+	bool IsValid;
+	AxBufferHandleV3F32 Position;
+	AxBufferHandleV3F32 PrdP;
+	AxBufferHandleF32 PrimThickness;
+	AxBufferUCharHandle RTriangles;
+	AxBufferHandleUI32 Indices;
+	AxBufferHandleV2UI Primitives;
+	AxBufferHandleV3F32 PointNormal;
+	AxUInt32 NumPrimitives;
+	AxUInt32 NumPoints;
+	AxUInt32 NumVertices;
+	AxUInt32 GeoIndex;
+
+	ALPHA_SHARE_FUNC AxPrimitiveHandle GetPrimitive(AxUInt32 primId)
+	{
+		AxVector2UI prim2I = Primitives[primId];
+		AxPrimitiveHandle handle;
+		handle.VertexStart = prim2I.x;
+		handle.Points = prim2I.y;
+		handle.Indices = Indices.At(handle.VertexStart);
+		return handle;
+	}
+
+	ALPHA_SHARE_FUNC AxTriangleElementHandle GetTriangleElement(AxUInt32 primId)
+	{
+		AxTriangleElementHandle ret;
+		AxVector2UI prim2I = Primitives[primId];
+		if (prim2I.y != 3 || PrdP.IsValid == false ||
+			PrimThickness.IsValid == false || RTriangles.IsValid == false)
+			return ret;
+		auto indices = Indices.At(prim2I.x);
+		ret.Valid = true;
+		ret.Index = primId;
+		ret.PosHandle = Position;
+		ret.PrdPHandle = PrdP;
+		ret.Thickness = PrimThickness[primId];
+		ret.RTriangleToken = RTriangles[primId];
+		ret.ID3 = MakeVector3UI(indices[0], indices[1], indices[2]);
+		ret.UpdateBoundingBox();
+		return ret;
+	}
+
+};
+
 //
 // DO NOT USE THIS MACRO ERASE PROPERTY !!!!!
 //
@@ -68,7 +162,7 @@ struct AxIdxMap
 		Map = nullptr;
 		Values = nullptr;
 	}
-	AxIdxMap(AxBuffer2UI* map, AxStorage<T>* indices)
+	AxIdxMap(AxBufferArray* map, AxStorage<T>* indices)
 	{
 		Map = map;
 		Values = indices;
@@ -79,7 +173,7 @@ struct AxIdxMap
 		return (Map != nullptr && Values != nullptr);
 	}
 
-	AxBuffer2UI* Map;
+	AxBufferArray* Map;
 	AxStorage<T>* Values;
 
 	void DeviceMalloc()
@@ -94,13 +188,13 @@ struct AxIdxMap
 			return;
 		AX_FOR_I(Map->Size())
 		{
-			std::cout << item << " " << i << " " << item2 << " : " << Map->Get(i).y << " [ ";
-			AX_FOR_J(Map->Get(i).y) {
-				if (j < (Map->Get(i).y - 1)) { 
-					std::cout << Values->Get(Map->Get(i).x + j) << ","; 
+			std::cout << item << " " << i << " " << item2 << " : " << Map->Get(i).Num << " [ ";
+			AX_FOR_J(Map->Get(i).Num) {
+				if (j < (Map->Get(i).Num - 1)) {
+					std::cout << Values->Get(Map->Get(i).Start + j) << ","; 
 				}
 				else {
-					std::cout << Values->Get(Map->Get(i).x + j) << " ]" << std::endl;
+					std::cout << Values->Get(Map->Get(i).Start + j) << " ]" << std::endl;
 				}
 			}
 		}
@@ -304,20 +398,6 @@ public:
 		AxUInt32 NumVertices;
 	};
 
-	RAWDesc GetGeometryRawDesc()
-	{
-		RAWDesc ret;
-		auto topologyDesc = this->GetTopolgyDesc();
-		ret.IsValid = true;
-		ret.PositionRaw = topologyDesc.Positions->GetDataRaw();
-		ret.Primitives = topologyDesc.Primitives->GetDataRaw();
-		ret.Indices = topologyDesc.Indices->GetDataRaw();
-		ret.NormalRaw = this->m_NormalProperty == nullptr ? nullptr : m_NormalProperty->GetDataRaw();
-		ret.NumPoints = this->GetNumPoints();
-		ret.NumPrimitives = this->GetNumPrimitives();
-		ret.NumVertices = this->GetNumVertex();
-	}
-
 	RAWDesc GetGeometryRawDescDevice()
 	{
 		RAWDesc ret;
@@ -330,6 +410,7 @@ public:
 		ret.NumPoints = this->GetNumPoints();
 		ret.NumPrimitives = this->GetNumPrimitives();
 		ret.NumVertices = this->GetNumVertex();
+		return ret;
 	}
 	
 
@@ -428,6 +509,38 @@ public:
 		return retField;
 	}
 
+	AxScalarFieldHandleF32 GetScalarFieldHandle(std::string name)
+	{
+		AxScalarFieldHandleF32 retField = MakeDefaultScalarFieldHandle<AxFp32>();
+ 		auto field = this->FindFieldByName<AxFp32>(name);
+		if (field == nullptr)
+			return retField;
+		retField.IsValid = true;
+		retField.FieldInfo = field->GetFieldInfo();
+		retField.RawDataPtr = field->GetVoxelStorageBufferPtr()->GetDataRaw();
+		return retField;
+	}
+	AxVectorFieldHandleF32 GetVectorFieldHandle(std::string name)
+	{
+		AxVectorFieldHandleF32 retField = MakeDefaultVectorFieldHandle<AxFp32>();
+		auto fieldX = this->FindFieldByName<AxFp32>(name + ".x");
+		auto fieldY = this->FindFieldByName<AxFp32>(name + ".y");
+		auto fieldZ = this->FindFieldByName<AxFp32>(name + ".z");
+
+		if (fieldX == nullptr || fieldY == nullptr || fieldZ == nullptr)
+			return retField;
+		retField.Active = true;
+		retField.IsStaggeredGrid = false;
+		retField.FieldInfoX = fieldX->GetFieldInfo();
+		retField.FieldInfoY = fieldY->GetFieldInfo();
+		retField.FieldInfoZ = fieldZ->GetFieldInfo();
+
+		retField.RawDataPtrX = fieldX->GetVoxelStorageBufferPtr()->GetDataRaw();
+		retField.RawDataPtrY = fieldY->GetVoxelStorageBufferPtr()->GetDataRaw();
+		retField.RawDataPtrZ = fieldZ->GetVoxelStorageBufferPtr()->GetDataRaw();
+
+		return retField;
+	}
 
 
 	template<typename T>
@@ -508,7 +621,8 @@ public:
 	AxIdxMap<T> AddArrayProperty(std::string name, std::string rawBlockName, AlphaCore::AxGeoNodeType geoNodeType)
 	{
 		AxIdxMap<T> ret;
-		ret.Map = AddProperty<AxVector2UI>(name,geoNodeType);
+		ret.Map = AddProperty<AxStartNum2I>(name,geoNodeType);
+		ret.Map->setIsArrayProperty(true);
 		ret.Values = AddProperty<T>(rawBlockName, AlphaCore::AxGeoNodeType::kGeoIndices);
 		return ret;
 	}
@@ -529,7 +643,7 @@ public:
 	AxIdxMap<T> GetPointArrayProperty(std::string name)
 	{
 		AxIdxMap<T> ret;
-		ret.Map = GetProperty<AxVector2UI>(name, AlphaCore::AxGeoNodeType::kPoint);
+		ret.Map = GetProperty<AxStartNum2I>(name, AlphaCore::AxGeoNodeType::kPoint);
 		ret.Values = GetProperty<T>(name + "__VALUES", AlphaCore::AxGeoNodeType::kGeoIndices);
 		return ret;
 	}
@@ -538,7 +652,7 @@ public:
 	AxIdxMap<T> GetArrayProperty(std::string name, AlphaCore::AxGeoNodeType geoNodeType)
 	{
 		AxIdxMap<T> ret;
-		ret.Map = GetProperty<AxVector2UI>(name, geoNodeType);
+		ret.Map = GetProperty<AxStartNum2I>(name, geoNodeType);
 		ret.Values = GetProperty<T>(name + "__VALUES", AlphaCore::AxGeoNodeType::kGeoIndices);
 		return ret;
 	}
@@ -596,11 +710,29 @@ public:
 
 	template<typename T>
 	AxStorage<T>* AddGeoMetaDataProperty(std::string name,AxUInt32 size=0){
-		auto r = AddProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoDetail);
-		r->Resize(size);
+		auto r = GetProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoDetail);
+		if (r == nullptr)
+		{
+			r = AddProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoDetail);
+			r->Resize(size);
+		}
 		return r;
 	}
 
+	AxBufferI* AddGeoMetaDataInt(std::string name, AxInt32 value)
+	{
+		auto intProp = this->AddGeoMetaDataProperty<AxInt32>(name, 1);
+		intProp->Set(value);
+		return intProp;
+	}
+
+	//AddGeoMetaDataString
+	AxBufferS* AddGeoMetaDataStr(std::string name, std::string value)
+	{
+		auto strProp = this->AddPropertyS(name, AlphaCore::AxGeoNodeType::kGeoDetail);
+		strProp->Set(value);
+		return strProp;
+	}
 	template<typename T>
 	AxStorage<T>* AddIndicesProperty(std::string name, AxUInt32 size = 0) {
 		auto r = AddProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoIndices);
@@ -608,7 +740,7 @@ public:
 		return r;
 	}
 
-	//------------------ Get ------------------ 
+	//------------------------- Get ------------------ 
 	template<typename T>
 	AxStorage<T>* GetPointProperty(std::string name){
 		return GetProperty<T>(name, AlphaCore::AxGeoNodeType::kPoint);
@@ -629,6 +761,94 @@ public:
 	template<typename T>
 	AxStorage<T>* GetGeoMetaDataProperty(std::string name){
 		return GetProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoDetail);
+	}
+
+	//-------------------------- Handle ----------------------------
+	template<typename T>
+	AxBufferHandle<T, void> GetPointPropertyHandle(std::string name) {
+		return AlphaCore::GetStorageHandle(GetProperty<T>(name, AlphaCore::AxGeoNodeType::kPoint));
+	}
+
+	template<typename T>
+	AxBufferHandle<T, void> GetPrimitivePropertyHandle(std::string name) {
+		return AlphaCore::GetStorageHandle(GetProperty<T>(name, AlphaCore::AxGeoNodeType::kPrimitive));
+	}
+
+	template<typename T>
+	AxBufferHandle<T, void> GetVertexPropertyHandle(std::string name) {
+		return AlphaCore::GetStorageHandle(GetProperty<T>(name, AlphaCore::AxGeoNodeType::kVertex));
+	}
+
+	template<typename T>
+	AxBufferHandle<T,void> GetGeoMetaDataPropertyHandle(std::string name) {
+		return  AlphaCore::GetStorageHandle(GetProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoDetail));
+	}
+
+	//GetIndicesPropertyHandle
+	template<typename T>
+	AxBufferHandle<T, void> GetIndicesPropertyHandle(std::string name) {
+		return  AlphaCore::GetStorageHandle(GetProperty<T>(name, AlphaCore::AxGeoNodeType::kGeoIndices));
+	}
+
+	AxGeoDesc GetDesc()
+	{
+		AxGeoDesc ret;
+		auto topologyDesc = this->GetTopolgyDesc();
+		ret.IsValid = true;
+		ret.Position = AlphaCore::GetStorageHandle(topologyDesc.Positions);
+		ret.Primitives = AlphaCore::GetStorageHandle(topologyDesc.Primitives);
+		ret.Indices = AlphaCore::GetStorageHandle(topologyDesc.Indices);
+		ret.PointNormal = this->m_NormalProperty == nullptr ? AxBufferHandleV3F32() : AlphaCore::GetStorageHandle(m_NormalProperty);
+		ret.PrimThickness = AlphaCore::GetStorageHandle(this->GetPrimitiveProperty<AxFp32>(AlphaProperty::PrimMaxEta));
+		ret.PrdP = AlphaCore::GetStorageHandle(this->GetPointProperty<AxVector3>(AlphaProperty::PrdP));
+		ret.RTriangles = AlphaCore::GetStorageHandle(this->GetRTriangleInfo());
+		ret.NumPoints = this->GetNumPoints();
+		ret.NumPrimitives = this->GetNumPrimitives();
+		ret.NumVertices = this->GetNumVertex();
+		return ret;
+	}
+
+
+	//-------------------------- Array --------------------------------
+	template<typename ArrayType>
+	AxBufferHandle<AxStartNum2I, ArrayType> GetPointArrayPropertyHandle(std::string name) {
+		auto prop = GetProperty<AxStartNum2I>(name, AlphaCore::AxGeoNodeType::kPoint);
+		AxBufferHandle<AxStartNum2I, ArrayType> arrayRet;
+		if (prop == nullptr || !prop->IsAarrayProperty())
+			return arrayRet;
+		auto linkedArrayStorage = GetProperty<ArrayType>(name + "__VALUES", AlphaCore::AxGeoNodeType::kGeoIndices);
+		if (!linkedArrayStorage)
+			return arrayRet;
+		return AlphaCore::GetStorageArrayHandle(prop, linkedArrayStorage);
+	}
+
+	template<typename ArrayType>
+	AxBufferHandle<AxStartNum2I, ArrayType> GetPrimitiveArrayPropertyHandle(std::string name) {
+		auto prop = GetProperty<AxStartNum2I>(name, AlphaCore::AxGeoNodeType::kPrimitive);
+		AxBufferHandle<AxStartNum2I, ArrayType> arrayRet;
+		if (prop == nullptr  /*||!prop->IsAarrayProperty() TODO Format match */)
+			return arrayRet;
+		auto linkedArrayStorage = GetProperty<ArrayType>(name + "__VALUES", AlphaCore::AxGeoNodeType::kGeoIndices);
+		if (!linkedArrayStorage)
+			return arrayRet;
+		return AlphaCore::GetStorageArrayHandle(prop, linkedArrayStorage);
+	}
+
+	template<typename ArrayType>
+	AxBufferHandle<AxStartNum2I, ArrayType> GetVertexArrayPropertyHandle(std::string name) {
+		return AlphaCore::GetStorageHandle(GetProperty<AxStartNum2I>(name, AlphaCore::AxGeoNodeType::kVertex));
+	}
+
+	template<typename ArrayType>
+	AxBufferHandle<AxStartNum2I, ArrayType> GetGeoMetaDataArrayPropertyHandle(std::string name) {
+		auto prop = GetProperty<AxStartNum2I>(name, AlphaCore::AxGeoNodeType::kGeoDetail);
+		AxBufferHandle<AxStartNum2I, ArrayType> arrayRet;
+		if (!prop->IsAarrayProperty())
+			return arrayRet;
+		auto linkedArrayStorage = GetProperty<ArrayType>(name + "__VALUES", AlphaCore::AxGeoNodeType::kGeoIndices);
+		if (!linkedArrayStorage)
+			return arrayRet;
+		return AlphaCore::GetStorageArrayHandle(prop, linkedArrayStorage);
 	}
 
 	void AddSphere(AxUInt32 p0, AxFp32 radius);
@@ -663,6 +883,7 @@ public:
 	AxUInt32 GetNumFields() { return m_iNumFields; }
 	AxUInt32 GetNumVertex() { return m_IndicesBuffer->Size(); };
 	AxUInt32 GetNumPoints() { return m_PositionBuffer->Size(); };
+	AxUInt32 GetNumVoxels(std::string fieldName);
 	AxUInt32 GetNumPrimitives() { return m_PrimStartNumBuffer->Size(); };
 
 	AxBufferV3* GetPositionProperty() { return m_PositionBuffer; };
@@ -678,7 +899,9 @@ public:
 	AxBufferUChar* GetRTriangleInfo(bool autoBuild = true);
 
 
-	void DeviceMallocAllProperties(bool loadToDevice=true);
+	void LoadToHost();
+
+	void DeviceMallocAllProperties(bool loadToDevice = true);
 	void DeviceMallocPointProperty(bool loadToDevice = true);
 	void DeviceMallocPrimitiveProperty(bool loadToDevice = true);
 

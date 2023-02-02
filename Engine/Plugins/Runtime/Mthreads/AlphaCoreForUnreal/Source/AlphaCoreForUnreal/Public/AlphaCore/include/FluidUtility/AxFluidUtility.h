@@ -10,6 +10,7 @@ namespace AlphaCore
 {
 	namespace FluidUtility
 	{
+		ALPHA_SPMD_FUNC void VelocityBoundaryStaggered(AxVecFieldF32* VelField);
 
 		struct AxFlameColdDownParam {
 
@@ -150,6 +151,8 @@ namespace AlphaCore
 	{
 		namespace CUDA
 		{
+			ALPHA_SPMD_FUNC void VelocityBoundaryStaggered(AxVecFieldF32* VelField, AxUInt32 blockSize = 1000);
+
 			ALPHA_SPMD_FUNC void VorticityConfinementBlock(
 				AxVecFieldF32* velField,
 				AxVecFieldF32* forceField,
@@ -164,7 +167,7 @@ namespace AlphaCore
 	}
 }
 
-#if __FSA_ARCH_PROTOCOL_AXFLUIDUTILITY__H__ 1
+#if __FSA_ARCH_PROTOCOL_AXFLUIDUTILITY__H__ == 1
 namespace AlphaCore
 {
 namespace FluidUtility  
@@ -284,6 +287,14 @@ AxInt32 drivenType,/*0 : Wind 1 : Force*/
 AxFp32 windSpeed,
 AxFp32 scale,
 AxFp32 deltaTime) ;
+
+ALPHA_SPMD_FUNC void VelocityWallBoundaryStaggered (
+AxScalarFieldF32* velField,
+AxGridBoundaryIndex BoundaryIndex) ;
+
+ALPHA_SPMD_FUNC void VelocityExtensionBoundaryStaggered (
+AxScalarFieldF32* velField,
+AxGridBoundaryIndex BoundaryIndex) ;
 
   }
 
@@ -417,6 +428,16 @@ AxInt32 drivenType,/*0 : Wind 1 : Force*/
 AxFp32 windSpeed,
 AxFp32 scale,
 AxFp32 deltaTime,
+AxUInt32 blockSize = 512) ;
+
+ALPHA_SPMD_FUNC void VelocityWallBoundaryStaggered (
+AxScalarFieldF32* velField,
+AxGridBoundaryIndex BoundaryIndex,
+AxUInt32 blockSize = 512) ;
+
+ALPHA_SPMD_FUNC void VelocityExtensionBoundaryStaggered (
+AxScalarFieldF32* velField,
+AxGridBoundaryIndex BoundaryIndex,
 AxUInt32 blockSize = 512) ;
 
   
@@ -555,6 +576,16 @@ AxInt32 drivenType,/*0 : Wind 1 : Force*/
 AxFp32 windSpeed,
 AxFp32 scale,
 AxFp32 deltaTime,
+AxUInt32 blockSize = 512) ;
+
+ALPHA_SPMD_FUNC void VelocityWallBoundaryStaggered (
+AxScalarFieldF32* velField,
+AxGridBoundaryIndex BoundaryIndex,
+AxUInt32 blockSize = 512) ;
+
+ALPHA_SPMD_FUNC void VelocityExtensionBoundaryStaggered (
+AxScalarFieldF32* velField,
+AxGridBoundaryIndex BoundaryIndex,
 AxUInt32 blockSize = 512) ;
 
   

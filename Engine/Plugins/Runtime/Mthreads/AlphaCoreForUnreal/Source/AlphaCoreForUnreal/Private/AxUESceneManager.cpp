@@ -1,6 +1,5 @@
 // Fill out your copyright notice in the Description page of Project Settings.
-//#include <mutex>
-#include "UAxSceneManager.h"
+#include "AxUESceneManager.h"
 #include "AlphaCoreForUnreal.h"
 #include "Render/RenderAlphaCore.h"
 
@@ -36,7 +35,7 @@ int AxSceneManager::GetSimWorldStatus() {
 	return m_SimWorldStatus;
 }
 
-void AxSceneManager::SetSimWorldNotStarted() 
+void AxSceneManager::SetSimWorldNotStarted()
 {
 	m_MutexWorld.lock();
 	m_SimWorldStatus = 0;
@@ -68,7 +67,7 @@ AxSceneManager* AxSceneManager::GetInstance()
 	return m_Instance;
 }
 
-AxSimWorld* AxSceneManager::GetWorld() 
+AxSimWorld* AxSceneManager::GetWorld()
 {
 	return m_World;
 }
@@ -78,7 +77,7 @@ void AxSceneManager::ClearAndDestory()
 	if (m_Instance)
 	{
 		std::unique_lock<std::mutex> lock(m_Mutex);
-		
+
 		delete m_Instance;
 		m_Instance = nullptr;
 	}

@@ -32,28 +32,330 @@ namespace AlphaCore
 }
 
 
-/*
+//typedef void(*AxSimCallbackFunc)(AxSimCallbackData, AxContext, AlphaCore::AxBackendAPI);
 
+struct AxKernelLanuchInfo
 {
-	std::string cmdParam = simParam.AlphaCommand.GetParamValue();
-	std::vector<std::string> prmList = AlphaUtility::SplitString(cmdParam, "-");
+	AxUInt32 NumThreads;
+};
 
-	AX_FOR_I(prmList.size())
+class ALPHA_CLASS AxSimCallbackData
+{
+public:
+	AxSimCallbackData()
 	{
-		std::string param = prmList[i];
-		if (param.size() == 0)
-			continue;
-		AlphaUtility::ReplaceString(param, " ", "");
-		//std::cout << "CMD - Param:[" << param << "]" << std::endl;
-		if (param == cmdExportVel)
-			simCmdParam.ExportVel = true;
-		if (param == cmdVorticityConfinementBlock)
-			simCmdParam.UseBlockVorticityConfinement = true;
-		if (param == cmdKernelFuse)
-			simCmdParam.UseKernelFuse = true;
+		m_ExcType = AlphaCore::kNonExc;
+		m_DataPath = "";
+	};
+	~AxSimCallbackData() {};
+
+	AxGeometry* GetSimGeo(AxUInt32 geoID) const
+	{
+		return m_SimGeoList[geoID];
 	}
-}
-*/
+
+	template<typename T>
+	void AddParam(std::string name,T* rawData,AxUInt32 SIZE)
+	{
+		if (AlphaCore::IsFloatDataType(AlphaCore::TypeID<T>()))
+		{
+			this->AddFloatParam(name, (AxFp32*)rawData, SIZE);
+		}
+
+		if (AlphaCore::IsIntDataType(AlphaCore::TypeID<T>()))
+		{
+			this->AddIntParam(name, (AxInt32*)rawData, SIZE);
+		}
+
+		if (AlphaCore::IsStringDataType(AlphaCore::TypeID<T>()))
+		{
+
+		}
+	}
+
+	void BindGeoData(
+		AxGeometry* geo0 = nullptr,
+		AxGeometry* geo1 = nullptr,
+		AxGeometry* geo2 = nullptr,
+		AxGeometry* geo3 = nullptr,
+		AxGeometry* geo4 = nullptr);
+
+	void SetInputGeoData(AxUInt32 geoID, AxGeometry* geo);
+
+	void ClearSimParameters()
+	{
+		m_FloatParams.clear();
+		m_Vector2FParams.clear();
+		m_Vector3FParams.clear();
+		m_Vector4FParams.clear();
+		m_IntParams.clear();
+		m_Vector2IParams.clear();
+		m_Vector3IParams.clear();
+		m_Vector4IParams.clear();
+	}
+
+	void SetTaskType(AlphaCore::AxExecuteType excType)
+	{
+		m_ExcType = excType;
+	}
+
+	AxUInt32 GetNumExecutes()
+	{
+		auto _numTasks = numTasks();
+		std::cout << "Run Task : " << AlphaCore::ExecuteTypeToString(m_ExcType) << "   NumTasks:" << _numTasks << std::endl;
+		return _numTasks;
+	}
+
+	std::string GetDataPath()
+	{
+		return m_DataPath;
+	}
+	void SetDataPath(std::string dataPath)
+	{
+		m_DataPath = dataPath;
+	}
+
+	void PostCallback();
+
+	AxFp32 GetParamFp32(std::string name)
+	{
+		if(m_FloatParams.find(name)!= m_FloatParams.end())
+			return m_FloatParams[name];
+		return 0.0f;
+	}
+
+	AxInt32 GetParamInt32(std::string name)
+	{
+		if (m_IntParams.find(name) != m_IntParams.end())
+			return m_IntParams[name];
+		return 0.0f;
+	}
+
+	void AddFloatParam(std::string paramName, AxFp32 value)
+	{
+		if (m_FloatParams.find(paramName) == m_FloatParams.end())
+			m_FloatParams[paramName] = value;
+	}
+
+	void AddVector2FParam(std::string paramName, AxFp32 u, AxFp32 v)
+	{
+		if (m_Vector2FParams.find(paramName) == m_Vector2FParams.end())
+			m_Vector2FParams[paramName] = MakeVector2(u, v);
+	}
+
+	void AddVector3FParam(std::string paramName, AxFp32 x, AxFp32 y, AxFp32 z)
+	{
+		std::cout << "    : " << x << "," << y << "," << z << std::endl;
+		if (m_Vector3FParams.find(paramName) == m_Vector3FParams.end())
+			m_Vector3FParams[paramName] = MakeVector3(x, y, z);
+	}
+
+	void AddVector4FParam(std::string paramName, AxFp32 x, AxFp32 y, AxFp32 z, AxFp32 w)
+	{
+		if (m_Vector4FParams.find(paramName) == m_Vector4FParams.end())
+			m_Vector4FParams[paramName] = MakeVector4(x, y, z, w);
+	}
+
+	void AddFloatParam(std::string paramName, AxFp32* values, AxUInt32 size)
+	{
+		if (size == 1)
+			AddFloatParam(paramName, values[0]);
+		if (size == 2)
+			AddVector2FParam(paramName, values[0], values[1]);
+		if (size == 3)
+			AddVector3FParam(paramName, values[0], values[1], values[2]);
+		if (size == 4)
+			AddVector4FParam(paramName, values[0], values[1], values[2], values[3]);
+	}
+
+	void AddIntParam(std::string paramName, AxInt32* values, AxUInt32 size)
+	{
+		if (size == 1)
+			AddIntParam(paramName, values[0]);
+		if (size == 2)
+			AddVector2IParam(paramName, values[0], values[1]);
+		if (size == 3)
+			AddVector3IParam(paramName, values[0], values[1], values[2]);
+		if (size == 4)
+			AddVector4IParam(paramName, values[0], values[1], values[2], values[3]);
+	}
+
+	void AddIntParam(std::string paramName, AxInt32 value)
+	{
+		if (m_IntParams.find(paramName) == m_IntParams.end())
+			m_IntParams[paramName] = value;
+	}
+
+	void AddVector2IParam(std::string paramName, AxInt32 u, AxInt32 v)
+	{
+		if (m_Vector2IParams.find(paramName) == m_Vector2IParams.end())
+			m_Vector2IParams[paramName] = MakeVector2(u, v);
+	}
+
+	void AddVector3IParam(std::string paramName, AxInt32 x, AxInt32 y, AxInt32 z)
+	{
+		if (m_Vector3IParams.find(paramName) == m_Vector3IParams.end())
+			m_Vector3IParams[paramName] = MakeVector3I(x, y, z);
+	}
+
+	void AddVector4IParam(std::string paramName, AxInt32 x, AxInt32 y, AxInt32 z, AxInt32 w)
+	{
+		if (m_Vector4IParams.find(paramName) == m_Vector4IParams.end())
+			m_Vector4IParams[paramName] = MakeVector4I(x, y, z, w);
+	}
+
+	void AddRampParam(std::string paramName)
+	{
+
+	}
+
+	void AddVector2Param(std::string paramName, AxVector2 v2)
+	{
+		m_Vector2FParams[paramName] = v2;
+	}
+
+	void AddVector3Param(std::string paramName, AxVector3 v3)
+	{
+		m_Vector3FParams[paramName] = v3;
+	}
+
+	void AddVector4Param(std::string paramName, AxVector4 v4)
+	{
+		m_Vector4FParams[paramName] = v4;
+	}
+
+	void AddVector3IParam(std::string paramName, AxVector3I v3i)
+	{
+
+	}
+
+	void AddStringParam(std::string paramName, std::string val)
+	{
+
+	}
+
+	AxVector2 GetVector2Param(std::string paramName)
+	{
+		if (m_Vector2FParams.find(paramName) != m_Vector2FParams.end())
+			return m_Vector2FParams[paramName];
+		return MakeVector2(0.0f, 0.0f);
+	}
+
+	AxVector3 GetVector3Param(std::string paramName)
+	{
+		if (m_Vector3FParams.find(paramName) != m_Vector3FParams.end())
+			return m_Vector3FParams[paramName];
+		return MakeVector3();
+	}
+
+	AxVector4 GetVector4Param(std::string paramName)
+	{
+		if (m_Vector4FParams.find(paramName) != m_Vector4FParams.end())
+			return m_Vector4FParams[paramName];
+		return MakeVector4();
+	}
+
+	AxVector3I GetVector3IParam(std::string paramName)
+	{
+		return MakeVector3I(0, 0, 0);
+	}
+
+	AxFp32 GetFp32Param(std::string paramName)
+	{
+		if (m_FloatParams.find(paramName) == m_FloatParams.end())
+		{
+			AX_INFO("Non-Parameter:{}", paramName);
+			return 0.0f;
+		}
+		return m_FloatParams[paramName];
+	}
+
+	std::string  GetStringParam(std::string paramName)
+	{
+		return "";
+	}
+
+	void SetPivotName(std::string name)
+	{
+		m_sPivotName = name;
+	}
+
+	void PrintParamData()
+	{
+		for (auto iter = m_FloatParams.begin(); iter != m_FloatParams.end(); iter++)
+			AX_INFO("Float Param  {} : {} ", iter->first, iter->second);
+		for (auto iter = m_Vector2FParams.begin(); iter != m_Vector2FParams.end(); iter++)
+			std::cout << "Vector2F Param  " << iter->first << ":" << iter->second << std::endl;
+		for (auto iter = m_Vector3FParams.begin(); iter != m_Vector3FParams.end(); iter++)
+			std::cout << "Vector3F Param  " << iter->first << ":" << iter->second << std::endl;
+		for (auto iter = m_Vector4FParams.begin(); iter != m_Vector4FParams.end(); iter++)
+			std::cout << "Vector4F Param  " << iter->first << ":" << iter->second << std::endl;
+
+		for (auto iter = m_IntParams.begin(); iter != m_IntParams.end(); iter++)
+			std::cout << "Float Param  " << iter->first << ":" << iter->second << std::endl;
+		for (auto iter = m_Vector2IParams.begin(); iter != m_Vector2IParams.end(); iter++)
+			std::cout << "Vector2I Param  " << iter->first << ":" << iter->second << std::endl;
+		for (auto iter = m_Vector3IParams.begin(); iter != m_Vector3IParams.end(); iter++)
+			std::cout << "Vector3I Param  " << iter->first << ":" << iter->second << std::endl;
+		for (auto iter = m_Vector4IParams.begin(); iter != m_Vector4IParams.end(); iter++)
+			std::cout << "Vector4I Param  " << iter->first << ":" << iter->second << std::endl;
+
+		
+	}
+private:
+
+	std::string m_DataPath;
+	std::string m_sPivotName;
+
+	std::map<std::string, AxFp32> m_FloatParams;
+	std::map<std::string, AxVector2> m_Vector2FParams;
+	std::map<std::string, AxVector3> m_Vector3FParams;
+	std::map<std::string, AxVector4> m_Vector4FParams;
+	std::map<std::string, AxInt32> m_IntParams;
+	std::map<std::string, AxVector2I> m_Vector2IParams;
+	std::map<std::string, AxVector3I> m_Vector3IParams;
+	std::map<std::string, AxVector4I> m_Vector4IParams;
+	AxUInt32 numTasks()
+	{
+		AxGeometry* pivotGeo = m_SimGeoList[0];
+		if (pivotGeo == nullptr)
+		{
+			std::cout << "ERROR EXE" << std::endl;
+			return 0;
+		}
+		switch (m_ExcType)
+		{
+		case AlphaCore::kExcPoints:
+			return pivotGeo->GetNumPoints();
+			break;
+		case AlphaCore::kExcPrimitives:
+			return pivotGeo->GetNumPrimitives();
+			break;
+		case AlphaCore::kExcVertices:
+			return pivotGeo->GetNumVertex();
+			break;
+		case AlphaCore::kExcVoxels:
+			return pivotGeo->GetNumVoxels(m_sPivotName);
+			break;
+		case AlphaCore::kExcTaskGroup:
+			return 0;
+			break;
+		case AlphaCore::kExcSBPoint2PointLink:
+			return pivotGeo->GetNumPoints();
+			break;
+		case AlphaCore::kExcSBPrim2PrimLink:
+			return pivotGeo->GetNumPrimitives();
+			break;
+		default:
+			break;
+		}
+		return 0;
+	}
+
+	AlphaCore::AxExecuteType m_ExcType;
+	AxGeometry* m_SimGeoList[32];
+
+};
 
 namespace AlphaCore
 {
@@ -104,6 +406,10 @@ public:
 
 	virtual void PrintRFSInfo() {}
  	AxUInt32 GetCookTimes() { return m_iCookTimes; };
+	
+	//by_hy
+	void SetCookTimes(AxInt32 CookTimes) { m_iCookTimes = CookTimes; };
+	//by_hy
 
 	virtual void ParamDeserilizationFromJson(std::string jsonRaw) {};
 	void PushMicroSolver(AxMicroSolverBase* solver);

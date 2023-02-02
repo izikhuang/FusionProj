@@ -113,14 +113,18 @@ namespace AlphaCore
 			AxVector3T<T> AB = p0 - p2;
 			AxVector3T<T> AC = p1 - p2;
 			AxVector3T<T> AP = pos - p2;
+			//PrintInfo("AB", AB);
+			//PrintInfo("AC", AC);
+			//PrintInfo("AP", AP);
+
 			T dot00 = Dot(AC, AC);
 			T dot01 = Dot(AC, AB);
 			T dot02 = Dot(AC, AP);
 			T dot11 = Dot(AB, AB);
 			T dot12 = Dot(AB, AP);
 			T divisor = dot00 * dot11 - dot01 * dot01;
-			if (divisor < 1e-7f)
-				divisor = 1e-7f;
+			if (divisor < 1e-11f)
+				divisor = 1e-11f;
 			T inverDeno = 1.0f / divisor;
 			T v = (dot11 * dot02 - dot01 * dot12) * inverDeno;
 			T u = (dot00 * dot12 - dot01 * dot02) * inverDeno;

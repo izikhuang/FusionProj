@@ -4,20 +4,12 @@
 #include <vector>
 #include <memory>
 #include <mutex>
-//#include "CoreMinimal.h"
+
 #include "AlphaCoreForUnreal.h"
-//#include "UObject/NoExportTypes.h"
-//#include "Tickable.h"
-//#include "UAxSceneManager.generated.h"
 
-
-//UCLASS(Blueprintable, BlueprintType)
-class AxSceneManager/* : public UObject*//*, public FTickableGameObject*/
+class ALPHACOREFORUNREAL_API AxSceneManager
 {
-	//GENERATED_BODY()
-
 public:
-
 	static AxSceneManager* GetInstance();
 	static void ClearAndDestory(); 
 	AxSimWorld* GetWorld();

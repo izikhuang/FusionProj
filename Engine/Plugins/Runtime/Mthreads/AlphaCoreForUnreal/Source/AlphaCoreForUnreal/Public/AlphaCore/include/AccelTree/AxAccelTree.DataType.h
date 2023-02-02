@@ -15,7 +15,7 @@ struct AxAABB
 #if AX_BVH_TREE_DEBUG == 1
 	AxInt32 bvID;
 	AxInt32 depth;
-#endif 
+#endif
 };
 
 
@@ -42,6 +42,7 @@ namespace AlphaCore
 		ALPHA_SHARE_FUNC AxAABB MakeAABB()
 		{
 			AxAABB t;
+			//printf("SO");
 #if AX_BVH_TREE_DEBUG == 1 
 			t.bvID = -1;
 			t.depth = -1;
@@ -105,14 +106,14 @@ namespace AlphaCore
 
 inline std::ostream& operator<<(std::ostream& out, const AxAABB& aabb)
 {
-	out << " Max:" << aabb.Max.x << " , " << aabb.Max.y << " , " << aabb.Max.z;
-	out << " Min:" << aabb.Min.x << " , " << aabb.Min.y << " , " << aabb.Min.z << std::endl;
+	//out << " Max:" << aabb.Max.x << " , " << aabb.Max.y << " , " << aabb.Max.z;
+	//out << " Min:" << aabb.Min.x << " , " << aabb.Min.y << " , " << aabb.Min.z << std::endl;
 	out << " AsRaw@RxAABB:" << aabb.Max.x << " , " << aabb.Max.y << " , " << aabb.Max.z << " | "
 		<< aabb.Min.x << " , " << aabb.Min.y << " , " << aabb.Min.z;
 #if AX_BVH_TREE_DEBUG == 1
 	out << " | " << aabb.depth;
 #endif
-	out << std::endl;
+	//out << std::endl;
 	return out;
 }
 

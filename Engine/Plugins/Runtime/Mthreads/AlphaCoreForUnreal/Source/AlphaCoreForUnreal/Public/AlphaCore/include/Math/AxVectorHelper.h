@@ -111,9 +111,16 @@ ALPHA_SHARE_FUNC AxVector3T<T> MakeVector3T(T x, T y, T z)
 	return ret;
 }
 
+
 ALPHA_SHARE_FUNC AxVector3 MakeVector3()
 {
 	return MakeVector3(0.0f, 0.0f, 0.0f);
+}
+
+template<typename T>
+ALPHA_SHARE_FUNC bool operator!=(AxVector3T<T> a, AxVector3T<T> b)
+{
+	return (a.x != b.x || a.y != b.y || a.z != b.z);
 }
 
 ALPHA_SHARE_FUNC void operator+=(AxVector3 &a, AxVector3 b)
@@ -404,6 +411,17 @@ ALPHA_SHARE_FUNC AxVector4 MakeVector4(AxFp32 x, AxFp32 y, AxFp32 z, AxFp32 w)
 	return t;
 }
 
+ALPHA_SHARE_FUNC AxVector4I MakeVector4I(AxInt32 x, AxInt32 y, AxInt32 z, AxInt32 w)
+{
+	AxVector4I t;
+	t.x = x;
+	t.y = y;
+	t.z = z;
+	t.w = w;
+	return t;
+}
+
+
 ALPHA_SHARE_FUNC bool IsEqual(const AxVector3I &a, const AxVector3I &b)
 {
 	return (a.x == b.x && b.y == b.y && a.z == a.z);
@@ -609,6 +627,12 @@ inline bool operator==(AxColorRGBA8 &rgba, float scalar)
 	if (rgba.r == scalar && rgba.g == scalar && rgba.b == scalar && rgba.a == scalar)
 		return true;
 	return false;
+
 }
+
+
+
+
+
 
 #endif

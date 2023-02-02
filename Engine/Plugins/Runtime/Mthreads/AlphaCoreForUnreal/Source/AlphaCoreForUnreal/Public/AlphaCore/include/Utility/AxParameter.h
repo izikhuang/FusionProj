@@ -4,7 +4,7 @@
 #include "AxStorage.h"
 #include "AxDataType.h"
 #include <array>
-
+#include <map>
 
 typedef AxInt32 AxKeyFrame;
 
@@ -236,5 +236,30 @@ inline std::ostream& operator <<(std::ostream& out, const AxRampCurve32RAWData& 
 	out << std::endl;
 	return out;
 }
+
+
+class AxSimParameterMap
+{
+public:
+	AxFp32 GetFloat(std::string name);
+	std::string GetString(std::string name);
+	AxInt32 GetInt(std::string name);
+	AxVector2 GetVector2(std::string name);
+	AxVector3 GetVector3(std::string name);
+	AxVector4 GetVector4(std::string name);
+	void GetRamp(std::string name);
+	bool GetToggle(std::string name);
+
+private:
+
+	std::map<std::string, AxFloatParam*> m_FloatParameters;
+	std::map<std::string, AxStringParam*> m_StrParameters;
+	std::map<std::string, AxIntParam*> m_IntParameters;
+	std::map<std::string, AxVector2FParam*> m_V2FParameters;
+	std::map<std::string, AxVector3FParam*> m_V3FParameters;
+	std::map<std::string, AxVector4FParam*> m_V4FParameters;
+	std::map<std::string, AxToggleParam*> m_ToggleParam;
+};
+
 
 #endif

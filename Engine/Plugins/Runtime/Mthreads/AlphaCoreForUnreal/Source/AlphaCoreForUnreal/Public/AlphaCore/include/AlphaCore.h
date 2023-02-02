@@ -36,7 +36,6 @@
 #include "AxSimObject.h"
 #include "AxSimWorld.h"
 #include "AxLog.h"
-#include "AxEngine.h"
 #include "AxGeo.h"
 
 #include "MicroSolver/AxMicroSolverFactory.h"

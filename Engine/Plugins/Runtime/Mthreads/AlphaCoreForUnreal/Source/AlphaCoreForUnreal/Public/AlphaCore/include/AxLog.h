@@ -11,13 +11,18 @@
 #include "AxMacro.h"
 #include "AxDataType.h"
 
+
+#ifdef USE_AX_LOG
+#ifndef SPDLOG_TRACE_ON
 #define SPDLOG_TRACE_ON
+#endif
 // Must include "spdlog/common.h" to define SPDLOG_HEADER_ONLY
 // before including "spdlog/fmt/fmt.h"
 #include "thirdparty/spdlog/include/spdlog/common.h"
 #include "thirdparty/spdlog/include/spdlog/fmt/fmt.h"
+#endif
 
-#define LOG_RESET	     "\033[0m"			 
+#define LOG_COLOR_END    "\033[0m"			 
 #define LOG_BLACK	     "\033[30m"			 /* Black */
 #define LOG_RED		     "\033[31m"			 /* Red */
 #define LOG_GREEN	     "\033[32m"			 /* Green */
@@ -34,6 +39,17 @@
 #define LOG_BOLD_MAGENTA "\033[1m\033[35m"   /* Bold Magenta */
 #define LOG_BOLD_CYAN    "\033[1m\033[36m"   /* Bold Cyan */
 #define LOG_BOLD_WHITE   "\033[1m\033[37m"   /* Bold White */
+
+
+enum class AxLogColor
+{
+	kLogRed,
+	kLogGreen,
+	kLogYellow,
+	kLogBlue,
+	kLogNonColor,
+	kLogColorEnd
+};
 
 // Windows
 #if defined(_WIN64)
@@ -72,7 +88,7 @@ namespace spdlog {
 //******************************************************************************
 namespace AlphaCore
 {
-	class Logger 
+	class ALPHA_CLASS Logger 
 	{
 	private:
 		Logger();
@@ -109,14 +125,16 @@ namespace AlphaCore
 
 		void EnableDevInfo();
 		void DisableDevInfo();
-	private:
 
+		void SetLogColor(AxLogColor color);
+	private:
+		std::string getSysTimeMilliseconds();
 		bool m_bInfoCallback;
 		bool m_bWarnCallback;
 		bool m_bActiveDevInfo;
 		std::function<void(const std::string & msg)> m_LogInfoCallback;
 		std::function<void(const std::string & msg)> m_LogWarnCallback;
-
+		AxLogColor m_eLogColor;
 	};
 };
 
@@ -150,6 +168,17 @@ namespace AlphaCore
 #define AX_TRACE(...)	SPD_AUGMENTED_LOG(Trace,TRACE_HEAD, __VA_ARGS__)
 #define AX_DEBUG(...)	SPD_AUGMENTED_LOG(Debug,DEBUG_HEAD, __VA_ARGS__)
 #define AX_INFO(...)	SPD_AUGMENTED_LOG(Info, (std::string(INFO_HEAD)+__FUNCTION__+" | ").c_str(), __VA_ARGS__)
+
+#define AX_INFO_BLUE(...)	AlphaCore::Logger::GetInstance()->SetLogColor(AxLogColor::kLogBlue);\
+SPD_AUGMENTED_LOG(Info, (std::string(INFO_HEAD)+__FUNCTION__+" | ").c_str(), __VA_ARGS__);\
+AlphaCore::Logger::GetInstance()->SetLogColor(AxLogColor::kLogNonColor)
+
+#define AX_INFO_GREEN(...)	AlphaCore::Logger::GetInstance()->SetLogColor(AxLogColor::kLogGreen);\
+SPD_AUGMENTED_LOG(Info, (std::string(INFO_HEAD)+__FUNCTION__+" | ").c_str(), __VA_ARGS__);\
+AlphaCore::Logger::GetInstance()->SetLogColor(AxLogColor::kLogNonColor)
+
+
+
 #define AX_WARN(...)	SPD_AUGMENTED_LOG(Warn, (std::string(WARRNING_HEAD)+__FUNCTION__+" | ").c_str(), __VA_ARGS__)
 #define AX_ERROR(...)	SPD_AUGMENTED_LOG(Error,(std::string(ERROR_HEAD)+__FUNCTION__+" | ").c_str(), __VA_ARGS__);   AX_UNREACHABLE;
 #define AX_CRITICAL(...)SPD_AUGMENTED_LOG(Critical,"", __VA_ARGS__);AX_UNREACHABLE;
@@ -190,6 +219,10 @@ namespace AlphaCore
 #define AX_CRITICAL_IF(condition, ...)
 #define AX_CRITICAL_UNLESS(condition, ...)
 #define AX_LOG_SET_PATTERN(x)
+
+#define AX_INFO_BLUE(...)
+#define AX_INFO_GREEN(...)
+
 #endif
 
 #define AX_LOG_FILEPATH(PATH) AlphaCore::Logger::GetInstance()->SetLogPath(PATH)
@@ -218,14 +251,16 @@ namespace AlphaCore
 	#define POS_WRITE_INFO(head,stream)
 #endif
 
-//
-//	TODO : move to AxLog.Internal.h
-//
 template<AxUInt32 SIZE>
 struct AxLogInfoBlock
 {
-	char pool[SIZE];
-	ALPHA_SHARE_FUNC char* __strcpy(char* dest, const char* src) 
+	ALPHA_SHARE_FUNC AxLogInfoBlock()
+	{
+		AX_FOR_I(SIZE)
+			m_charPool[i] = 0;
+	}
+	char m_charPool[SIZE];
+	ALPHA_SHARE_FUNC char* __strcpy(char* dest, const char* src)
 	{
 		int i = 0;
 		do {
@@ -262,6 +297,17 @@ struct AxLogInfoBlock
 
 	ALPHA_SHARE_FUNC void __ftoa(float n, char* res, int afterpoint)
 	{
+		if (n < 0.0f)
+		{
+			res[0] = '-';
+			n = fabsf(n);
+			res += 1;
+		}
+		if (n < 1.0f)
+		{
+			res[0] = '0';
+			res += 1;
+		}
 		int ipart = (int)n;
 		float fpart = n - (float)ipart;
 		int i = __itoaEXT(ipart, res, 0);
@@ -275,14 +321,23 @@ struct AxLogInfoBlock
 	//push string
 	ALPHA_SHARE_FUNC char* __strcat(char* dest, const char* src) {
 		int i = 0;
-		while (dest[i] != 0) i++;
+		while (dest[i] != 0) {
+			i++;
+			if (i >= SIZE)
+				return dest;
+		}
 		__strcpy(dest + i, src);
 		return dest;
 	}
 
-	ALPHA_SHARE_FUNC void LogInfo(char* info)
+	ALPHA_SHARE_FUNC char* Push(const char* src)
 	{
-		__strcat(pool, info);
+		return __strcat(m_charPool, src);
+	}
+
+	ALPHA_SHARE_FUNC void LogInfo(const char* info)
+	{
+		__strcat(m_charPool, info);
 	}
 
 	ALPHA_SHARE_FUNC char* __itoa(int num, char* str, int radix = 10)
@@ -317,16 +372,22 @@ struct AxLogInfoBlock
 		return str;
 	}
 
-	ALPHA_SHARE_FUNC void Log_Int(char* head, int val)
+	ALPHA_SHARE_FUNC void LogInt(const char* head, int val, const char* endMark = "\n")
 	{
 		char n[32];
 		__itoa(val, n);
-		__strcat(pool, head);
-		__strcat(pool, n);
-		__strcat(pool, "\n");
+		__strcat(m_charPool, head);
+		__strcat(m_charPool, n);
+ 		__strcat(m_charPool, endMark);
 	}
 
-	ALPHA_SHARE_FUNC void Log_Float3(char* head, float x, float y, float z)
+	ALPHA_SHARE_FUNC void LogFloat3(
+		const char* head,
+		float x,
+		float y,
+		float z,
+		bool withEndLine = true,
+		bool traceData = false)
 	{
 		char xx[16];
 		char yy[16];
@@ -334,18 +395,38 @@ struct AxLogInfoBlock
 		__ftoa(x, xx, 5);
 		__ftoa(y, yy, 5);
 		__ftoa(z, zz, 5);
-		__strcat(pool, head);
-		__strcat(pool, xx);
-		__strcat(pool, ",");
-		__strcat(pool, yy);
-		__strcat(pool, ",");
-		__strcat(pool, zz);
-		__strcat(pool, "\n");
+		__strcat(m_charPool, head);
+		__strcat(m_charPool, xx);
+		__strcat(m_charPool, ",");
+		__strcat(m_charPool, yy);
+		__strcat(m_charPool, ",");
+		__strcat(m_charPool, zz);
+		if (withEndLine)
+			__strcat(m_charPool, "\n");
+		if (traceData)
+			Trace();
 	}
 
 	ALPHA_SHARE_FUNC void Log_Float(char* info)
 	{
-		__strcat(pool, info);
+		__strcat(m_charPool, info);
 	}
+
+	ALPHA_SHARE_FUNC void Trace()
+	{
+		printf("%s", m_charPool);
+	}
+
+
 };
+
+typedef AxLogInfoBlock<8192> AxLogBlock;
+
+inline std::ostream& operator<<(std::ostream& out, AxLogBlock& c)
+{
+	out << c.m_charPool;
+	return out;
+}
+
+
 #endif // !__ALPHA_CORE_LOG_H__

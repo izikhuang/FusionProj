@@ -52,8 +52,9 @@ namespace AlphaCore
 					return false;
 				return true;
 			}
-			ALPHA_SHARE_FUNC void PrintRTriangleInfo(const AxUChar& token)
+			ALPHA_SHARE_FUNC void PrintRTriangleInfo(const char* head, const AxUChar& token)
 			{
+				printf("%s", head);
 				printf("Vertex: ");
 				printf("[%d]",    (token & AxRTriangleType::kVtx0) == AxRTriangleType::kVtx0);
 				printf("[%d]",    (token & AxRTriangleType::kVtx1) == AxRTriangleType::kVtx1);

@@ -9,11 +9,6 @@
 #include "GridDense/AxFieldBase2D.h"
 #include "VolumeRender/AxVolumeRender.DataType.h"
 
-//typedef AxField2DBase<AxColorRGBA8> AxTextureRGBA8;
-//typedef AxField2DBase<AxColorRGBA> AxTextureRGBA;
-//typedef AxField2DBase<AxFp32> AxTextureR32;
-//typedef AxField2DBase<AxFp64> AxTextureR64;
-
 
 class AxSceneObject;
 class AxSimObject;
@@ -61,10 +56,10 @@ public:
 		return this->GetCurrentSubStep() == this->GetSubSteps();
 	}
 	void SetFrame(AxInt32 frame) { m_iFrame = frame; }
-	void clearSimObjects();
+	
 protected:
 	void runSimulationTask(AxInt32 startFrame,AxInt32 endFrame);
-	//void clearSimObjects();
+	void clearSimObjects();
 
 private:
 

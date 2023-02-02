@@ -43,6 +43,7 @@ public class AlphaCoreForUnreal : ModuleRules
 				Path.Combine(CUDAPath, "include"),
 				Path.Combine(ModuleDirectory, "Public"),
 				Path.Combine(ModuleDirectory, "Public", "Render"),
+				Path.Combine(ModuleDirectory, "Public", "Storm"),
 				"../../Shaders/Private"
 				// ... add public include paths required here ...
 			}
@@ -60,12 +61,12 @@ public class AlphaCoreForUnreal : ModuleRules
 
 		PublicDefinitions.Add("ALPHA_CUDA=1");
 		PublicDefinitions.Add("ALPHA_UNREAL");
-        PublicDefinitions.Add("USE_AX_LOG");
+		//PublicDefinitions.Add("USE_AX_LOG");
 
-        PublicAdditionalLibraries.AddRange(
+		PublicAdditionalLibraries.AddRange(
 			new string[] {
-                Path.Combine(AlphaCore, "AlphaCoreLib","Release", "AlphaCore.lib"),
-                Path.Combine(CUDAPath, "lib","x64","cudart_static.lib")
+				Path.Combine(AlphaCore, "AlphaCoreLib","Release", "AlphaCore.lib"),
+				Path.Combine(CUDAPath, "lib","x64","cudart_static.lib")
 			}
 			);
 

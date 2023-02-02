@@ -2,8 +2,13 @@
 #define __AX_ENGINE_H__
 
 #include <string>
+#include "AxDataType.h"
+
+
+
+
 class AxSimObject;
-class AlphaCoreEngine
+class ALPHA_CLASS AlphaCoreEngine
 {
 public:
 	AlphaCoreEngine();

@@ -10,7 +10,7 @@ namespace AlphaCore {
 		ALPHA_SPMD_FUNC void ImplicitVelocityDamping(
 			AxBufferV3* posBuf,
 			AxBufferV3* velBuf,
-			AxBuffer2UI* p2pMap2IBuf,
+			AxBufferArray* p2pMap2IBuf,
 			AxBufferUInt32* p2pMapIndicesBuf,
 			AxBufferV3* targetVelocityBuf,
 			AxBufferF* airResistBuf,
@@ -38,7 +38,7 @@ namespace AlphaCore {
 			ALPHA_SPMD_FUNC void ImplicitVelocityDamping(
 				AxBufferV3* posBuf,
 				AxBufferV3* velBuf,
-				AxBuffer2UI* p2pMap2IBuf,
+				AxBufferArray* p2pMap2IBuf,
 				AxBufferUInt32* p2pMapIndicesBuf,
 				AxBufferV3* targetVelocityBuf,
 				AxBufferF* airResistBuf,

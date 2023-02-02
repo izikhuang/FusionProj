@@ -21,7 +21,8 @@ namespace AlphaCore
 			AxBufferF* pointThicknessBuf,
 			const AlphaCore::Collision::SimData::AxPBDCollisionResolveData& resolveData,
 			AxUInt32 iterations,
-			AxFp32 coffe);
+			AxFp32 coffe,
+			AxBufferLog* debugLogger = nullptr);
 
 		ALPHA_SPMD_FUNC void P2POverlapFixJacobiConstRadius(
 			AxField3DInfo fieldInfo,
@@ -59,7 +60,9 @@ namespace AlphaCore
 				AxBufferV3* selfPrdPBuf,
 				AxBufferV3* collisionNormalDstBuf,
 				int numPoints,
-				AxFp32 coeff);
+				AxFp32 coeff,
+				AxBufferLog* debugLogger = nullptr,
+				AxBufferContact* debugContactInfo = nullptr);
 		}
 
 		namespace CUDA 

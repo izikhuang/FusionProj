@@ -5,6 +5,22 @@
 #include "Math/AxVectorBase.h"
 #include "AccelTree/AxAccelTree.DataType.h"
 #include "Collision/AxCollision.DataType.h"
+//#include "AlphaCore.DSO.h"
+
+
+namespace AlphaCore
+{
+	namespace Log
+	{
+		ALPHA_SHARE_FUNC void TraceAABB(AxLogBlock& logBlock,const char* head, const AxAABB& aabb,int bvIndex, const char* endMark = "\n")
+		{
+			logBlock.LogInt(head, bvIndex);
+			logBlock.LogFloat3(" Max : ", aabb.Max.x, aabb.Max.y, aabb.Max.z, false);
+			logBlock.LogFloat3(" Min : ", aabb.Min.x, aabb.Min.y, aabb.Min.z, false);
+ 			logBlock.Push(endMark);
+		}
+	}
+}
 
 class AxGeometry;
 class AxBVHTree
@@ -48,8 +64,12 @@ public:
 
  	void PrintData();
 	void PrintDataDevice();
+	void PrintDataFStreaming(bool deviceLoadBack = false);
 
-	void BuildNodeDepthInfoDFS();
+	void BuildNodeDepthInfoDFS(bool loadBackRetToDevice = false);
+
+	bool Save(std::string path, std::string passName = "", AxInt32 cookTimes = -1, bool deviceLoadBack = false);
+	bool Load(std::string path, AxInt32 cookTimes = -1, bool loadToDevice = false);
 
 	AxBufferAABB*	 GetAllBVBuffer() { return m_AABB_Triangle_Buffer; };
 	AxUInt32 GetLeafStartOffset()	  { return m_iNnumPrims - 1; };
@@ -73,6 +93,7 @@ public:
 
 	void buildNodeDepthInfoDFS(int idx, int leafStart, AxBVHNode *nodes, AxAABB *AllBVs, int depth = 0);
 
+	void SetDeterministicDebugMark(bool e);
 	//
 	AxBufferBVHNode* m_BVNodeBuffer;
 	AxBufferAABB*	 m_AABB_Triangle_Buffer;
@@ -81,6 +102,7 @@ public:
 	AxGeometry*		 m_OwnGeoData;
 
 private:
+	void init();
 	AxBufferV3*		 m_Pos0Buffer;
 	AxBufferV3*		 m_Pos1Buffer;
 	AxBufferUInt32*	 m_TopologyIndicesBuffer;
@@ -106,7 +128,9 @@ private:
 
 	AxBufferCollisionTask* m_CollisionTask;
 	AxBufferCollisionTask* m_SortedCollisionTask;
-
+	AxBufferLog* m_BVHRunTimeLog;
+	AxUInt32 m_iOFStreamingTimes;
+	bool m_eDeterministicDebug;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const AxBVHNode& node)
@@ -188,6 +212,7 @@ namespace AlphaCore
 				AxBufferAABB* allAABBBuf,
 				AxBufferI* childReadyFlagsBuf,
 				AxUInt32 leafStart,
+				AxBufferLog* logBlockRaw,
 				AxUInt32 blockSize = 512);
 
 			ALPHA_SPMD_FUNC void InitAABBBuffer(AxBufferAABB* aabbBuf,

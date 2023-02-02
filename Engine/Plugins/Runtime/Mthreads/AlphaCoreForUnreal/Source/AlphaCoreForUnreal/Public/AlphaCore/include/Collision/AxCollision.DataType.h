@@ -13,14 +13,14 @@ namespace AlphaCore
 {
 	enum AxContactType
 	{
-		NonContact		= 0b0000000, // ??
-		kVSDF_Contact	= 0b0000001,
-		kVF				= 0b0000010,
-		kEE				= 0b0000100,
-		kVE				= 0b0001000,
-		kVV				= 0b0010000,
-		kWithStatic		= 0b0100000,
-		kSwapPivot		= 0b1000000
+		NonContact = 0b0000000, // ??
+		kVSDF_Contact = 0b0000001,
+		kVF = 0b0000010,
+		kEE = 0b0000100,
+		kVE = 0b0001000,
+		kVV = 0b0010000,
+		kWithStatic = 0b0100000,
+		kSwapPivot = 0b1000000
 	};
 
 	struct AxCollisionTaskDesc
@@ -37,7 +37,7 @@ namespace AlphaCore
 		AxVector3 Pivot;
 		AxVector3 Direction;
 	};
- 
+
 	struct AxOBBCollider
 	{
 		AxVector3 Size;  //width,height,length
@@ -49,21 +49,21 @@ namespace AlphaCore
 	inline AxCollisionTaskDesc MakeDefaultCollisionTaskDesc()
 	{
 		AxCollisionTaskDesc desc;
- 		desc.TaskToken[0] = 0;
+		desc.TaskToken[0] = 0;
 		desc.TaskToken[1] = 0;
 		desc.TaskToken[2] = 0;
 		desc.TaskToken[3] = 0;
 		desc.TaskToken[4] = 0;
 		desc.TaskToken[5] = 0;
- 		desc.numVertexTasks	 = 0;
+		desc.numVertexTasks = 0;
 		desc.numEdgeTasks = 0;
 		return desc;
 	}
 
 	struct AxContact
 	{
-		AxCtxToken Token; //Token VF / EE 
 		bool NormalDir;	//remove this
+		AxCtxToken Token; //Token VF / EE 
 		AxUInt32 Points[4];
 	};
 
@@ -105,24 +105,24 @@ namespace AlphaCore
 				struct RawData
 				{
 					bool Valid;
- 					AxUInt32 ContactNum;
-					AxVector4 * ContactFixRaw; // ContactVertex FixDirection + Static or Self ContactNum*4
-					AxVector3 * CollisionNRaw;//for Debug
-					AxUInt32 * Contact2PtIndicesRaw;
-					AxUInt32 * ContactIdenityRaw;
-					AxUInt32 * Point2ContactVertexStartRaw;
-					AxUInt32 * Point2ContactVertexEndRaw;
-					AxVector3 * CollisionMoveRaw;
+					AxUInt32 ContactNum;
+					AxVector4* ContactFixRaw; // ContactVertex FixDirection + Static or Self ContactNum*4
+					AxVector3* CollisionNRaw;//for Debug
+					AxUInt32* Contact2PtIndicesRaw;
+					AxUInt32* ContactIdenityRaw;
+					AxUInt32* Point2ContactVertexStartRaw;
+					AxUInt32* Point2ContactVertexEndRaw;
+					AxVector3* CollisionMoveRaw;
 
 				};
 
- 				AxBufferV4 *	 ContactFixProp; 
-				AxBufferV3 *	 CollisionNProp;
-				AxBufferUInt32 * Contact2PtIndicesProp;
-				AxBufferUInt32 * ContactIdenityProp;
-				AxBufferUInt32 * Point2ContactVertexStartProp;
-				AxBufferUInt32 * Point2ContactVertexEndProp;
- 				AxBufferV3 *	 CollisionMoveProp;
+				AxBufferV4* ContactFixProp;
+				AxBufferV3* CollisionNProp;
+				AxBufferUInt32* Contact2PtIndicesProp;
+				AxBufferUInt32* ContactIdenityProp;
+				AxBufferUInt32* Point2ContactVertexStartProp;
+				AxBufferUInt32* Point2ContactVertexEndProp;
+				AxBufferV3* CollisionMoveProp;
 
 				RawData GetRAWDesc(AlphaCore::AxBackendAPI deviceMode = AlphaCore::AxBackendAPI::CPUx86) const;
 
@@ -214,24 +214,24 @@ namespace AlphaCore
 
 		ALPHA_SHARE_FUNC bool IsEEStatic(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kEE) != AxContactType::kEE)
+			if ((ctx & AxContactType::kEE) != AxContactType::kEE)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
 			return true;
 		}
 		ALPHA_SHARE_FUNC bool IsEESelf(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kEE) != AxContactType::kEE)
+			if ((ctx & AxContactType::kEE) != AxContactType::kEE)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) == AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) == AxContactType::kWithStatic)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool ContactInvolvesStatic(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
 			return true;
 		}
@@ -240,37 +240,37 @@ namespace AlphaCore
 		//----------------------------------
 		ALPHA_SHARE_FUNC bool IsVEStatic(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVE) != AxContactType::kVE)
+			if ((ctx & AxContactType::kVE) != AxContactType::kVE)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
-			if ((ctx& AxContactType::kSwapPivot) == AxContactType::kSwapPivot)
+			if ((ctx & AxContactType::kSwapPivot) == AxContactType::kSwapPivot)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVStaticE(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVE) != AxContactType::kVE)
+			if ((ctx & AxContactType::kVE) != AxContactType::kVE)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
-			if ((ctx& AxContactType::kSwapPivot) != AxContactType::kSwapPivot)
+			if ((ctx & AxContactType::kSwapPivot) != AxContactType::kSwapPivot)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVESelf(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVE) != AxContactType::kVE)
+			if ((ctx & AxContactType::kVE) != AxContactType::kVE)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) == AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) == AxContactType::kWithStatic)
 				return false;
 			return true;
 		}
 		ALPHA_SHARE_FUNC bool IsVE(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVE) != AxContactType::kVE)
+			if ((ctx & AxContactType::kVE) != AxContactType::kVE)
 				return false;
 			return true;
 		}
@@ -279,38 +279,38 @@ namespace AlphaCore
 		//----------------------------------
 		ALPHA_SHARE_FUNC bool IsVVStatic(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVV) != AxContactType::kVV)
+			if ((ctx & AxContactType::kVV) != AxContactType::kVV)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
-			if ((ctx& AxContactType::kSwapPivot) == AxContactType::kSwapPivot)
+			if ((ctx & AxContactType::kSwapPivot) == AxContactType::kSwapPivot)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVStaticV(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVV) != AxContactType::kVV)
+			if ((ctx & AxContactType::kVV) != AxContactType::kVV)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
-			if ((ctx& AxContactType::kSwapPivot) != AxContactType::kSwapPivot)
+			if ((ctx & AxContactType::kSwapPivot) != AxContactType::kSwapPivot)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVVSelf(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVV) != AxContactType::kVV)
+			if ((ctx & AxContactType::kVV) != AxContactType::kVV)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) == AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) == AxContactType::kWithStatic)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVV(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVV) != AxContactType::kVV)
+			if ((ctx & AxContactType::kVV) != AxContactType::kVV)
 				return false;
 			return true;
 		}
@@ -326,31 +326,31 @@ namespace AlphaCore
 
 		ALPHA_SHARE_FUNC bool IsVFStatic(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVF) != AxContactType::kVF)
+			if ((ctx & AxContactType::kVF) != AxContactType::kVF)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
-			if ((ctx& AxContactType::kSwapPivot) == AxContactType::kSwapPivot)
+			if ((ctx & AxContactType::kSwapPivot) == AxContactType::kSwapPivot)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVFSelf(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVF) != AxContactType::kVF)
+			if ((ctx & AxContactType::kVF) != AxContactType::kVF)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) == AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) == AxContactType::kWithStatic)
 				return false;
 			return true;
 		}
 
 		ALPHA_SHARE_FUNC bool IsVStaticF(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kVF) != AxContactType::kVF)
+			if ((ctx & AxContactType::kVF) != AxContactType::kVF)
 				return false;
-			if ((ctx& AxContactType::kWithStatic) != AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) != AxContactType::kWithStatic)
 				return false;
-			if ((ctx& AxContactType::kSwapPivot) != AxContactType::kSwapPivot)
+			if ((ctx & AxContactType::kSwapPivot) != AxContactType::kSwapPivot)
 				return false;
 			return true;
 		}
@@ -360,7 +360,7 @@ namespace AlphaCore
 		//----------------------------------
 		ALPHA_SHARE_FUNC bool IsContactWithStatic(const AxCtxToken& ctx)
 		{
-			if ((ctx& AxContactType::kWithStatic) == AxContactType::kWithStatic)
+			if ((ctx & AxContactType::kWithStatic) == AxContactType::kWithStatic)
 				return true;
 			return false;
 		}
@@ -414,6 +414,22 @@ namespace AlphaCore
 }
 
 
+inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxCollisionTaskDesc& c)
+{
+	out << "AsRaw@CollisionTaskDesc:" << c.numVertexTasks << "," << c.numEdgeTasks << ",";
+	out << c.TaskToken[0] << "," << c.TaskToken[1] << "," << c.TaskToken[2] << ",";
+	out << c.TaskToken[3] << "," << c.TaskToken[4] << "," << c.TaskToken[5];
+	return out;
+}
+
+
+inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxCapsuleCollider& capsule)
+{
+	out << "AsRaw@Capsule:" << capsule.Pivot << "," << capsule.Direction << ",";
+	out << capsule.Radius << "," << capsule.HalfHeight << std::endl;
+	return out;
+}
+
 
 inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxContact& c)
 {
@@ -440,7 +456,7 @@ inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxContact&
 	if (AlphaCore::Collision::IsVStaticF(c.Token))
 		out << "type: V Static  F \t| ";
 
- 	out << "  Normal Direction : " << (c.NormalDir ? "True" : "False") << " | ";
+	out << "  Normal Direction : " << (c.NormalDir ? "True" : "False") << " | ";
 	out << "  Id : " << c.Points[0] << ", Id : " << c.Points[1] << " ," << c.Points[2] << " ," << c.Points[3] << " | \n";
 
 	int tokenID = -1;
@@ -459,24 +475,8 @@ inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxContact&
 	return out;
 }
 
-
-
 typedef AxStorage<AlphaCore::AxContact>  AxBufferContact;
 typedef AxStorage<AlphaCore::AxCollisionTaskDesc>  AxBufferCollisionTask;
-inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxCollisionTaskDesc& c)
-{
-	out << "AsRaw@CollisionTaskDesc:" << c.numVertexTasks << "," << c.numEdgeTasks << ",";
-	out << c.TaskToken[0] << "," << c.TaskToken[1] << "," << c.TaskToken[2]<<",";
-	out << c.TaskToken[3] << "," << c.TaskToken[4] << "," << c.TaskToken[5];
-	return out;
-}
-
-
-inline std::ostream& operator << (std::ostream& out, const AlphaCore::AxCapsuleCollider& capsule)
-{
-	out << "AsRaw@Capsule:" << capsule.Pivot << "," << capsule.Direction << ",";
-	out << capsule.Radius << "," << capsule.HalfHeight << std::endl;
-	return out;
-}
+typedef AxBufferHandle<AlphaCore::AxContact, void> AxBufferContactHandle;
 
 #endif

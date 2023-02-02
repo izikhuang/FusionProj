@@ -17,7 +17,15 @@ namespace AlphaCore {
 			AxBVHTree* bvhTreeA,
 			AxBVHTree* bvhTreeB,
 			AxBufferContact* contactBuf,
-			AxSPMDTick SPMDTick);
+			AxSPMDTick SPMDTick,
+			bool activeSelfCollision = true);
+
+		ALPHA_SPMD_FUNC void FCCDWithSortedBVHCollectTasks(
+			AlphaCore::SolidUtility::SimData::AxSolidData* geoA,
+			AlphaCore::SolidUtility::SimData::AxSolidData* geoB,
+			AxBVHTree* bvhTreeA,
+			AxBVHTree* bvhTreeB,
+			AxBufferContact* contactBuf);
 
 		ALPHA_SPMD_FUNC void FCCDWithSortedBVH_O1(
 			AlphaCore::SolidUtility::SimData::AxSolidData* geoA,
@@ -47,6 +55,7 @@ namespace AlphaCore {
 				AxBVHTree* bvhTreeB,
 				AxBufferContact* contactBuf,
 				AxSPMDTick SPMDTick,
+				bool activeSelfCollision = true,
 				AxUInt32 blockSize = 256);
 
 			ALPHA_SPMD_FUNC void GroundCollision(

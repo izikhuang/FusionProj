@@ -12,7 +12,7 @@
 //TODO : SOLVER CMD PARAMETER
 
 
-FSA_CLASS class AxCatalystEmitterSimData : AxISimData
+class AxCatalystEmitterSimData : AxISimData
 {
 public:
     AxCatalystEmitterSimData()
@@ -102,7 +102,7 @@ private:
 
 };
 
-FSA_CLASS class AxCatalystSimData : AxISimData
+class AxCatalystSimData : AxISimData
 {
 
 public:

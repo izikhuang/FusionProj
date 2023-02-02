@@ -11,6 +11,17 @@ namespace AlphaCore
 {
 	namespace GridDense
 	{
+
+		ALPHA_SPMD_FUNC void FieldAdvect(
+			AlphaCore::FluidUtility::AdvectType advectType,/*advectType*/
+			AxVecFieldF32* srcField,/*old field*/
+			AxVecFieldF32* outField,/*new field*/
+			AxVecFieldF32* velField,/*velocity field*/
+			AxVecFieldF32* advectTempField,/*temp field*/
+			AlphaCore::FluidUtility::AdvectTraceType traceMethod,
+			AxFp32 deltaTime,/*advect stepSize*/
+			bool loadBack = false);
+
 		ALPHA_SPMD_FUNC void FieldAdvect(
 			AlphaCore::FluidUtility::AdvectType advectType,/*advectType*/
 			AxScalarFieldF32* srcField,/*old field*/
@@ -69,6 +80,26 @@ namespace AlphaCore
 
 		namespace CUDA
 		{
+			ALPHA_SPMD_FUNC void FieldAdvect(
+				AlphaCore::FluidUtility::AdvectType advectType,/*advectType*/
+				AxVecFieldF32* srcField,/*old field*/
+				AxVecFieldF32* outField,/*new field*/
+				AxVecFieldF32* velField,/*velocity field*/
+				AxVecFieldF32* advectTempField,/*temp field*/
+				AlphaCore::FluidUtility::AdvectTraceType traceMethod,
+				AxFp32 deltaTime,/*advect stepSize*/
+				bool loadBack = false,
+				AxUInt32 blockSize = 512);
+
+			ALPHA_SPMD_FUNC void FieldAdvect(
+				AlphaCore::FluidUtility::AdvectType advectType,/*advectType*/
+				AxScalarFieldF32* srcField,/*old field*/
+				AxScalarFieldF32* outField,/*new field*/
+				AxVecFieldF32* velField,/*velocity field*/
+				AxVecFieldF32* advectTempField,/*temp field*/
+				AlphaCore::FluidUtility::AdvectTraceType traceMethod,
+				AxFp32 deltaTime,/*advect stepSize*/
+				bool loadBack = false);
 
 			ALPHA_SPMD_FUNC void FieldAdvect(
 				AlphaCore::FluidUtility::AdvectType advectType,/*advectType*/
@@ -136,6 +167,15 @@ namespace AlphaCore
 				AlphaCore::LinearSolver solverType,
 				AxUInt32 blockSize = 512);
 
+			ALPHA_SPMD_FUNC void FieldDivergenceMemoryBit16(
+				AxVecFieldF32* vecField,
+				AxScalarFieldF32* outDivField,
+				AxUInt32 blockSize = 512);
+
+			ALPHA_SPMD_FUNC void FieldDivergenceMemory(
+				AxVecFieldF32* vecField,
+				AxScalarFieldF32* outDivField,
+				AxUInt32 blockSize = 512);
 
 		}
 	}

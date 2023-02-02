@@ -5,8 +5,8 @@
 #include "AxDataType.h"
 #include "Math/AxVectorHelper.h"
 #include "Math/AxMath101.h"
-#define FCCD_ITERS 10
-namespace AlphaCore 
+#define FCCD_ITERS 15
+namespace AlphaCore
 {
 	namespace Collision
 	{
@@ -21,18 +21,20 @@ namespace AlphaCore
 			const AxVector3& q3end,
 			bool* rtMask6,
 			AxFp32 eta,
-			AxFp32 &t,
-			char &contactNodeId,
-			bool *flipTestRtn = nullptr)
+			AxFp32& t,
+			char& contactNodeId,
+			bool* flipTestRtn = nullptr)
 		{
 			// FLIP Test
 
-			AxFp32 colliFreeDist = Dot(q0start - q1start, Normalize(Cross(q2start - q1start, q3start - q1start)));
+			AxVector3 cn = Cross(q2start - q1start, q3start - q1start);
+			AxFp32 colliFreeDist = Dot(q0start - q1start, Normalize(cn));
 			bool colliFreeDir = colliFreeDist >= 0.0f ? true : false;
-			AxFp32 prdPTimeDist = Dot(q0end - q1end, Normalize(Cross(q2end - q1end, q3end - q1end)));
+			AxVector3 cn2 = Cross(q2end - q1end, q3end - q1end);
+			AxFp32 prdPTimeDist = Dot(q0end - q1end, Normalize(cn2));
 			bool prdPTimeDir = prdPTimeDist >= 0.0f ? true : false;
 			//RX_LOG_INFO("colliFreeDir:%d; prdPTimeDir:%d", colliFreeDir, prdPTimeDir);
-			const float vfeplsion = 0.0f;
+			const float vfeplsion = 0.00f;
 			if (colliFreeDir == prdPTimeDir)  // same side: no collision will happen
 			{
 				//RX_LOG_INFO("FLIP test --> should do DCD");
@@ -48,9 +50,9 @@ namespace AlphaCore
 				AlphaCore::Math::BaryCenterCoordinate(q0end, q1end, q2end, q3end, weight);
 				//RX_LOG_WARNING("prdP: weight.x: %f, weight.y: %f, weight.z: %f", weight.x, weight.y, weight.z);
 				t = 0.0F;
-				if (!(weight.x<0.0F - vfeplsion || weight.x>1.0f + vfeplsion ||
-					weight.y<0.0F - vfeplsion || weight.y>1.0f + vfeplsion ||
-					weight.z<0.0F - vfeplsion || weight.z>1.0f + vfeplsion))
+				if (!(weight.x < 0.0f - vfeplsion || weight.x>1.0f + vfeplsion ||
+					weight.y < 0.0f - vfeplsion || weight.y>1.0f + vfeplsion ||
+					weight.z < 0.0f - vfeplsion || weight.z>1.0f + vfeplsion))
 					//*/
 					//if(IsInSide<T>(q0end, q1end, q2end, q3end))
 				{
@@ -149,7 +151,8 @@ namespace AlphaCore
 				nq1end = AlphaCore::Math::Lerp(q1start, q1end, prdTime);
 				nq2end = AlphaCore::Math::Lerp(q2start, q2end, prdTime);
 				nq3end = AlphaCore::Math::Lerp(q3start, q3end, prdTime);
-				prdTimeDist = Dot((nq0end - nq1end), Normalize(Cross(nq2end - nq1end, nq3end - nq1end)));
+				AxVector3 cn = Cross(nq2end - nq1end, nq3end - nq1end);
+				prdTimeDist = Dot((nq0end - nq1end), Normalize(cn));
 				int prdPTimeDir = prdTimeDist >= 0.0F ? 1 : 0;
 
 				if (!(colliFreeDir == prdPTimeDir))
@@ -162,9 +165,9 @@ namespace AlphaCore
 			AxVector3 weight;
 			AlphaCore::Math::BaryCenterCoordinate(nq0end, nq1end, nq2end, nq3end, weight);
 			// VF
-			if (!(weight.x<0.0F - vfeplsion || weight.x>1.0F + vfeplsion ||
-				weight.y<0.0F - vfeplsion || weight.y>1.0F + vfeplsion ||
-				weight.z<0.0F - vfeplsion || weight.z>1.0F + vfeplsion))
+			if (!(weight.x < 0.0F - vfeplsion || weight.x>1.0F + vfeplsion ||
+				weight.y < 0.0F - vfeplsion || weight.y>1.0F + vfeplsion ||
+				weight.z < 0.0F - vfeplsion || weight.z>1.0F + vfeplsion))
 				//if (IsInSide<T>(nq0end, nq1end, nq2end, nq3end))
 			{
 				return AxContactType::kVF;
@@ -245,10 +248,10 @@ namespace AlphaCore
 		}
 
 		ALPHA_SHARE_FUNC AxFp32 CalcEEDist(
-			const AxVector3 & e0Pos,
-			const AxVector3 & e1Pos, 
-			const AxVector3 & e2Pos,
-			const AxVector3 & e3Pos,
+			const AxVector3& e0Pos,
+			const AxVector3& e1Pos,
+			const AxVector3& e2Pos,
+			const AxVector3& e3Pos,
 			AxFp32* weight)
 		{
 			AxVector3 e1 = e1Pos - e0Pos;
@@ -271,26 +274,26 @@ namespace AlphaCore
 		}
 
 		ALPHA_SHARE_FUNC bool EdgeEdgeFlipCCD(
-			const AxVector3 &q0start,
-			const AxVector3 &p0start,
-			const AxVector3 &q1start,
-			const AxVector3 &p1start,
-			const AxVector3 &q0end,
-			const AxVector3 &p0end,
-			const AxVector3 &q1end,
-			const AxVector3 &p1end, 
+			const AxVector3& q0start,
+			const AxVector3& p0start,
+			const AxVector3& q1start,
+			const AxVector3& p1start,
+			const AxVector3& q0end,
+			const AxVector3& p0end,
+			const AxVector3& q1end,
+			const AxVector3& p1end,
 			AxFp32 eta,
-			AxFp32 &t,
-			bool *angleTestRtn = nullptr)
+			AxFp32& t,
+			bool* angleTestRtn = nullptr)
 		{
 			//*angleTestRtn = true;
 			//return true;
 			//return false;
 
-			AxVector3 e1start = Normalize(p0start - q0start);
-			AxVector3 e2start = Normalize(p1start - q1start);
-			AxVector3 e1end = Normalize(p0end - q0end);
-			AxVector3 e2end = Normalize(p1end - q1end);
+			AxVector3 e1start	= Normalized(p0start - q0start);
+			AxVector3 e2start	= Normalized(p1start - q1start);
+			AxVector3 e1end		= Normalized(p0end - q0end);
+			AxVector3 e2end		= Normalized(p1end - q1end);
 			if (fmaxf(fabs(Dot(e1start, e2start)), fabs(Dot(e1end, e2end))) > 0.9f)  // almost parallel
 			{
 				//RX_LOG_WARNING("ANGLE check -- almost parallel��%f --> return", max(abs(dot(e1start, e2start)), abs(dot(e1end, e2end))));
@@ -324,8 +327,8 @@ namespace AlphaCore
 				if (fabs(prdPTimeDist) - eta >= -1e-6F)
 					return false;
 
-				if (!(prdPWeight[0]<0.0F || prdPWeight[0]>1.0F || prdPWeight[1]<0.0F || prdPWeight[1]>1.0F ||
-					-prdPWeight[2]<0.0F || -prdPWeight[2]>1.0F || -prdPWeight[3]<0.0F || -prdPWeight[3]>1.0F))
+				if (!(prdPWeight[0] < 0.0F || prdPWeight[0]>1.0F || prdPWeight[1] < 0.0F || prdPWeight[1]>1.0F ||
+					-prdPWeight[2] < 0.0F || -prdPWeight[2]>1.0F || -prdPWeight[3] < 0.0F || -prdPWeight[3]>1.0F))
 				{
 					return true;
 				}
@@ -345,10 +348,10 @@ namespace AlphaCore
 			while (i < FCCD_ITERS)  // 10 iterations
 			{
 				prdTime = AlphaCore::Math::Lerp(targetTime, currTime, 0.5f);
-				nq0end  = AlphaCore::Math::Lerp(q0start, q0end, prdTime);
-				np0end  = AlphaCore::Math::Lerp(p0start, p0end, prdTime);
-				nq1end  = AlphaCore::Math::Lerp(q1start, q1end, prdTime);
-				np1end  = AlphaCore::Math::Lerp(p1start, p1end, prdTime);
+				nq0end = AlphaCore::Math::Lerp(q0start, q0end, prdTime);
+				np0end = AlphaCore::Math::Lerp(p0start, p0end, prdTime);
+				nq1end = AlphaCore::Math::Lerp(q1start, q1end, prdTime);
+				np1end = AlphaCore::Math::Lerp(p1start, p1end, prdTime);
 				prdTimeDist = CalcEEDist(nq0end, np0end, nq1end, np1end, prdPWeight);
 				int prdTimeDir = prdTimeDist >= -0.0F ? 1 : 0;
 
@@ -362,8 +365,8 @@ namespace AlphaCore
 			//printf("final prdTime: %d - prdTimeDist: %f\n", prdTime, prdTimeDist);
 			//AxVector3 weight;
 			//evalVFBary(nq0end, nq1end, nq1end, np1end, weight);
-			if (!(prdPWeight[0]<0.0F || prdPWeight[0]>1.0F || prdPWeight[1]<0.0F || prdPWeight[1]>1.0F ||
-				-prdPWeight[2]<0.0F || -prdPWeight[2]>1.0F || -prdPWeight[3]<0.0F || -prdPWeight[3]>1.0F))
+			if (!(prdPWeight[0] < 0.0F || prdPWeight[0]>1.0F || prdPWeight[1] < 0.0F || prdPWeight[1]>1.0F ||
+				-prdPWeight[2] < 0.0F || -prdPWeight[2]>1.0F || -prdPWeight[3] < 0.0F || -prdPWeight[3]>1.0F))
 			{
 				//t = 1.0;
 				//*angleTestRtn = true;

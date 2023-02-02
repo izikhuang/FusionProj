@@ -75,12 +75,10 @@ public:
 		return 0;
 	}
 
-#ifdef ALPHA_CUDA
 	virtual bool DeviceMalloc(bool loadToDevice = true)
 	{
 		return false;
 	}
-#endif
 
 	void SetFieldIndex(AxInt32 fieldId)
 	{
@@ -156,6 +154,9 @@ struct AxFieldCacheHeadInfo
 #if ALPHA_CUDA
 typedef cudaTextureObject_t AxFieldDataHandlerR;
 typedef cudaSurfaceObject_t AxFieldDataHandlerRW;
+#else
+typedef int AxFieldDataHandlerR;
+typedef int AxFieldDataHandlerRW;
 #endif
 
 struct AxFieldHardwareInterfaceDesc
@@ -656,6 +657,187 @@ public:
 		m_VoxelBuffer[voxelId] = val;
 	}
 
+	T GetValueMemory(AxInt32 index)
+	{
+		return m_VoxelBuffer[index];
+	}
+
+	T GetValueMemory(AxUInt32 idx, AxUInt32 idy, AxUInt32 idz)
+	{
+		AxVector3I index3 = MakeVector3I(idx, idy, idz);
+		int voxelID = Index3ToMemoryIndex(index3);
+		return m_VoxelBuffer[voxelID];
+	}
+
+	T GetValueMemoryBit16(AxUInt32 idx, AxUInt32 idy, AxUInt32 idz)
+	{
+		AxVector3I index3 = MakeVector3I(idx, idy, idz);
+		int voxelID = Index3ToMemoryIndexBit16(index3);
+		return m_VoxelBuffer[voxelID];
+	}
+
+	void SetValueMemory(AxUInt32 voxelId, T val)
+	{
+		m_VoxelBuffer[voxelId] = val;
+		return;
+	}
+
+	void SetValueMemory(AxUInt32 idx, AxUInt32 idy, AxUInt32 idz, T val)
+	{
+		AxVector3I index3 = MakeVector3I(idx, idy, idz);
+		int voxelID = Index3ToMemoryIndex(index3);
+		m_VoxelBuffer[voxelID] = val;
+		return;
+	}
+
+	void SetValueMemoryBit16(AxUInt32 idx, AxUInt32 idy, AxUInt32 idz, T val)
+	{
+		AxVector3I index3 = MakeVector3I(idx, idy, idz);
+		int voxelID = Index3ToMemoryIndexBit16(index3);
+		m_VoxelBuffer[voxelID] = val;
+		return;
+	}
+
+	AxVector3I MemoryIndexToIndex3(AxInt32 index)
+	{
+		auto res = m_FieldInfo.Resolution;
+		int intactX = res.x / 16;
+		int intactY = res.y / 16;
+		int intactZ = res.z / 16;
+
+		int remainX = res.x % 16;
+		int remainY = res.y % 16;
+		int remainZ = res.z % 16;
+
+		AxVector3I localRes, localID, localIndex3;
+
+		int localIndex = index;
+
+		localID.z = index / (res.x * res.y * 16);
+		localRes.z = localID.z < intactZ ? 16 : remainZ;
+		localIndex -= localID.z * res.x * res.y * 16;
+
+		localID.y = localIndex / (res.x * 16 * localRes.z);
+		localRes.y = localID.y < intactY ? 16 : remainY;
+		localIndex -= localID.y * res.x * 16 * localRes.z;
+
+		localID.x = localIndex / (16 * localRes.y * localRes.z);
+		localRes.x = localID.x < intactX ? 16 : remainX;
+		localIndex -= localID.x * 16 * localRes.y * localRes.z;
+
+		int nvSlice = localRes.x * localRes.y;
+		localIndex3.x = localIndex % localRes.x;
+		localIndex3.y = (localIndex % nvSlice) / localRes.x;
+		localIndex3.z = localIndex / nvSlice;
+
+		AxVector3I index3;
+		index3.x = localID.x * 16 + localIndex3.x;
+		index3.y = localID.y * 16 + localIndex3.y;
+		index3.z = localID.z * 16 + localIndex3.z;
+
+		return index3;
+	}
+
+	AxInt32 Index3ToMemoryIndex(AxVector3I Index3)
+	{
+		auto res = m_FieldInfo.Resolution;
+
+		int intactX = res.x / 16;
+		int intactY = res.y / 16;
+		int intactZ = res.z / 16;
+
+		int remainX = res.x % 16;
+		int remainY = res.y % 16;
+		int remainZ = res.z % 16;
+
+		AxVector3I LocalID;
+		LocalID.x = Index3.x / 16;
+		LocalID.y = Index3.y / 16;
+		LocalID.z = Index3.z / 16;
+
+		AxVector3I LocalRes;
+		LocalRes.x = LocalID.x < intactX ? 16 : remainX;
+		LocalRes.y = LocalID.y < intactY ? 16 : remainY;
+		LocalRes.z = LocalID.z < intactZ ? 16 : remainZ;
+
+		int localStartIndex = res.x * res.y * LocalID.z * 16 +
+			res.x * LocalID.y * 16 * LocalRes.z +
+			LocalRes.y * LocalID.x * 16 * LocalRes.z;
+		AxVector3I LocalIndex3;
+		LocalIndex3.x = Index3.x - LocalID.x * 16;
+		LocalIndex3.y = Index3.y - LocalID.y * 16;
+		LocalIndex3.z = Index3.z - LocalID.z * 16;
+
+		int memoryIndex = localStartIndex
+			+ LocalIndex3.z * LocalRes.x * LocalRes.y
+			+ LocalIndex3.y * LocalRes.x
+			+ LocalIndex3.x;
+
+		return memoryIndex;
+	}
+
+	AxInt32 Index3ToMemoryIndexBit16(AxVector3I Index3)
+	{
+		auto res = m_FieldInfo.Resolution;
+
+		int intactX = res.x >> 4;
+		int intactY = res.y >> 4;
+		int intactZ = res.z >> 4;
+
+
+		AxVector3I BlockID;
+		BlockID.x = Index3.x >> 4;
+		BlockID.y = Index3.y >> 4;
+		BlockID.z = Index3.z >> 4;
+
+		AxVector3I LocalIndex3;
+		LocalIndex3.x = 0x0000000f & Index3.x;
+		LocalIndex3.y = 0x0000000f & Index3.y;
+		LocalIndex3.z = 0x0000000f & Index3.z;
+
+		int localStartIndex = (BlockID.z * intactX * intactY + BlockID.y * intactX + BlockID.x) << 12;
+
+		int memoryIndex = localStartIndex
+			+ (LocalIndex3.z << 8)
+			+ (LocalIndex3.y << 4)
+			+ LocalIndex3.x;
+
+		return memoryIndex;
+	}
+
+	AxVector3I MemoryIndexToIndex3Bit16(AxUInt32 index)
+	{
+		auto res = m_FieldInfo.Resolution;
+
+		int intactX = res.x >> 4;
+		int intactY = res.y >> 4;
+		int intactZ = res.z >> 4;
+
+		int blockID = index >> 12;
+
+		AxVector3I blockID3;
+		AxUInt32 nvSlice = intactX * intactY;
+		blockID3.x = blockID % intactX;
+		blockID3.y = (blockID % nvSlice) / intactX;
+		blockID3.z = blockID / nvSlice;
+
+		int localId = index - (blockID << 12);
+
+		AxVector3I localID3;
+		localID3.x = localId & 0x0000000f;
+		localID3.y = (localId & 0x000000ff) >> 4;
+		localID3.z = localId >> 8;
+
+		AxVector3I index3;
+		index3.x = (blockID3.x << 4) + localID3.x;
+		index3.y = (blockID3.y << 4) + localID3.y;
+		index3.z = (blockID3.z << 4) + localID3.z;
+		return index3;
+	}
+
+
+
+
 	void AddField(AxField3DBase<T>* field)
 	{
 		for (uInt64 i = 0; i < field->GetNumVoxels(); ++i)
@@ -815,9 +997,12 @@ private:
 
 	void _initMemberVars()
 	{
+#ifdef ALPHA_CUDA
+		m_CUDATexContent = nullptr;
+#endif 
+
 		m_bAPIStage = false;
 		m_iNumMultiGridDatas = 0;
-		m_CUDATexContent = nullptr;
 		std::memset(&m_TexHardwareInterfaceDesc, 0, sizeof(AxFieldHardwareInterfaceDesc));
 		this->SetAllBoundaryOutsideZero();
 	}
@@ -937,7 +1122,6 @@ public:
 			sizeof(T) * this->GetNumVoxels();
 	}
 
-#ifdef ALPHA_CUDA
 
 	virtual bool DeviceMalloc(bool loadToDevice = true)
 	{
@@ -963,11 +1147,16 @@ public:
 
 	void LoadToDeviceTexture()
 	{
+#ifdef ALPHA_CUDA
 		_createCUDATexture();
 		AX_FOR_I(int(this->GetNumMultiGridDatas()))
 			this->GetMultiGridDataByLevelIndex(i)->_createCUDATexture();
+#endif
 	}
 
+	AxFieldHardwareInterfaceDesc m_TexHardwareInterfaceDesc;
+
+#ifdef ALPHA_CUDA
 	void LoadToHostTexture()
 	{
 		if (this->m_CUDATexContent == nullptr)
@@ -1044,7 +1233,6 @@ public:
 
 private:
 	cudaArray* m_CUDATexContent;
-	AxFieldHardwareInterfaceDesc m_TexHardwareInterfaceDesc;
 	void _createCUDATexture(int originDataFlag = 0)
 	{
 		if (m_CUDATexContent != nullptr)
@@ -1129,6 +1317,7 @@ inline std::ostream& operator<<(std::ostream& os, const AxFieldCacheHeadInfo& fi
 typedef AxField3DBase<AxInt8>		AxScalarFieldI8;
 typedef AxField3DBase<AxInt16>		AxScalarFieldI16;
 typedef AxField3DBase<AxInt32>		AxScalarFieldI32;
+typedef AxField3DBase<AxFp16>		AxScalarFieldF16;
 typedef AxField3DBase<float>		AxScalarFieldF32;
 typedef AxField3DBase<double>		AxScalarFieldF64;
 typedef AxField3DBase<AxUInt32>		AxScalarFieldUInt32;
@@ -1550,5 +1739,83 @@ namespace AlphaCore
 	template <>
 	inline AxString TypeName<AxField3DBase<AxVector3>*>() { return "AxFieldVec3"; }
 }
+
+
+template <typename T>
+struct AxVDBInfo
+{
+
+};
+
+typedef void VDBPoolData;
+
+template <typename T>
+struct ScalarFieldRAWDesc
+{
+	bool IsValid;
+	AxField3DInfo FieldInfo;
+	T* RawDataPtr = nullptr;
+	AxFieldHardwareInterfaceDesc HardwareInfo;
+	VDBPoolData* PoolData = nullptr;
+	AxVDBInfo<T> VDBInfo;
+};
+
+template<class T>
+struct VectorFieldRawDesc {
+	bool Active;
+	bool IsStaggeredGrid;
+	T* RawDataPtrX;
+	T* RawDataPtrY;
+	T* RawDataPtrZ;
+	VDBPoolData* PoolDataX;
+	VDBPoolData* PoolDataY;
+	VDBPoolData* PoolDataZ;
+	AxField3DInfo   FieldInfoX;
+	AxField3DInfo   FieldInfoY;
+	AxField3DInfo   FieldInfoZ;
+	AxVDBInfo<T>       VDBInfoX;
+	AxVDBInfo<T>       VDBInfoY;
+	AxVDBInfo<T>       VDBInfoZ;
+};
+
+typedef ScalarFieldRAWDesc<AxInt8>     AxScalarFieldHandleI8;
+typedef ScalarFieldRAWDesc<AxInt16>    AxScalarFieldHandleI16;
+typedef ScalarFieldRAWDesc<AxInt32>    AxScalarFieldHandleI32;
+typedef ScalarFieldRAWDesc<AxFp32>     AxScalarFieldHandleF32;
+typedef ScalarFieldRAWDesc<AxFp64>     AxScalarFieldHandleF64;
+typedef ScalarFieldRAWDesc<AxUInt8>    AxScalarFieldHandleU8;
+typedef ScalarFieldRAWDesc<AxUInt32>   AxScalarFieldHandleU32;
+typedef ScalarFieldRAWDesc<AxVector3>  AxScalarFieldHandleV3F32;
+
+
+typedef VectorFieldRawDesc<AxInt8>		AxVectorFieldHandleI8;
+typedef VectorFieldRawDesc<AxInt16>		AxVectorFieldHandleI16;
+typedef VectorFieldRawDesc<AxInt32>		AxVectorFieldHandleI32;
+typedef VectorFieldRawDesc<AxFp32>		AxVectorFieldHandleF32;
+typedef VectorFieldRawDesc<AxFp64>		AxVectorFieldHandleF64;
+typedef VectorFieldRawDesc<AxUInt8>		AxVectorFieldHandleU8;
+typedef VectorFieldRawDesc<AxUInt32>	AxVectorFieldHandleU32;
+
+
+template<typename T>
+static VectorFieldRawDesc<T> MakeDefaultVectorFieldHandle()
+{
+	VectorFieldRawDesc<T> ret;
+	ret.Active = false;
+	ret.RawDataPtrX = nullptr;
+	ret.RawDataPtrY = nullptr;
+	ret.RawDataPtrZ = nullptr;
+	return ret;
+}
+
+template<typename T>
+static ScalarFieldRAWDesc<T> MakeDefaultScalarFieldHandle()
+{
+	ScalarFieldRAWDesc<T> ret;
+	ret.IsValid = false;
+	ret.RawDataPtr = nullptr;
+	return ret;
+}
+
 
 #endif

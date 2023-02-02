@@ -4,18 +4,57 @@
 #include "AxDataType.h"
 #include "AxMacro.h"
 
-ALPHA_SHARE_FUNC unsigned short InternalToAxFp16(const float f, unsigned int& sign, unsigned int& remainder)
+struct AxFp16 {
+	ALPHA_SHARE_FUNC AxFp16() 
+	{ 
+		this->x = 0; 
+	}
+
+	ALPHA_SHARE_FUNC AxFp16(const float& fp32)
+	{
+		this->x = ToAxFp16(fp32).x;
+	}
+
+	ALPHA_SHARE_FUNC AxFp16(const AxFp16& fp16)
+	{
+		this->x = fp16.x;
+	}
+
+	ALPHA_SHARE_FUNC ~AxFp16() {}
+	friend std::ostream& operator<<(std::ostream& output,
+		const AxFp16& v)
+	{
+		output << InternalToAxFp32(v.x);
+		return output;
+	}
+
+	ALPHA_SHARE_FUNC AxFp16& operator=(const float& fp32)
+	{
+		this->x = ToAxFp16(fp32).x;
+		return *this;
+	}
+	ALPHA_SHARE_FUNC AxFp16& operator=(const AxFp16& fp16) 
+	{ 
+		this->x = fp16.x;
+		return *this;
+	}
+
+	unsigned short x;
+};
+
+
+ALPHA_SHARE_FUNC unsigned short InternalToAxFp16(const float& f, unsigned int& sign, unsigned int& remainder)
 {
-	unsigned int x;
-	unsigned int u;
+	unsigned int x = 0;
+	unsigned int u = 0;
 	unsigned int result;
 
 #ifdef __CUDA_ARCH__
-	//TODO : 
+	memcpy(&x, &f, sizeof(f));
+	//cudaMemcpy(&x, &f, sizeof(f), cudaMemcpyDeviceToDevice);
 #else
 	std::memcpy(&x, &f, sizeof(f));
 #endif
-
 	u = (x & 0x7fffffffU);
 	sign = ((x >> 16U) & 0x8000U);
 	// NaN/+Inf/-Inf
@@ -45,10 +84,10 @@ ALPHA_SHARE_FUNC unsigned short InternalToAxFp16(const float f, unsigned int& si
 		result = (sign | (mantissa >> shift));
 		result &= 0x0000FFFFU;
 	}
-	return static_cast<unsigned short>(result);
+	return (unsigned short)result;
 }
 
-ALPHA_SHARE_FUNC AxFp16 ToAxFp16(const float f)
+ALPHA_SHARE_FUNC AxFp16 ToAxFp16(const float& f)
 {
 	AxFp16 ret;
 	unsigned int sign = 0U;
@@ -61,11 +100,11 @@ ALPHA_SHARE_FUNC AxFp16 ToAxFp16(const float f)
 }
 
 
-ALPHA_SHARE_FUNC float InternalToAxFp32(const unsigned short h)
+ALPHA_SHARE_FUNC float InternalToAxFp32(const unsigned short& h)
 {
-	unsigned int sign = ((static_cast<unsigned int>(h) >> 15U) & 1U);
-	unsigned int exponent = ((static_cast<unsigned int>(h) >> 10U) & 0x1fU);
-	unsigned int mantissa = ((static_cast<unsigned int>(h) & 0x3ffU) << 13U);
+	unsigned int sign = (((unsigned int)h >> 15U) & 1U);
+	unsigned int exponent = (((unsigned int)h >> 10U) & 0x1fU);
+	unsigned int mantissa = (((unsigned int)h & 0x3ffU) << 13U);
 	float f;
 	if (exponent == 0x1fU) { /* NaN or Inf */
 		/* discard sign of a NaN */
@@ -89,11 +128,17 @@ ALPHA_SHARE_FUNC float InternalToAxFp32(const unsigned short h)
 		exponent += 0x70U;
 	}
 	const unsigned int u = ((sign << 31U) | (exponent << 23U) | mantissa);
+#ifdef __CUDA_ARCH__
+	memcpy(&f, &u, sizeof(u));
+	//cudaMemcpy(&f, &u, sizeof(u), cudaMemcpyDeviceToDevice);
+#else
 	std::memcpy(&f, &u, sizeof(u));
+#endif
+	
 	return f;
 }
 
-ALPHA_SHARE_FUNC float ToAxFp32(const AxFp16 v) {
+ALPHA_SHARE_FUNC float ToAxFp32(const AxFp16& v) {
 	float val = InternalToAxFp32(v.x);
 	return val;
 }
@@ -105,7 +150,7 @@ ALPHA_SHARE_FUNC AxFp16 MakeAxFp16(const float& f) { return ToAxFp16(f); }
 
 /* Some basic arithmetic operations */
 /* add */
-ALPHA_SHARE_FUNC AxFp16 operator+(const AxFp16 lh, const AxFp16 rh) {
+ALPHA_SHARE_FUNC AxFp16 operator+(const AxFp16& lh, const AxFp16& rh) {
 	return ToAxFp16(ToAxFp32(lh) + ToAxFp32(rh));
 }
 
@@ -124,7 +169,7 @@ ALPHA_SHARE_FUNC AxFp16& operator+=(AxFp16& lh, const float& rh) {
 }
 
 /* subtraction */
-ALPHA_SHARE_FUNC AxFp16 operator-(const AxFp16 lh, const AxFp16 rh) {
+ALPHA_SHARE_FUNC AxFp16 operator-(const AxFp16& lh, const AxFp16& rh) {
 	return ToAxFp16(ToAxFp32(lh) - ToAxFp32(rh));
 }
 
@@ -143,7 +188,7 @@ ALPHA_SHARE_FUNC AxFp16& operator-=(AxFp16& lh, const float& rh) {
 }
 
 /* multiplication */
-ALPHA_SHARE_FUNC AxFp16 operator*(const AxFp16 lh, const AxFp16 rh) {
+ALPHA_SHARE_FUNC AxFp16 operator*(const AxFp16& lh, const AxFp16& rh) {
 	return ToAxFp16(ToAxFp32(lh) * ToAxFp32(rh));
 }
 
@@ -162,7 +207,7 @@ ALPHA_SHARE_FUNC AxFp16& operator*=(AxFp16& lh, const float& rh) {
 }
 
 /* division */
-ALPHA_SHARE_FUNC AxFp16 operator/(const AxFp16 lh, const AxFp16 rh) {
+ALPHA_SHARE_FUNC AxFp16 operator/(const AxFp16& lh, const AxFp16& rh) {
 	return ToAxFp16(ToAxFp32(lh) / ToAxFp32(rh));
 }
 

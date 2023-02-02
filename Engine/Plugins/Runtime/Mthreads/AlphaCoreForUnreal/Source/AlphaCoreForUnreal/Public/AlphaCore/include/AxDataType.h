@@ -27,23 +27,25 @@ typedef std::string			AxString;
 ///////////////////////////////////////////
 /// AxFp16 101
 ///////////////////////////////////////////
-typedef struct { unsigned short x; }AxFp16;
+struct AxFp16;
+
+ALPHA_SHARE_FUNC float InternalToAxFp32(const unsigned short& h);
+
+ALPHA_SHARE_FUNC unsigned short InternalToAxFp16(const float& f, unsigned int& sign, unsigned int& remainder);
+
+
 
 /* fp32/fp16 convert */
-ALPHA_SHARE_FUNC unsigned short InternalToAxFp16(const float f, unsigned int& sign, unsigned int& remainder);
+ALPHA_SHARE_FUNC AxFp16 ToAxFp16(const float& f);
 
-ALPHA_SHARE_FUNC AxFp16 ToAxFp16(const float f);
-
-ALPHA_SHARE_FUNC float InternalToAxFp32(const unsigned short h);
-
-ALPHA_SHARE_FUNC float ToAxFp32(const AxFp16 v);
+ALPHA_SHARE_FUNC float ToAxFp32(const AxFp16& v);
 /* Make AxFp16 */
 ALPHA_SHARE_FUNC AxFp16 MakeAxFp16(const float& f);
 
 
 /* Some basic arithmetic operations */
 /* add */
-ALPHA_SHARE_FUNC AxFp16 operator+(const AxFp16 lh, const AxFp16 rh);
+ALPHA_SHARE_FUNC AxFp16 operator+(const AxFp16& lh, const AxFp16& rh);
 
 ALPHA_SHARE_FUNC AxFp16 operator+(const AxFp16& lh, const float& rh);
 
@@ -52,7 +54,7 @@ ALPHA_SHARE_FUNC AxFp16& operator+=(AxFp16& lh, const AxFp16& rh);
 ALPHA_SHARE_FUNC AxFp16& operator+=(AxFp16& lh, const float& rh);
 
 /* subtraction */
-ALPHA_SHARE_FUNC AxFp16 operator-(const AxFp16 lh, const AxFp16 rh);
+ALPHA_SHARE_FUNC AxFp16 operator-(const AxFp16& lh, const AxFp16& rh);
 
 ALPHA_SHARE_FUNC AxFp16 operator-(const AxFp16& lh, const float& rh);
 
@@ -61,7 +63,7 @@ ALPHA_SHARE_FUNC AxFp16& operator-=(AxFp16& lh, const AxFp16& rh);
 ALPHA_SHARE_FUNC AxFp16& operator-=(AxFp16& lh, const float& rh);
 
 /* multiplication */
-ALPHA_SHARE_FUNC AxFp16 operator*(const AxFp16 lh, const AxFp16 rh);
+ALPHA_SHARE_FUNC AxFp16 operator*(const AxFp16& lh, const AxFp16& rh);
 
 ALPHA_SHARE_FUNC AxFp16 operator*(const AxFp16& lh, const float& rh);
 
@@ -70,7 +72,7 @@ ALPHA_SHARE_FUNC AxFp16& operator*=(AxFp16& lh, const AxFp16& rh);
 ALPHA_SHARE_FUNC AxFp16& operator*=(AxFp16& lh, const float& rh);
 
 /* division */
-ALPHA_SHARE_FUNC AxFp16 operator/(const AxFp16 lh, const AxFp16 rh);
+ALPHA_SHARE_FUNC AxFp16 operator/(const AxFp16& lh, const AxFp16& rh);
 
 ALPHA_SHARE_FUNC AxFp16 operator/(const AxFp16& lh, const float& rh);
 
@@ -78,6 +80,43 @@ ALPHA_SHARE_FUNC AxFp16& operator/=(AxFp16& lh, const AxFp16& rh);
 
 ALPHA_SHARE_FUNC AxFp16& operator/=(AxFp16& lh, const float& rh);
 
+
+struct AxContext
+{
+	AxContext(AxFp32 dt = 0.0416f)
+	{
+		Dt = dt;
+		Time = 0.0f;
+		Frame = 0.0f;
+		FFrame = 0.0f;
+	}
+
+	AxFp32 Dt;
+	AxFp32 Time;
+	AxInt32 Frame;
+	AxFp32 FFrame;
+
+};
+
+struct AxStartNum2I
+{
+	AxInt32 Start;
+	AxInt32 Num;
+};
+
+ALPHA_SHARE_FUNC AxStartNum2I MakeStartNum2I(AxInt32 start = -1, AxInt32 num = -1)
+{
+	AxStartNum2I e;
+	e.Start = start;
+	e.Num = num;
+	return e;
+}
+
+inline std::ostream& operator <<(std::ostream& os, const AxStartNum2I& rhs)
+{
+	os << "StartNum Info : Start " << rhs.Start << "  +  " << rhs.Num;
+	return os;
+}
 
 namespace AlphaCore
 {
@@ -93,7 +132,8 @@ namespace AlphaCore
 		kUInt8,
 		kUInt16,
 		kUInt32,
-		kUInt64, 
+		kUInt64,
+		kArrayMapDesc,
 		kString,
 		kInvalidDataType
 	};
@@ -105,7 +145,7 @@ namespace AlphaCore
 		kVertex,
 		kGeoDetail,
 		kGeoIndices,
-		kInvalidPropertyType   
+		kInvalidPropertyType
 	};
 
 	enum AxIntegrator
@@ -151,12 +191,77 @@ namespace AlphaCore
 		kPrInvalidGeo
 	};
 
+	enum AxExecuteType
+	{
+		kExcPoints,
+		kExcPrimitives,
+		kExcVertices,
+		kExcVoxels,
+		kExcTaskGroup,
+		kExcSBPoint2PointLink,
+		kExcSBPrim2PrimLink,
+		kNonExc
+	};
+
+	static std::string ExecuteTypeToString(AlphaCore::AxExecuteType type)
+	{
+		switch (type)
+		{
+		case AlphaCore::kExcPoints:
+			return "kExcPoints";
+			break;
+		case AlphaCore::kExcPrimitives:
+			return "kExcPrimitives";
+			break;
+		case AlphaCore::kExcVertices:
+			return "kExcVertices";
+			break;
+		case AlphaCore::kExcVoxels:
+			return "kExcVoxels";
+			break;
+		case AlphaCore::kExcTaskGroup:
+			return "kExcTaskGroup";
+			break;
+		case AlphaCore::kExcSBPoint2PointLink:
+			return "kExcSBPointLink";
+			break;
+		case AlphaCore::kExcSBPrim2PrimLink:
+			return "kExcSBPrimitiveLink";
+			break;
+		default:
+			return "kNonExc";
+			break;
+		}
+		return "Undefined Execute Type";
+	}
+
+	static AlphaCore::AxExecuteType ExecuteTypeFromString(std::string str)
+	{
+		if (str == "kExcPoints")
+			return AlphaCore::kExcPoints;
+		if (str == "kExcPrimitives")
+			return AlphaCore::kExcPrimitives;
+		if (str == "kExcVertices")
+			return AlphaCore::kExcVertices;
+		if (str == "kExcVoxels")
+			return AlphaCore::kExcVoxels;
+		if (str == "kExcTaskGroup")
+			return AlphaCore::kExcTaskGroup;
+		if (str == "kExcSBPoint2PointLink")
+			return AlphaCore::kExcSBPoint2PointLink;
+		if (str == "kExcSBPrim2PrimLink")
+			return AlphaCore::kExcSBPrim2PrimLink;
+		return  AlphaCore::AxExecuteType::kNonExc;
+	}
 
 	template<class T>
 	inline AxUInt32 TypeVecSize() { return 1; }
 
 	template<>
 	inline AxUInt32 TypeVecSize<int>() { return 1; }
+
+	template<>
+	inline AxUInt32 TypeVecSize<AxUChar>() { return 1; }
 
 	template<>
 	inline AxUInt32 TypeVecSize<float>() { return 1; }
@@ -193,12 +298,15 @@ namespace AlphaCore
 	inline AxDataType TypeID<AxPrimitiveType>() { return AxDataType::kInt32; }
 
 	template<>
+	inline AxDataType TypeID<AxUChar>() { return AxDataType::kUInt8; }
+
+	template<>
 	inline AxDataType TypeID<std::string>() { return AxDataType::kString; }
 
 	template<class T>
 	inline AxString TypeName() { return "INVALID_TYPE"; }
 
- 	template<>
+	template<>
 	inline AxString TypeName<int>() { return "AxInt32"; }
 
 	template<>
@@ -212,6 +320,9 @@ namespace AlphaCore
 
 	template<>
 	inline AxString TypeName<AxUInt32>() { return "AxUInt32"; }
+
+	template<>
+	inline AxString TypeName<AxUChar>() { return "AxUInt8"; }
 
 	template<>
 	inline AxString TypeName<AxPrimitiveType>() { return "AxPrimitive"; }
@@ -269,6 +380,8 @@ namespace AlphaCore
 			return "UInt64";
 		case AlphaCore::kString:
 			return "String";
+		case AlphaCore::kArrayMapDesc:
+			return "ArrayDesc";
 		default:
 			break;
 		}

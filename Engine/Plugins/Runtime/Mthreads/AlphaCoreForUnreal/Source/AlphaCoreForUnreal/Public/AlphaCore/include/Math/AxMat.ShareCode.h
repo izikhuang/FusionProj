@@ -356,6 +356,8 @@ ALPHA_SHARE_FUNC Quat QuatConjugate(Quat q)
 	return MakeQuat(Neg(QuatXYZ(q)), q.mm[3]);
 }
 
+
+
 ALPHA_SHARE_FUNC Quat Normalize(Quat q)
 {
 	AxFp32 d = AxFp32(sqrtf(q.mm[0] * q.mm[0] + q.mm[1] * q.mm[1] + q.mm[2] * q.mm[2] + q.mm[3] * q.mm[3]));

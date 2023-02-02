@@ -60,6 +60,8 @@ public:
 	void SetNeighborSearch3x3CallbackDevice();
 
 	void Build(AxGeometry* geo,const char* targetPName = AlphaProperty::PrdP);
+	//ws temporary
+	void BuildPrim(AxGeometry* geo, const char* targetPName = AlphaProperty::PrdP);
 
 	void Init(AxVector3 pivot, AxVector3 size, AxVector3UI res, bool setToZero = false)
 	{
