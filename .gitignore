@@ -214,7 +214,39 @@ Engine/Binaries/Android/packageInfo.txt
 enc_temp_folder/
 
 # Ignore content folders
-Content/
+# Content/
+Engine/Content/
+Engine/Plugins/Animation/ControlRig/Content/
+Engine/Plugins/Experimental/MLDeformer/Content/
+Engine/Plugins/Experimental/PythonFoundationPackages/Content/
+Engine/Plugins/Experimental/PythonScriptPlugin/Content/
+Engine/Plugins/Experimental/Shotgrid/Content/
+Engine/Plugins/Experimental/Volumetrics/Content/
+Engine/Plugins/FX/CascadeToNiagaraConverter/Content/
+Engine/Plugins/Importers/USDImporter/Content/
+Engine/Plugins/MovieScene/MovieRenderPipeline/Content/
+Engine/Plugins/MovieScene/SequencerScripting/Content/
+Engine/Plugins/Online/Android/OnlineSubsystemGameCircle/Content/
+Engine/Plugins/Online/Android/OnlineSubsystemGooglePlay/Content/
+Engine/Plugins/Online/IOS/OnlineSubsystemIOS/Content/
+Engine/Plugins/Online/OnlineFramework/Content/
+Engine/Plugins/Online/OnlineSubsystem/Content/
+Engine/Plugins/Online/OnlineSubsystemAmazon/Content/
+Engine/Plugins/Online/OnlineSubsystemFacebook/Content/
+Engine/Plugins/Online/OnlineSubsystemOculus/Content/
+Engine/Plugins/Online/OnlineSubsystemSteam/Content/
+Engine/Plugins/Online/OnlineSubsystemUtils/Content/
+Engine/Plugins/Runtime/AudioModulation/Content/
+Engine/Plugins/Runtime/HDRIBackdrop/Content/
+Engine/Plugins/Runtime/HTTPChunkInstaller/Content/
+Engine/Plugins/Runtime/Metasound/Content/
+Engine/Plugins/Runtime/Oculus/OculusVR/Content/
+Engine/Plugins/Runtime/OpenXR/Content/
+Engine/Plugins/Runtime/SoundCueTemplates/Content/
+Engine/Plugins/Tests/EditorTests/Content/
+Engine/Plugins/Tests/PythonAutomationTest/Content/
+
+
 
 # Ignore DDC
 /Engine/DerivedDataCache/**
@@ -255,8 +287,9 @@ Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/**
 # Ignore test json data files in NeuralNetworkInterface
 /Engine/Plugins/Experimental/NNI/Source/ThirdParty/Deps/json/**
 
-!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content/FieldSourceMat.uasset
-!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content/FieldSourceNoiseAsset.uasset
+
+# AlphaCorePlugins
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content/**
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Resources/**
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Public/AlphaCore/AlphaCoreLib/Release/AlphaCore.lib
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/StormSystemHDABeta1.0工具使用手册.pdf
