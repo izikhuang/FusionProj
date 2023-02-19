@@ -16,9 +16,17 @@
 	"Installed": false,
 	"Modules": [
 		{
-			"Name": "AlphaCoreForUnreal",
+			"Name": "AlphaCoreRuntime",
 			"Type": "Runtime",
 			"LoadingPhase": "PostConfigInit",
+			"WhitelistPlatforms": [
+				"Win64"
+			]
+		},
+		{
+			"Name": "AlphaCoreStormSystem",
+			"Type": "Runtime",
+			"LoadingPhase": "Default",
 			"WhitelistPlatforms": [
 				"Win64"
 			]
