@@ -291,5 +291,5 @@ Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/**
 # AlphaCorePlugins
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content/**
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Resources/**
-!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Public/AlphaCore/AlphaCoreLib/Release/AlphaCore.lib
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Source/AlphaCoreNative/AlphaCore/AlphaCoreLib/Release/AlphaCore.lib
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/StormSystemHDABeta1.0工具使用手册.pdf
