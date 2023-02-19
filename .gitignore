@@ -255,6 +255,8 @@ Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/**
 # Ignore test json data files in NeuralNetworkInterface
 /Engine/Plugins/Experimental/NNI/Source/ThirdParty/Deps/json/**
 
-!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content
-!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Resources
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content/FieldSourceMat.uasset
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content/FieldSourceNoiseAsset.uasset
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Resources/**
 !Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Public/AlphaCore/AlphaCoreLib/Release/AlphaCore.lib
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/StormSystemHDABeta1.0工具使用手册.pdf

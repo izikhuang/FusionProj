@@ -1,3 +1,0 @@
-EdgeColoring
-拉普拉斯smooth
-marchingCube
