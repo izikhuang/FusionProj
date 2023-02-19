@@ -255,4 +255,6 @@ Engine/Extras/ThirdPartyNotUE/SDKs/HostLinux/**
 # Ignore test json data files in NeuralNetworkInterface
 /Engine/Plugins/Experimental/NNI/Source/ThirdParty/Deps/json/**
 
-!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Source/AlphaCoreForUnreal/Public/AlphaCore/AlphaCoreLib/Release/AlphaCore.lib
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Content
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Resources
+!Engine/Plugins/Runtime/Mthreads/AlphaCoreForUnreal/Public/AlphaCore/AlphaCoreLib/Release/AlphaCore.lib
